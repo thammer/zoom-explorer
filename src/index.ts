@@ -158,7 +158,12 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     sysexString += `<b>Data length: ${length}</b><br/>`
     for (let i=0; i<dataset.current.length; i++)
     {
-      sysexString += toHexString([dataset.current[i]]);
+      let hexString = toHexString([dataset.current[i]]);
+      if (dataset.previous[i] !== dataset.current[i])
+        sysexString += "<b>" + hexString + "</b>";
+      else
+        sysexString += hexString;
+
       if ((i+1) % (paragraphHeight*lineLength) === 0)
         sysexString += "<br/><br/>";
       else if ((i+1) % lineLength === 0)
