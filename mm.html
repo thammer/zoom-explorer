@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+    <!-- For www.waveformer.net <script type="text/javascript" src="../common.js"></script> -->
+    <head>
+        <meta charset="UTF-8">
+        <title>Waveformer MIDI Monitor</title>
+        <link href="https://fonts.googleapis.com/css?family=Alata|Dosis|Didact|Roboto&display=swap" rel="stylesheet"/>    
+        <!-- For www.waveformer.net <link rel="stylesheet" type="text/css" href="../common.css"/> -->
+        <!-- For www.waveformer.net <link rel="stylesheet" type="text/css" href="../navbar.css"/>  -->
+        <style>
+            body {
+                font-family: 'Roboto', sans-serif;
+            }
+            h1 
+            {
+                text-align: center;
+                margin: 5px 2px 0px 2px;
+            }
+            div.source {
+                text-align: right;
+                margin: 0px 4px 4px 2px;
+            }
+            table#midiInputsTable {
+                float: left;
+            }
+            table#midiOutputsTable {
+                float: right;
+            }
+            table#midiInputsTable, table#midiOutputsTable {
+                border: 1px solid black;
+                border-collapse: collapse;
+                text-align: center;
+                vertical-align: middle;
+                table-layout: fixed;
+                margin: 2px 4px 8px 4px;
+            } 
+            table#midiInputsTable tr, table#midiOutputsTable tr {
+                border: 1px solid black;
+                border-collapse: collapse;
+            } 
+            table#midiInputsTable td, table#midiInputsTable th, table#midiOutputsTable td, table#midiOutputsTable th {
+                border: 1px solid black;
+                border-collapse: collapse;
+                padding: 1px 4px 1px 4px;
+            } 
+            table#midiInputsTable td, table#midiOutputsTable td {
+                text-align: left;
+            }
+            table#midiMonitorTable {
+                border: 1px solid black;
+                border-collapse: collapse;
+                text-align: center;
+                vertical-align: middle;
+                table-layout: auto;
+                width: calc(100% - 8px);
+                margin: 4px 2px 2px 4px
+            } 
+            table#midiMonitorTable tr {
+                border: 1px solid black;
+                border-collapse: collapse;
+            } 
+            table#midiMonitorTable td, table#midiMonitorTable th {
+                border: 1px solid black;
+                border-collapse: collapse;
+                white-space: nowrap;
+                padding: 1px 4px 1px 4px;
+            } 
+
+            table#midiMonitorTable td {
+                text-align: left;
+            }
+
+            table#midiMonitorTable td#value {
+                background-image: linear-gradient(to right, rgb(240, 240, 240) 0%, rgb(180, 180, 180) 100%);
+                background-repeat: no-repeat; 
+            }
+
+            table#midiMonitorTable td#time {
+                background-image: linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 45%, rgb(180, 180, 180) 50%, rgb(255, 255, 255) 55%, rgb(255, 255, 255) 100%);
+                background-repeat: no-repeat; 
+            }
+
+        </style>
+    </head>
+
+    <body>
+        <!-- For www.waveformer.net <div w3-include-html="../navbar.html"></div> -->
+        <h1>Waveformer's MIDI Monitor</h1>
+        <div class="source"><a href="https://github.com/thammer/midimonitor">Source code on github</a></div>
+
+        <div id="content">
+            <table id="midiInputsTable"></table>
+
+            <table id="midiOutputsTable"></table>
+
+            <table id="midiMonitorTable">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Device</th>
+                    <th>Status</th>
+                    <th>Data 1</th>
+                    <th>Data 2</th>
+                    <th>Channel</th>
+                    <th>Note</th>
+                    <th>Event</th>
+                </tr>
+            </table>
+        </div>
+
+        <script>
+
+            if (!navigator.requestMIDIAccess)
+            {
+                var content = document.getElementById("content");
+                content.innerHTML = "Your web browser does not support the WebMIDI standard. Try using the latest version of the Chrome or Opera browsers.";
+            }
+
+            navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+
+            function command2Name(command)
+            {
+                var name;
+                switch (command) {
+                    case  8: name = "Note Off"; break;
+                    case  9: name = "Note On"; break;
+                    case 10: name = "Key Aftertouch"; break;
+                    case 11: name = "Control Change"; break; // Could also be Channel Mode Message
+                    case 12: name = "Program Change"; break;
+                    case 13: name = "Channel Aftertouch"; break;
+                    case 14: name = "Pitch Bend Change"; break;
+                    default: name = "System Common or Real-Time"; break;
+                }
+                return name;
+            }
+
+            function midiNote2Name(note)
+            {
+                var oct = Math.trunc(note/12) - 1;
+                var offset = (note % 12) * 2;
+                var notes = "C C#D D#E F F#G G#A A#B ";
+                return notes.substring(offset, offset +2) + oct;
+            }
+
+            function midiMessageReceived(port, event)
+            {
+                var timestamp = event.timeStamp;
+                var channel = event.data[0] & 0x0f;
+                var command = event.data[0] >> 4;
+                var note = event.data[1];
+                var notename = (command == 8) || (command == 9) ? midiNote2Name(note) : "----";
+                if (command == 15) // System Common or System Real-Time Messages
+                {
+                    // Ignore. 
+                    // Todo: Let user set filter instead.
+                }
+                else {
+                    var color = ["#005500", "#00BB00", "#000000", "#550000", "#000000", "#000000", "#000000", "#000000", ];
+                    var table = document.getElementById("midiMonitorTable");
+                    var row = table.insertRow(1); 
+                    var c;
+                    c = row.insertCell(-1); c.innerHTML = timestamp.toFixed(2);
+                    c = row.insertCell(-1); c.innerHTML = port.name;
+                    c = row.insertCell(-1); c.innerHTML = event.data[0]; c.style.color = color[command-8];
+                    c = row.insertCell(-1); c.innerHTML = event.data[1];
+                    c = row.insertCell(-1); c.innerHTML = event.data[2]; c.id = "value"; c.style.backgroundSize = (event.data[2]/127*100) + "%"; 
+                    c = row.insertCell(-1); c.innerHTML = channel + 1;
+                    c = row.insertCell(-1); c.innerHTML = notename;
+                    c = row.insertCell(-1); c.innerHTML = command2Name(command); c.style.color = color[command-8];
+
+                    var documentHeight = Math.max( document.body.scrollHeight, document.body.offsetHeight, 
+                        document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight );
+
+                    // Remove old messages if table gets bigger than window. 
+                    // Todo: Let user set table height.
+                    if ( (documentHeight > window.innerHeight) || (table.rows.length > 100)) {
+                        table.deleteRow(table.rows.length - 1);
+                    }
+                }
+            }
+
+            function openMIDIDevices(midiAccess)
+            {
+                var ports = midiAccess.inputs;
+                ports.forEach(function(port, key) {
+                    if (port.connection !== "open")
+                    {
+                        console.log("Adding event listener for port: " + port.name);
+                        port.open();
+                        port.onmidimessage = function(event) {
+                            midiMessageReceived(port, event)
+                        };
+                    }
+                });
+                ports = midiAccess.outputs;
+                ports.forEach(function(port, key) {
+                    if (port.connection !== "open")
+                        port.open();
+                });
+            }
+
+            function onMIDISuccess(midiAccess) {
+                midiAccess.addEventListener("statechange", function(event) {
+                    console.log("Device updated: " + event.port.name + " [" + event.port.type + "] " + event.port.state);
+                    openMIDIDevices(midiAccess);
+                    updateMIDITables(midiAccess);
+                });
+
+                openMIDIDevices(midiAccess);
+                updateMIDITables(midiAccess);
+            }
+
+            function onMIDIFailure() {
+                console.log("Could not access MIDI devices");
+            }
+
+            function updateMIDITables(midiAccess)
+            {
+                var table = document.getElementById("midiInputsTable");
+                updateMIDITable(table, midiAccess.inputs, "MIDI Inputs");
+                table = document.getElementById("midiOutputsTable");
+                updateMIDITable(table, midiAccess.outputs, "MIDI Outputs");
+            }
+
+            function updateMIDITable(table, ports, deviceType) 
+            {
+                table.innerHTML = "";
+
+                // Inputs
+                var row = document.createElement("tr");
+                table.appendChild(row);
+                var th = document.createElement("th");
+                row.appendChild(th);
+                var t = document.createTextNode(deviceType);
+                th.appendChild(t);
+
+                th = document.createElement("th");
+                row.appendChild(th);
+                t = document.createTextNode("ID");
+                th.appendChild(t);
+
+                th = document.createElement("th");
+                row.appendChild(th);
+                t = document.createTextNode("State");
+                th.appendChild(t);
+
+                th = document.createElement("th");
+                row.appendChild(th);
+                t = document.createTextNode("Connection");
+                th.appendChild(t);
+
+                var td;
+                
+                ports.forEach(function(port, key) {
+                    row = document.createElement("tr");
+                    table.appendChild(row);
+                    td = document.createElement("td");
+                    row.appendChild(td);
+                    t = document.createTextNode(port.name);
+                    td.appendChild(t);
+                
+                    td = document.createElement("td");
+                    row.appendChild(td);
+                    t = document.createTextNode(port.id);
+                    td.appendChild(t);
+
+                    td = document.createElement("td");
+                    row.appendChild(td);
+                    t = document.createTextNode(port.state);
+                    td.appendChild(t);
+
+                    td = document.createElement("td");
+                    row.appendChild(td);
+                    t = document.createTextNode(port.connection);
+                    td.appendChild(t);
+                });
+            }
+        </script>
+        <!-- For www.waveformer.net <script>includeHTML();</script> -->
+    </body>
+</html>

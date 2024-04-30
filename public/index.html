@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Zoom Explorer by Waveformer</title>
+    <link href="https://fonts.googleapis.com/css?family=Alata|Dosis|Didact|Roboto&display=swap" rel="stylesheet"/>    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:wght@100&display=swap" rel="stylesheet">
+  <style>
+      body {
+          font-family: 'Roboto', sans-serif;
+      }
+      h1 
+      {
+          text-align: center;
+          margin: 5px 2px 0px 2px;
+      }
+      div.source {
+          text-align: right;
+          margin: 0px 4px 4px 2px;
+      }
+      table#midiDevicesTable {
+          float:left;
+      }
+      table#midiDevicesTable {
+          border: 1px solid black;
+          border-collapse: collapse;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 2px 4px 8px 4px;
+      } 
+      table#midiDevicesTable tr {
+          border: 1px solid black;
+          border-collapse: collapse;
+      } 
+      table#midiDevicesTable td, table#midiDevicesTable th {
+          border: 1px solid black;
+          border-collapse: collapse;
+          padding: 1px 4px 1px 4px;
+      } 
+      table#midiDevicesTable td {
+          text-align: left;
+      }
+
+
+      table#midiMonitorTable {
+          float:right;
+      }
+      table#midiMonitorTable {
+          border: 1px solid black;
+          border-collapse: collapse;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 2px 4px 8px 4px
+      } 
+      table#midiMonitorTable tr {
+          border: 1px solid black;
+          border-collapse: collapse;
+      } 
+      table#midiMonitorTable td, table#midiMonitorTable th {
+          border: 1px solid black;
+          border-collapse: collapse;
+          white-space: nowrap;
+          padding: 1px 4px 1px 4px;
+      } 
+      table#midiMonitorTable td {
+          text-align: left;
+      }
+
+
+      table#sysexMonitorTable {
+          clear:left;
+          float:left;
+      }
+      table#sysexMonitorTable {
+          border: 1px solid black;
+          border-collapse: collapse;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 4px 2px 2px 4px
+      } 
+      table#sysexMonitorTable tr {
+          border: 1px solid black;
+          border-collapse: collapse;
+      } 
+      table#sysexMonitorTable th {
+          border: 1px solid black;
+          border-collapse: collapse;
+          white-space: nowrap;
+          padding: 1px 4px 1px 4px;
+      } 
+
+      table#sysexMonitorTable td {
+          border: 1px solid black;
+          border-collapse: collapse;
+          word-wrap: break-word;
+          padding: 1px 4px 1px 4px;
+          text-align: left;
+          font-family: 'Roboto Mono', monospace;
+      } 
+
+      table#sysexMonitorTable td#value {
+          background-image: linear-gradient(to right, rgb(240, 240, 240) 0%, rgb(180, 180, 180) 100%);
+          background-repeat: no-repeat; 
+      }
+
+      table#sysexMonitorTable td#time {
+          background-image: linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 45%, rgb(180, 180, 180) 50%, rgb(255, 255, 255) 55%, rgb(255, 255, 255) 100%);
+          background-repeat: no-repeat; 
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Zoom Explorer by Waveformer</h1>
+    <div class="source"><a href="https://github.com/thammer/zoom-explorer">Source code on github</a></div>
+
+    <div id="content">
+      <table id="midiDevicesTable">
+        <tr>
+            <th>Zoom device</th>
+            <th>OS</th>
+            <th>Input</th>
+            <th>Output</th>
+        </tr>
+      </table>
+
+      <div>
+
+          <table id="midiMonitorTable">
+              <tr>
+                  <th>Time</th>
+                  <th>Device</th>
+                  <th>Stat</th>
+                  <th>D1</th>
+                  <th>D2</th>
+                  <th>Type</th>
+                  <th>Length</th>
+                </tr>
+            </table>
+            
+            <table id="sysexMonitorTable">
+                <tr>
+                    <th>Sysex Data goes here</th>
+                </tr>
+                <tr>
+                    <td id="sysexDataCell">
+                        <!-- Sysex data goes here -->
+                    </td>
+                </tr>
+            </table>
+        </div>
+  </div>
+
+
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

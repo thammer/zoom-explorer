@@ -1,0 +1,5 @@
+.eslintcache
+.npm
+*.tsbuildinfo
+dist/
+node_modules/

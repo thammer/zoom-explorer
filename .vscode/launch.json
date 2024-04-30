@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Open index.html",
+      // "url": "https://www.example.com:5500/dist/", 
+      "url" : "http://localhost:5500",
+      "webRoot": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "zoom-explorer",
+  "version": "0.0.1",
+  "description": "Tools for exploring the Zoom MS Plus series of effect pedals",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && npm run build:copy-public",
+    "build:copy-public": "copyfiles -f ./public/** ./dist",
+    "type": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thammer/zoom-explorer.git"
+  },
+  "keywords": [
+    "zoom",
+    "midi"
+  ],
+  "author": "Thomas Hammer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thammer/zoom-explorer/issues"
+  },
+  "homepage": "https://github.com/thammer/zoom-explorer#readme",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "copyfiles": "^2.4.1"
+  }
+}
