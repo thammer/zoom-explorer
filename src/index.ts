@@ -134,29 +134,44 @@ function toHexString2(bytes: Iterable<number> | ArrayLike<number>, separator: st
 }
 
 function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array)
-{
-  
+{  
   let sysexDataCell: HTMLTableRowElement = document.getElementById("sysexDataCell") as HTMLTableRowElement;
   
-  if (!sysexMap.has(data.length)) 
+  let dataset = sysexMap.get(data.length);
+  if (dataset === undefined) 
   {
     sysexMap.set(data.length, { previous: data, current: data });      
   }
-    
-    
-  const breakLength = 50;
-  const paragraphBreak = 4;
+  else
+  {
+    sysexMap.set(data.length, { previous: dataset.current, current: data });      
+  } 
+
   const sentenceLength = 10;
+  const lineLength = 50;
+  const paragraphHeight = 4;
 
   let sysexString = "";
 
   for (let [length, dataset] of sysexMap) 
   {
-    sysexString += `<b>Data length: ${length}</b>`
+    sysexString += `<b>Data length: ${length}</b><br/>`
     for (let i=0; i<dataset.current.length; i++)
     {
-      
+      sysexString += toHexString([dataset.current[i]]);
+      if ((i+1) % (paragraphHeight*lineLength) === 0)
+        sysexString += "<br/><br/>";
+      else if ((i+1) % lineLength === 0)
+        sysexString += "<br/>";
+      else if ((i+1) % sentenceLength === 0)
+        sysexString += "&nbsp;&nbsp;";
+      else
+        sysexString += "&nbsp;";
     }
+    if (dataset.current.length > lineLength)
+      sysexString += "<br/><br/>";
+    else
+      sysexString += "<br/>";
   }
 
   sysexDataCell.innerHTML = sysexString;
@@ -172,11 +187,11 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
 
   if (messageType === MessageType.SysEx)
   {
-    let sysexDataCell: HTMLTableRowElement = document.getElementById("sysexDataCell") as HTMLTableRowElement;
-    let hexString = toHexString2(data);
-    sysexDataCell.innerHTML = hexString;
+    // let sysexDataCell: HTMLTableRowElement = document.getElementById("sysexDataCell") as HTMLTableRowElement;
+    // let hexString = toHexString2(data);
+    // sysexDataCell.innerHTML = hexString;
   
-    // updateSysexMonitorTable(device, data);
+    updateSysexMonitorTable(device, data);
   }
 }
 
