@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html>
+  <!-- For www.waveformer.net <script type="text/javascript" src="../common.js"></script> -->
   <head>
     <meta charset="UTF-8">
     <title>Zoom Explorer by Waveformer</title>
     <link href="https://fonts.googleapis.com/css?family=Alata|Dosis|Didact|Roboto&display=swap" rel="stylesheet"/>    
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:wght@100&display=swap" rel="stylesheet">
-  <style>
+    <!-- For www.waveformer.net <link rel="stylesheet" type="text/css" href="../common.css"/> -->
+    <!-- For www.waveformer.net <link rel="stylesheet" type="text/css" href="../navbar.css"/>  -->
+    <style>
       body {
           font-family: 'Roboto', sans-serif;
+          font-size: 0.9em;
       }
       h1 
       {
@@ -113,6 +117,7 @@
     </style>
   </head>
   <body>
+    <!-- For www.waveformer.net <div w3-include-html="../navbar.html"></div> -->
     <h1>Zoom Explorer by Waveformer</h1>
     <div class="source"><a href="https://github.com/thammer/zoom-explorer">Source code on github</a></div>
 
@@ -146,14 +151,12 @@
                 </tr>
                 <tr>
                     <td id="sysexDataCell">
-                        <!-- Sysex data goes here -->
                     </td>
                 </tr>
             </table>
         </div>
   </div>
-
-
-    <script type="module" src="./index.js"></script>
-  </body>
+  <script type="module" src="./index.js"></script>
+  <!-- For www.waveformer.net <script>includeHTML();</script> -->
+</body>
 </html>
