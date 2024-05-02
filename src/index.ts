@@ -20,6 +20,7 @@ function updateZoomDevicesTable(zoomDevices: MIDIDeviceDescription[]) {
     let row = midiDevicesTable.insertRow(1);
     let c;
     c = row.insertCell(-1); c.innerHTML = device.deviceName;
+    c = row.insertCell(-1); c.innerHTML = toHexString([device.familyCode[0]]);
     c = row.insertCell(-1); c.innerHTML = version.toString();
     c = row.insertCell(-1); c.innerHTML = device.inputName;
     c = row.insertCell(-1); c.innerHTML = device.outputName;

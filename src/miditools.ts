@@ -307,19 +307,7 @@ function manufacturerIDsAreEqual(id1: [number] | [number, number, number], id2: 
 function getDeviceName(manufacturerID: [number] | [number, number, number], familyCode: [number, number], modelNumber: [number, number]) : string
 {
   let hexString = toHexString([...manufacturerID, ...familyCode, ...modelNumber]);
-  // if (manufacturerIDsAreEqual(manufacturerID, [0x52]))
-  // {
-  //   switch (familyCode[0]) {
-  //     case 0x58: return "MS-50G";
-  //     case 0x5F: return "MS-60B";
-  //     case 0x61: return "MS-70CDR";
-  //     default: return "unknown";
-  //   }
-  // }
-  // else if(manufacturerIDsAreEqual(manufacturerID, [0x00, 0x20, 0x6B]) && )
-  // {
-
-  // }
+  
   return MIDIDeviceHexStringToName[hexString] ?? hexString;
 }
 
