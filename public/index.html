@@ -118,6 +118,10 @@
       .sendSysexButton {
         float: right;
       }
+
+      .sysexASCIICheckbox {
+        float: right;
+      }
     </style>
   </head>
   <body>
@@ -152,7 +156,11 @@
             
             <table id="sysexMonitorTable">
                 <tr>
-                    <th>Sysex data received  <button onclick="sendSysex()" type="button" class="sendSysexButton">Send</button></th>
+                    <th>Sysex data received  
+                        <button onclick="sendSysex()" type="button" class="sendSysexButton">Send</button>
+                        <label for="ascii" class="sysexASCIICheckbox">ASCII &nbsp; </label> 
+                        <input type="checkbox" class="sysexASCIICheckbox" id="ascii" /> 
+                    </th>
                 </tr>
                 <tr>
                     <td id="sysexDataCell" contenteditable="plaintext-only">

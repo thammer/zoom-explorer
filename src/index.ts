@@ -175,6 +175,8 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     table.deleteRow(0);
   }
 
+  let checkboxCounter = 0;
+
   for (let [length, dataset] of sysexMap) 
   {
     let headerCell: HTMLTableCellElement;
@@ -187,25 +189,10 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     headerCell = row.insertCell(-1); headerCell.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${toHexString([dataset.device.familyCode[0]])}]` +
         ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${length}</b> &nbsp;&nbsp;`;
 
-    let sysexString = "";
-    for (let i=0; i<dataset.current.length; i++)
-    {
-      let hexString = toHexString([dataset.current[i]]);
-      //let hexString = String.fromCharCode(dataset.current[i]);
-      if (dataset.previous[i] !== dataset.current[i])
-        sysexString += "<b>" + hexString + "</b>";
-      else
-        sysexString += hexString;
 
-      if ((i+1) % (paragraphHeight*lineLength) === 0)
-        sysexString += "<br/><br/>";
-      else if ((i+1) % lineLength === 0)
-        sysexString += "<br/>";
-      else if ((i+1) % sentenceLength === 0)
-        sysexString += "&nbsp;&nbsp;";
-      else
-        sysexString += "&nbsp;";
-    }
+    let current = dataset.current;
+    let previous = dataset.previous;    
+    let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength);
     row = table.insertRow(-1);
     bodyCell = row.insertCell(-1); bodyCell.innerHTML = sysexString; bodyCell.contentEditable = "plaintext-only";
 
@@ -214,20 +201,61 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     button.className = "sendSysexButton";
     button.addEventListener("click", (event) => {
       let html = bodyCell.innerHTML;
-      let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp, and newlines
-      console.log(sysexString);
-      console.log(bodyCell);
-      let sysexData = Uint8Array.from(sysexString.split(" ").filter( value => value.length === 2 ).map(value => parseInt(value, 16)));
+      let sysexData = html2Uint8Array(html);
       midi.send(dataset.device.outputID, sysexData);
-    })
+    });
     headerCell.appendChild(button);
 
+    let label = document.createElement("label") as HTMLLabelElement;
+    label.className = "sysexASCIICheckbox";
+    label.textContent = "ASCII ";
+    label.htmlFor = "ASCIICheckbox_" + (checkboxCounter).toString();
+    headerCell.appendChild(label);
+
+    let input = document.createElement("input") as HTMLInputElement;
+    input.type = "checkbox";
+    input.className = "sysexASCIICheckbox";
+    input.id = "ASCIICheckbox_" + (checkboxCounter).toString();
+    input.addEventListener("click", (event) => {
+      let useASCII = input.checked;
+
+      let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII);
+      bodyCell.innerHTML = sysexString;   
+    });
+    headerCell.appendChild(input);
+
+    checkboxCounter++;
   }
 }
 
-function sendSysex()
-{
-  console.log("Send Sysex");
+function html2Uint8Array(html: string) {
+  let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp, and newlines
+  let sysexData = Uint8Array.from(sysexString.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
+  return sysexData;
+}
+
+function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, paragraphHeight: number, lineLength: number, sentenceLength: number, ascii: boolean = false) {
+  let sysexString = "";
+  for (let i = 0; i < current.length; i++) {
+    let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : 39; // printable or '
+    let hexString = ascii ? `&#${printableASCIIValue};` : toHexString([current[i]]);
+    //let hexString = String.fromCharCode(current[i]);
+    if (previous[i] !== current[i])
+      sysexString += "<b>" + hexString + "</b>";
+
+    else
+      sysexString += hexString;
+
+    if ((i + 1) % (paragraphHeight * lineLength) === 0)
+      sysexString += "<br/><br/>";
+    else if ((i + 1) % lineLength === 0)
+      sysexString += "<br/>";
+    else if ((i + 1) % sentenceLength === 0)
+      sysexString += "&nbsp;&nbsp;";
+    else if (!ascii)
+      sysexString += "&nbsp;";
+  }
+  return sysexString;
 }
 
 function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array): void
