@@ -214,7 +214,7 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     button.className = "sendSysexButton";
     button.addEventListener("click", (event) => {
       let html = bodyCell.innerHTML;
-      let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " "); // remove html tags and &nbsp;
+      let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp, and newlines
       console.log(sysexString);
       console.log(bodyCell);
       let sysexData = Uint8Array.from(sysexString.split(" ").filter( value => value.length === 2 ).map(value => parseInt(value, 16)));
