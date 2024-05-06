@@ -143,7 +143,6 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         let outputHandle = await midi.openOutput(currentOutput.id);
         openedOutputs.push(outputHandle);
         midi.send(currentOutput.id, new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]));
-        //sendMIDIMessage(outputs[currentOutputIndex], new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]));
         let localTtimeoutId = setTimeout( () =>
         {
           if (logging) console.log(`      Timed out (${localTtimeoutId}) for device ${currentOutput.id} "${currentOutput.name}"`);
