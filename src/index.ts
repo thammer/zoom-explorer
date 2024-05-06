@@ -10,6 +10,24 @@ function getZoomVersionNumber(versionBytes: [number, number, number, number]) : 
   return versionFloat;
 }
 
+function getZoomCommandName(data: Uint8Array) : string
+{
+  let name = data[4] === 0x00 ? "Identity" :
+             data[4] === 0x28 ? "Send patch" :
+             data[4] === 0x29 ? "Request current patch" :
+             data[4] === 0x31 ? "Edit parameter" :
+             data[4] === 0x32 ? "Store current patch" :
+             data[4] === 0x33 ? "Request current program" :
+             data[4] === 0x45 ? "MS+ Patch dump?" :
+             data[4] === 0x50 ? "Parameter edit enable" :
+             data[4] === 0x51 ? "Parameter edit disable" :
+             data[4] === 0x64 && data[5] === 0x12 ? "MS+ Effect slot update" :
+             data[4] === 0x64 && data[5] === 0x20 ? "MS+ Parameter update" :
+             data[4] === 0x64 && data[5] === 0x26 ? "MS+ Bank and Program update" :
+             "Unknown";
+  return name;
+}
+
 function updateZoomDevicesTable(zoomDevices: MIDIDeviceDescription[]) {
   let midiDevicesTable: HTMLTableElement = document.getElementById("midiDevicesTable") as HTMLTableElement;
 
@@ -135,31 +153,45 @@ function toHexString2(bytes: Iterable<number> | ArrayLike<number>, separator: st
 }
 
 function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array)
-{  
-  let sysexDataCell: HTMLTableRowElement = document.getElementById("sysexDataCell") as HTMLTableRowElement;
+{ 
+  let table: HTMLTableElement = document.getElementById("sysexMonitorTable") as HTMLTableElement;  
   
   let dataset = sysexMap.get(data.length);
   if (dataset === undefined) 
   {
-    sysexMap.set(data.length, { previous: data, current: data });      
+    sysexMap.set(data.length, { previous: data, current: data, device: device, messageNumber: messageCounter });      
   }
   else
   {
-    sysexMap.set(data.length, { previous: dataset.current, current: data });      
+    sysexMap.set(data.length, { previous: dataset.current, current: data, device: device, messageNumber: messageCounter });      
   } 
 
   const sentenceLength = 10;
   const lineLength = 50;
   const paragraphHeight = 4;
 
-  let sysexString = "";
+  let row;
+  while (table.rows.length > 0) {
+    table.deleteRow(0);
+  }
 
   for (let [length, dataset] of sysexMap) 
   {
-    sysexString += `<b>Data length: ${length}</b><br/>`
+    let headerCell: HTMLTableCellElement;
+    let bodyCell: HTMLTableCellElement;
+
+    let dataType1 = toHexString([dataset.current[4]]);
+    let dataType2 = toHexString([dataset.current[5]]);
+    let dataTypeString = getZoomCommandName(dataset.current);
+    row = table.insertRow(-1);
+    headerCell = row.insertCell(-1); headerCell.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${toHexString([dataset.device.familyCode[0]])}]` +
+        ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${length}</b> &nbsp;&nbsp;`;
+
+    let sysexString = "";
     for (let i=0; i<dataset.current.length; i++)
     {
       let hexString = toHexString([dataset.current[i]]);
+      //let hexString = String.fromCharCode(dataset.current[i]);
       if (dataset.previous[i] !== dataset.current[i])
         sysexString += "<b>" + hexString + "</b>";
       else
@@ -174,19 +206,32 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
       else
         sysexString += "&nbsp;";
     }
-    if (dataset.current.length > lineLength)
-      sysexString += "<br/><br/>";
-    else
-      sysexString += "<br/>";
-  }
+    row = table.insertRow(-1);
+    bodyCell = row.insertCell(-1); bodyCell.innerHTML = sysexString; bodyCell.contentEditable = "plaintext-only";
 
-  sysexDataCell.innerHTML = sysexString;
+    let button = document.createElement("button") as HTMLButtonElement;
+    button.textContent = "Send";
+    button.className = "sendSysexButton";
+    button.addEventListener("click", (event) => {
+      let html = bodyCell.innerHTML;
+      let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " "); // remove html tags and &nbsp;
+      console.log(sysexString);
+      console.log(bodyCell);
+      let sysexData = Uint8Array.from(sysexString.split(" ").filter( value => value.length === 2 ).map(value => parseInt(value, 16)));
+      midi.send(dataset.device.outputID, sysexData);
+    })
+    headerCell.appendChild(button);
+
+  }
+}
+
+function sendSysex()
+{
+  console.log("Send Sysex");
 }
 
 function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array): void
 {
-  console.log(`Received MIDI message from ${device.deviceName.padEnd(25)}, length: ${data.length}, data: ${toHexString(data, " ")}`);
-
   let [messageType, channel, data1, data2] = midi.getChannelMessage(data); 
 
   updateMidiMonitorTable(device, data, messageType);
@@ -243,7 +288,9 @@ async function start()
 
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
-let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array}>(); // map from data length to previous and current data, used for comparing messages
+
+// map from data length to previous and current data, used for comparing messages
+let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, device: MIDIDeviceDescription, messageNumber: number}>(); 
 
 start();
 
