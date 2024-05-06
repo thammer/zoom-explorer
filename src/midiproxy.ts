@@ -26,12 +26,16 @@ export type ConnectionListenerType = (deviceHandle: DeviceID, portType: PortType
  * @see https://midi.org/summary-of-midi-1-0-messages
  */
 export enum MessageType {
-  Unknown =  0b00000000,
-  NoteOff =  0b10000000,
-  NoteOn =   0b10010000,
-  CC =       0b10110000,
-  SysEx =    0b11110000,
-  SysExEnd = 0b11110111
+  Unknown =     0b00000000,
+  NoteOff =     0b10000000,
+  NoteOn =      0b10010000,
+  KeyPress =    0b10100000,
+  CC =          0b10110000,
+  PC =          0b11000000,
+  ChanPress =   0b11010000,
+  PitchBend =   0b11100000,
+  SysEx =       0b11110000,
+  SysExEnd =    0b11110111
 }
 
 // export let MessageTypeName = new Map<MessageType, string>() {}
