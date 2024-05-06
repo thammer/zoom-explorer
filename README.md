@@ -50,6 +50,7 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 
 ## Remaining mysteries
 
+* What are the device IDs for other MS Plus Series pedals?
 * How do you send an effect patch to the pedal?
 * How is the effect patch checksum calculated (last 5 bytes in a patch sysex message) ?
 
@@ -65,7 +66,7 @@ F0 52 00 6E   64 26   00 00 08 00 04 00 F7         Length: 13   Bank and program
 F0 52 00 6E   64 20   00 00 05 33  00 00 00 00 F7  Length: 15   Parameter updated
 F0 52 00 6E   64 20   00 64 01 04  00 00 00 00 F7  length: 15   Pressed arrow right or left to select current effect slot. 
                                                                 data[7] == 0x64, data[8] == 0x01, data[9] = current effect slot number 
-F0 52 00 6E   64 12   <rest of message>            Length: 985  Effect slot updated? Very similar to patch dump message (45 00)  
+F0 52 00 6E   64 12   <rest of message>            Length: 985  Effect slot effect changed? Very similar to patch dump message (45 00)  
 
 
 ```
