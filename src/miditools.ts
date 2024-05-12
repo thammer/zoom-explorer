@@ -47,7 +47,6 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
     let openedOutputs = new Array<DeviceID>();
     let midiDevices: MIDIDeviceDescription[] = [];
     // TODO: Consider if byte 2 (SysEx channel) should be considered, see http://midi.teragonaudio.com/tech/midispec/identity.htm
-    let identityResponse: Uint8Array = new Uint8Array([0xF0, 0x7E, 0x7f, 0x06, 0x02]);
     
     for (let [id, input] of inputs)
     {
