@@ -1,5 +1,6 @@
 
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType } from "./midiproxy.js";
+import { toHexString } from "./tools.js";
 //import jzz from "jzz";
 
 // Copied from https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/webmidi/index.d.ts
@@ -235,6 +236,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
     // FIXME: This shuldn't be necessary with the browser based Web MIDI API
     let dataArray = Array.from(data);
+    console.log(`Sent: ${toHexString(dataArray, " ")}`)
     output.send(dataArray);
   }
 
@@ -272,7 +274,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     if (listeners === undefined)
       throw `Attemped to remove listener for device "${deviceHandle}" with no listener list`;
 
-    this.midiMessageListenerMap.set(deviceHandle, listeners.filter( (l) => l === listener));
+    this.midiMessageListenerMap.set(deviceHandle, listeners.filter( (l) => l !== listener));
   }
 
   removeAllListeners(deviceHandle: DeviceID): void
