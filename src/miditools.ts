@@ -79,7 +79,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
           let isInput: boolean = true;
           let isOutput: boolean = true;
           let manufacturerID: [number] | [number, number, number] = data[5] != 0 ? [ data[5] ] : [ data[5], data[6], data[7] ];
-          let manufacturerName: string = MIDIManufacturerIDToName[toHexString(manufacturerID)] ?? "unknown";
+          let manufacturerName: string = MIDIManufacturerIDToName[toHexString(manufacturerID, " ")] ?? "unknown";
           let familyCode: [number, number] = [ data[6+dataOffset], data[7+dataOffset]];
           let modelNumber: [number, number] = [data[8+dataOffset], data[9+dataOffset]];
           let deviceName: string = getDeviceName(manufacturerID, familyCode, modelNumber);
@@ -302,7 +302,7 @@ function manufacturerIDsAreEqual(id1: [number] | [number, number, number], id2: 
  */
 function getDeviceName(manufacturerID: [number] | [number, number, number], familyCode: [number, number], modelNumber: [number, number]) : string
 {
-  let hexString = toHexString([...manufacturerID, ...familyCode, ...modelNumber]);
+  let hexString = toHexString([...manufacturerID, ...familyCode, ...modelNumber], " ");
   
   return MIDIDeviceHexStringToName[hexString] ?? hexString;
 }

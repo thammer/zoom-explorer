@@ -17,6 +17,17 @@ export function getExceptionErrorString(err:any, extra?: string): string
 
 export function toHexString(bytes: Iterable<number> | ArrayLike<number>, separator: string = '') : string
 {
-  return Array.from(bytes, byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join(" ").toUpperCase();
+  return Array.from(bytes, byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join(separator).toUpperCase();
 }
 
+export function toUint8Array(str: string, separator: string = '') : Uint8Array
+{
+  str = str.replace(new RegExp(`/${separator}/g`), "").replace(/ /g, "").replace(/0x/g, "");
+  let dataArray = str.match(/.{1,2}/g)?.map((hex) => parseInt(hex, 16));
+  return dataArray != undefined ? Uint8Array.from(dataArray) : new Uint8Array();
+} 
+
+export function partialArrayMatch(bigArray: Uint8Array, smallArray: Uint8Array): boolean
+{
+  return bigArray.length >= smallArray.length && bigArray.slice(0, smallArray.length).every( (element, index) => element === smallArray[index] );
+}
