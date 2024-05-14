@@ -1,7 +1,8 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList } from "./miditools.js";
-import { getExceptionErrorString, toHexString } from "./tools.js";
+import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array } from "./tools.js";
+import { decodeWFP, encodeWFP, WFPPayloadType } from "./wfp.js";
 
 function getZoomVersionNumber(versionBytes: [number, number, number, number]) : number
 {
@@ -93,7 +94,7 @@ function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array,
   let table: HTMLTableElement = document.getElementById("midiMonitorTable") as HTMLTableElement;
   let row = table.insertRow(1);
   let c;
-  c = row.insertCell(-1); c.innerHTML = messageCounter.toString(); messageCounter++;
+  c = row.insertCell(-1); c.innerHTML = messageCounter.toString(); ++messageCounter;
   c = row.insertCell(-1); c.innerHTML = device.deviceName;
   c = row.insertCell(-1); c.innerHTML = toHexString([data[0]]); c.style.color = color[command - 8];
   c = row.insertCell(-1); c.innerHTML = toHexString([data[1]]);
@@ -229,10 +230,12 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
 }
 
 function html2Uint8Array(html: string) {
-  let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp, and newlines
+  let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp;, and newlines
   let sysexData = Uint8Array.from(sysexString.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
   return sysexData;
 }
+
+
 
 function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, paragraphHeight: number, lineLength: number, sentenceLength: number, ascii: boolean = false) {
   let sysexString = "";
@@ -267,11 +270,23 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
   if (messageType === MessageType.SysEx)
   {
     // let sysexDataCell: HTMLTableRowElement = document.getElementById("sysexDataCell") as HTMLTableRowElement;
-    // let hexString = toHexString2(data);
+    // let hexString = toHexString2(data, " ");
     // sysexDataCell.innerHTML = hexString;
   
     updateSysexMonitorTable(device, data);
   }
+}
+
+
+function sleepForAWhile(timeoutMilliseconds: number)
+{
+  return new Promise( (resolve) => 
+  {
+    setTimeout(() =>
+    {
+      resolve("Timed out");
+    }, timeoutMilliseconds);
+  });
 }
 
 async function start()
@@ -308,10 +323,86 @@ async function start()
   for (const device of zoomDevices)
   {
     midi.addListener(device.inputID, (deviceHandle, data) => {
+      console.log(`Received: ${toHexString(data, " ")}`);
       handleMIDIDataFromZoom(device, data);
     });
   };  
+
+  // let callAndResponse = new Map<string, string>();
+  // let commandIndex = 0x50;
+  // let device = zoomDevices[0];
+  // midi.addListener(device.inputID, (deviceHandle, data) => {
+  //   let call = toHexString([commandIndex]);
+  //   let response = toHexString(data, " ");
+  //   callAndResponse.set(call, response);
+  //   console.log(`${call} -> ${response}`)
+  // });
+  // let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
+  // testButton.addEventListener("click", (event) => {
+  //   commandIndex++;
+  //   sendZoomCommand(device.outputID, device.familyCode[0], commandIndex);
+  // });
+
+  let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
+  testButton.addEventListener("click", async (event) => {
+    
+    // test wpf stuff
+
+    function isMIDIIdentityResponse(data: Uint8Array) : boolean
+    {
+      return (data.length >= 15 && data[0] == 0xF0 && data[1] == 0x7E && data[3] == 0x06 && data[4] == 0x02 && 
+        ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) );
+    }
+
+    let map = new Map<string, Uint8Array>(); 
+    let device = zoomDevices[0];
+
+    let data = await midi.sendAndGetReply(device.outputID, new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]), device.inputID, isMIDIIdentityResponse, 100); 
+    console.log(`Received data: ${data?.length}`);
+    if (data == undefined)
+      return;
+    map.set("SIRX", data); 
+
+    let requestPatch = toUint8Array("F0 52 00 6E 64 13 F7");
+    map.set("SPTX", requestPatch); 
+
+    data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID, 
+      (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000); 
+    console.log(`Received data: ${data?.length}`);
+    if (data == undefined)
+      return;
+    map.set("SPRX", data); 
+
+    let wfp = await encodeWFP(map, WFPPayloadType.GzipB64URL);
+    console.log(`WFP: "${wfp}"`);
+    let map2 = await decodeWFP(wfp);
+    console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`)
+
+  //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
+  //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
   
+  //   let sysexStringGetNextFile = "F0 52 00 6E 60 26 00 00 2a 2e 2a 00 F7";
+  //   let sysexDataGetNextFile = Uint8Array.from(sysexStringGetNextFile.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16))); 
+  
+  //   let device = zoomDevices[0];
+  //   midi.addListener(device.inputID, (deviceHandle, data) => {
+  //     let response = toHexString(data, " ");
+  //     console.log(`${sysexStringGetNextFile} -> ${response}`)
+  //   });
+
+  //   await sleepForAWhile(100);
+  //   midi.send(device.outputID, sysexDataListFiles);
+
+  //   for (let i=0; i<300; i++) {
+  //     await sleepForAWhile(100);
+  //     midi.send(device.outputID, sysexDataGetNextFile);
+  //   }
+
+  //   await sleepForAWhile(100);
+  //   let sysexStringEndFileListing = "F0 52 00 6E 60 27 F7";
+  //   let sysexDataEndFileListing = Uint8Array.from(sysexStringEndFileListing.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
+  //   midi.send(device.outputID, sysexDataEndFileListing);
+ });
 }
 
 let messageCounter: number = 0;
