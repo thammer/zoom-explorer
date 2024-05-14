@@ -62,7 +62,8 @@ export interface IMIDIProxy
 
   send(deviceHandle: DeviceID, data: number[] | Uint8Array) : void;
   sendCC(deviceHandle: DeviceID, channel: number, ccNumber: number, ccValue: number) : void;
- 
+  sendAndGetReply(inputDevice: DeviceID, data: number[] | Uint8Array, outputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, timeoutMilliseconds: number) : Promise<Uint8Array | undefined>;
+
   addListener(deviceHandle: DeviceID, listener: ListenerType): void;
   removeListener(deviceHandle: DeviceID, listener: ListenerType): void;
 
@@ -122,6 +123,32 @@ export abstract class MIDIProxy implements IMIDIProxy
     this.messageBuffer3[1] = ccNumber && 0b01111111;
     this.messageBuffer3[2] = ccValue && 0b01111111;
     this.send(deviceHandle, this.messageBuffer3);
+  }
+
+  public sendAndGetReply(outputDevice: DeviceID, data: number[] | Uint8Array, inputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, 
+                         timeoutMilliseconds: number = 100) : Promise<Uint8Array | undefined>
+  {
+    return new Promise<Uint8Array | undefined> ( (resolve, reject) => {
+      let timeoutId = setTimeout( () => {
+        console.log(`sendAndGetReply() Timed out (${timeoutId}) for output device "${outputDevice}", input device "${inputDevice}"`);
+        this.removeListener(inputDevice, handleReply);
+        resolve(undefined);
+      }, timeoutMilliseconds);
+      let handleReply = (deviceHandle: DeviceID, data: Uint8Array) => {
+        if (verifyReply(data)) {
+          clearTimeout(timeoutId);
+          this.removeListener(deviceHandle, handleReply);
+          resolve(data);
+        }
+        else
+          console.log(`sendAndGetReply received MIDI data of length ${data.length} that failed verifyRepky`);
+      };
+      this.addListener(inputDevice, handleReply);
+      this.send(outputDevice, data);
+    });
+
+    // leftover code to compare two datasets:
+    // replyStart.length === 0 || data.length >= replyStart.length && data.slice(0, replyStart.length).every((element, index) => element === replyStart[index])
   }
 
   public getChannelMessage(data: Uint8Array): [MessageType, number, number, number] 
