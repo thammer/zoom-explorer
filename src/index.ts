@@ -153,6 +153,34 @@ function toHexString2(bytes: Iterable<number> | ArrayLike<number>, separator: st
   return stringBreak;
 }
 
+function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: number = -1) : Uint8Array
+{
+  if (end === -1)
+    end = sevenBitBytes.length - 1;
+
+  let eightBitBytes: Uint8Array = new Uint8Array(end - start + 1);
+
+  let byteIndex = 0;
+  let bitIndex;
+  let seven;
+  let highBits: number = 0;
+  let sevenIndex = start;
+  
+  while (sevenIndex <= end) {
+    seven = sevenBitBytes[sevenIndex];
+    bitIndex = 7 - (sevenIndex - start) % 8;
+    if (bitIndex == 7)
+      highBits = seven;
+    else {
+      eightBitBytes[byteIndex++] = seven + highBits & (1 << bitIndex)
+    }
+
+    sevenIndex++;
+  }
+
+  return eightBitBytes;
+}
+
 function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array)
 { 
   let table: HTMLTableElement = document.getElementById("sysexMonitorTable") as HTMLTableElement;  
