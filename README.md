@@ -42,6 +42,7 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 0B          |      7 | *    | *       | F0 52 00 6E 64 0B F7 | Tuner on |
 | 64 0C          |      7 | *    | *       | F0 52 00 6E 64 0C F7 | Tuner off |
 | 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer |
+| 46 00          |     11 | *    |         | F0 52 00 6E 46 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> | Download patch from given bank/proram slot |
 | 64 02          |     10 | *    |         | F0 52 00 6E 64 02 00 00 00 F7 | Get display information | 
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26   00 00 \<bank\> 00 \<program\> 00 F7 | Bank and program number |
 | 64 20          |     15 | *    | *       | F0 52 00 6E 64 20 00 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Update (edit) parameter |
@@ -50,9 +51,13 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 45 00          |    989 |      | *       | F0 52 00 6E 45 00 \<rest of message\> F7 | Patch dump (a few seconds after user changes a parameter) |
 | 64 12          |    985 |      | *       | F0 52 00 6E 64 12 \<rest of message\> F7 | Patch dump (after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
 
-## Remaining mysteries
+## Needs investigating
 
 * What are the device IDs for other MS Plus Series pedals?
+
+* F0 52 00 6E 64 02 00 00 00 F7, Get display information, what do the different params do?
+* 
+
 
 ## Calls and response
 
