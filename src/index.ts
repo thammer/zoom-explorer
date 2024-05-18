@@ -158,9 +158,15 @@ function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: number =
   if (end === -1)
     end = sevenBitBytes.length - 1;
 
-  let eightBitBytes: Uint8Array = new Uint8Array(end - start + 1);
+  // let eightBitBytes: Uint8Array = new Uint8Array(end - start + 1); // FIXME: we don't need all this space. Calculate.
+  let remainder = (end - start + 1) % 8;
+  if (remainder === 1)
+  {
+    console.error(`remainder === 1. Illegal encoding for array of seven bit bytes of length ${sevenBitBytes.length}. Ignoring last seven bit byte`);
+  }
+  let eightBitBytes: Uint8Array = new Uint8Array( Math.floor((end - start + 1) / 8) * 7 + (remainder < 2 ? 0 : remainder - 1 ) );
 
-  let byteIndex = 0;
+  let eightIndex = 0;
   let bitIndex;
   let seven;
   let highBits: number = 0;
@@ -172,7 +178,7 @@ function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: number =
     if (bitIndex == 7)
       highBits = seven;
     else {
-      eightBitBytes[byteIndex++] = seven + highBits & (1 << bitIndex)
+      eightBitBytes[eightIndex++] = seven + (((highBits >> bitIndex) & 1) << 7);
     }
 
     sevenIndex++;
@@ -204,7 +210,7 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     table.deleteRow(0);
   }
 
-  let checkboxCounter = 0;
+  let cellCounter = 0;
 
   for (let [length, dataset] of sysexMap) 
   {
@@ -235,25 +241,70 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     });
     headerCell.appendChild(button);
 
-    let label = document.createElement("label") as HTMLLabelElement;
-    label.className = "sysexASCIICheckbox";
-    label.textContent = "ASCII ";
-    label.htmlFor = "ASCIICheckbox_" + (checkboxCounter).toString();
-    headerCell.appendChild(label);
 
-    let input = document.createElement("input") as HTMLInputElement;
-    input.type = "checkbox";
-    input.className = "sysexASCIICheckbox";
-    input.id = "ASCIICheckbox_" + (checkboxCounter).toString();
-    input.addEventListener("click", (event) => {
-      let useASCII = input.checked;
+    let inputEightBitOffset = document.createElement("input") as HTMLInputElement;
+    inputEightBitOffset.type = "text";
+    inputEightBitOffset.className = "sysexEightBitOffset";
+    inputEightBitOffset.id = "eightBitOffset_" + (cellCounter).toString();
+    inputEightBitOffset.size = 4;
+    inputEightBitOffset.maxLength = 4;
+    inputEightBitOffset.addEventListener("click", (event) => {
+      let useASCII = inputASCII.checked;
+      let useEightBit = inputEightBit.checked;
+      let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
 
-      let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII);
+      let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
       bodyCell.innerHTML = sysexString;   
     });
-    headerCell.appendChild(input);
+    headerCell.appendChild(inputEightBitOffset);
 
-    checkboxCounter++;
+    let label = document.createElement("label") as HTMLLabelElement;
+    label.className = "sysexEightBitOffset";
+    label.textContent = "offset ";
+    label.htmlFor = "EightBitOffset_" + (cellCounter).toString();
+    headerCell.appendChild(label);
+
+    label = document.createElement("label") as HTMLLabelElement;
+    label.className = "sysexEightBitCheckbox";
+    label.textContent = "8 bit ";
+    label.htmlFor = "EightBitCheckbox_" + (cellCounter).toString();
+    headerCell.appendChild(label);
+
+    let inputEightBit = document.createElement("input") as HTMLInputElement;
+    inputEightBit.type = "checkbox";
+    inputEightBit.className = "sysexEightBitCheckbox";
+    inputEightBit.id = "eightBitCheckbox_" + (cellCounter).toString();
+    inputEightBit.addEventListener("click", (event) => {
+      let useASCII = inputASCII.checked;
+      let useEightBit = inputEightBit.checked;
+      let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
+
+      let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+      bodyCell.innerHTML = sysexString;   
+    });
+    headerCell.appendChild(inputEightBit);
+
+    label = document.createElement("label") as HTMLLabelElement;
+    label.className = "sysexASCIICheckbox";
+    label.textContent = "ASCII ";
+    label.htmlFor = "ASCIICheckbox_" + (cellCounter).toString();
+    headerCell.appendChild(label);
+
+    let inputASCII = document.createElement("input") as HTMLInputElement;
+    inputASCII.type = "checkbox";
+    inputASCII.className = "sysexASCIICheckbox";
+    inputASCII.id = "ASCIICheckbox_" + (cellCounter).toString();
+    inputASCII.addEventListener("click", (event) => {
+      let useASCII = inputASCII.checked;
+      let useEightBit = inputEightBit.checked;
+      let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
+
+      let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+      bodyCell.innerHTML = sysexString;   
+    });
+    headerCell.appendChild(inputASCII);
+
+    cellCounter++;
   }
 }
 
@@ -265,10 +316,28 @@ function html2Uint8Array(html: string) {
 
 
 
-function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, paragraphHeight: number, lineLength: number, sentenceLength: number, ascii: boolean = false) {
+function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, paragraphHeight: number, lineLength: number, sentenceLength: number, 
+                                 ascii: boolean = false, eightBit: boolean = false, eightBitOffset: number = 0) 
+{
+  if (eightBit) {
+    let lastByte = current[current.length - 1];
+    let eightBitCurrent = seven2eight(current, eightBitOffset, current.length-2);
+    current = new Uint8Array(eightBitOffset + eightBitCurrent.length + 1);
+    current.set(current.slice(0, eightBitOffset));
+    current.set(eightBitCurrent, eightBitOffset);
+    current.set(new Uint8Array([lastByte]));
+
+    lastByte = previous[previous.length - 1];
+    let eightBitPrevious = seven2eight(previous, eightBitOffset, previous.length-2);
+    previous = new Uint8Array(eightBitOffset + eightBitPrevious.length + 1);
+    previous.set(current.slice(0, eightBitOffset));
+    previous.set(eightBitPrevious, eightBitOffset);
+    previous.set(new Uint8Array([lastByte]));
+  }
+
   let sysexString = "";
   for (let i = 0; i < current.length; i++) {
-    let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : 39; // printable or '
+    let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : current[i] == 0 ? 95 : 39; // printable, _ or '
     let hexString = ascii ? `&#${printableASCIIValue};` : toHexString([current[i]]);
     //let hexString = String.fromCharCode(current[i]);
     if (previous[i] !== current[i])
@@ -432,6 +501,13 @@ async function start()
   //   midi.send(device.outputID, sysexDataEndFileListing);
  });
 }
+
+let seven=toUint8Array("01 02 03 04 05 06 07 08");
+let eight = seven2eight(seven);
+
+console.log(`Eight: ${toHexString(eight, " ")}`);
+
+// toHexString(seven2eight(toUint8Array("01 02 03 04 05 06 07 08")), " ");
 
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();

@@ -117,10 +117,21 @@
 
       .sendSysexButton {
         float: right;
+        padding: 1px 4px 1px 4px;
       }
 
       .sysexASCIICheckbox {
         float: right;
+        padding: 1px 4px 1px 4px;
+      }
+      .sysexEightBitCheckbox {
+        float: right;
+        padding: 1px 4px 1px 4px;
+      }
+      .sysexEightBitOffset {
+        float: right;
+        padding: 1px 4px 1px 4px;
+        text-align: right;
       }
     </style>
   </head>
@@ -160,6 +171,10 @@
                 <tr>
                     <th>Sysex data received  
                         <button onclick="sendSysex()" type="button" class="sendSysexButton">Send</button>
+                        <input type="text" class="sysexEightBitOffset" id="eightBitOffset" maxlength="4" size="4" />
+                        <label for="eightBitOffset" class="sysexEightBitOffset">offset: &nbsp; </label> 
+                        <label for="eightBit" class="sysexEightBitCheckbox">8 bit &nbsp; </label> 
+                        <input type="checkbox" class="sysexEightBitCheckbox" id="eightBit" />
                         <label for="ascii" class="sysexASCIICheckbox">ASCII &nbsp; </label> 
                         <input type="checkbox" class="sysexASCIICheckbox" id="ascii" /> 
                     </th>
