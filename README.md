@@ -48,8 +48,8 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 20          |     15 | *    | *       | F0 52 00 6E 64 20 00 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Update (edit) parameter |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
-| 45 00          |    989 |      | *       | F0 52 00 6E 45 00 \<rest of message\> F7 | Patch dump (a few seconds after user changes a parameter) |
-| 64 12          |    985 |      | *       | F0 52 00 6E 64 12 \<rest of message\> F7 | Patch dump (after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
+| 45 00          |    989 |      | *       | F0 52 00 6E 45 00 00 00 00 01 00 \<length LSB\> \<length MSB\> \<rest of message\> F7 | Patch dump (a few seconds after user changes a parameter) |
+| 64 12          |    985 |      | *       | F0 52 00 6E 64 12 01 \<length LSB\> \<length MSB\> \<rest of message\> F7 | Patch dump (after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
 
 ## Needs investigating
 
