@@ -18,9 +18,9 @@ export class ZoomPatch
   TXE1: null | string = null; // 8 bytes
   txe1Unknown: null | Uint8Array = null; // 4 bytes
 
-  EDTB: null | string = null; // numEffects * 24 bytes
+  EDTB: null | string = null; // 4 + numEffects * 24 bytes
   edtbUnknown: null | Uint8Array = null;
-  edtbPatchUnknown: null | Uint8Array = null;
+  edtbPatches: null | Array<Uint8Array> = null; // numEffects * 24 bytes
 
   PRM2: null | string = null; // 32 bytes
   prm2Unknown: null | Uint8Array = null;
@@ -86,10 +86,12 @@ export class ZoomPatch
     this.txe1Unknown = patch.slice(offset, offset + 4); offset += 4;
 
     if (this.numEffects !== null) {
-      let length = this.numEffects * 24;
       this.EDTB = this.readString(patch, offset, 4); offset +=4;
       this.edtbUnknown = patch.slice(offset, offset + 4); offset += 4;
-      this.edtbPatchUnknown = patch.slice(offset, offset + length); offset += length;
+      this.edtbPatches = new Array<Uint8Array>(this.numEffects);
+      for (let i=0; i<this.numEffects; i++) {
+        this.edtbPatches[i] = patch.slice(offset, offset + 24); offset += 24;
+      }
     }
 
     this.PRM2 = this.readString(patch, offset, 4); offset +=4;
