@@ -12,16 +12,22 @@ export class ZoomPatch
   name: null | string = null;
   ids: null | Uint32Array = null;
 
-  TXJ1: null | string = null;
+  TXJ1: null | string = null; // 8 bytes
   txj1Unknown: null | Uint8Array = null; // 4 bytes
 
-  TXE1: null | string = null;
+  TXE1: null | string = null; // 8 bytes
   txe1Unknown: null | Uint8Array = null; // 4 bytes
 
-  EDTB: null | string = null;
-  
+  EDTB: null | string = null; // numEffects * 24 bytes
+  edtbUnknown: null | Uint8Array = null;
+  edtbPatchUnknown: null | Uint8Array = null;
 
-  longName: null | string = null;
+  PRM2: null | string = null; // 32 bytes
+  prm2Unknown: null | Uint8Array = null;
+
+  NAME: null | string = null;
+  nameUnknown: null | Uint8Array = null; // 4 bytes
+  longName: null | string = null; // 28 bytes
 
   readString(patch: Uint8Array, offset: number, length: number) : string | null
   {
@@ -74,6 +80,25 @@ export class ZoomPatch
     }
 
     this.TXJ1 = this.readString(patch, offset, 4); offset +=4;
+    this.txj1Unknown = patch.slice(offset, offset + 4); offset += 4;
+
+    this.TXE1 = this.readString(patch, offset, 4); offset +=4;
+    this.txe1Unknown = patch.slice(offset, offset + 4); offset += 4;
+
+    if (this.numEffects !== null) {
+      let length = this.numEffects * 24;
+      this.EDTB = this.readString(patch, offset, 4); offset +=4;
+      this.edtbUnknown = patch.slice(offset, offset + 4); offset += 4;
+      this.edtbPatchUnknown = patch.slice(offset, offset + length); offset += length;
+    }
+
+    this.PRM2 = this.readString(patch, offset, 4); offset +=4;
+    this.prm2Unknown = patch.slice(offset, offset + 36); offset += 36;
+
+    this.NAME = this.readString(patch, offset, 4); offset +=4;
+    this.nameUnknown = patch.slice(offset, offset + 4); offset += 4;
+    this.longName = this.readString(patch, offset, 28); offset +=28;
+
     return offset;
   }
 
