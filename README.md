@@ -30,11 +30,11 @@ For the longer message types, the message type is two bytes.
 F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of message> F7
 ```
 
-| Message type | Length | Send | Receive | Message | Description |
-|--------------|--------|------|---------|---------|-------------|
-| 01             |      6 | *    |         |F0 52 00 6E 01 F7 | Initiate firmware mode. WARNING: Don't do this if you don't know what you're doing! |
+| Message type   | Length | Send | Receive | Message           | Description |
+|----------------|--------|------|---------|-------------------|-------------|
+| 01             |      6 | *    |         | F0 52 00 6E 01 F7 | Initiate firmware mode. WARNING: Don't do this if you don't know what you're doing! |
 | 04             |      6 | *    |         | F0 52 00 6E 04 F7 | Exit firmware mode. The display will show "Completed!". Restart pedal to return to normal mode. |
-| 33             |      6 | *    | *       | F0 52 00 6E 33 F7 | Set/Get current bank and program number |
+| 33             |      6 | *    |         | F0 52 00 6E 33 F7 | Get current bank and program number |
 | 50             |      6 | *    |         | F0 52 00 6E 50 F7 | Parameter edit enable |
 | 51             |      6 | *    |         | F0 52 00 6E 51 F7 | Parameter edit disable |
 | 52             |      6 | *    |         | F0 52 00 6E 52 F7 | PC mode on |
@@ -42,14 +42,14 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 0B          |      7 | *    | *       | F0 52 00 6E 64 0B F7 | Tuner on |
 | 64 0C          |      7 | *    | *       | F0 52 00 6E 64 0C F7 | Tuner off |
 | 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer |
-| 46 00          |     11 | *    |         | F0 52 00 6E 46 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> | Download patch from given bank/proram slot |
 | 64 02          |     10 | *    |         | F0 52 00 6E 64 02 00 00 00 F7 | Get display information | 
-| 64 26          |     13 |      | *       | F0 52 00 6E 64 26   00 00 \<bank\> 00 \<program\> 00 F7 | Bank and program number |
+| 46 00          |     12 | *    |         | F0 52 00 6E 46 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Download patch from given bank/proram slot |
+| 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
 | 64 20          |     15 | *    | *       | F0 52 00 6E 64 20 00 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Update (edit) parameter |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
-| 45 00          |    989 |      | *       | F0 52 00 6E 45 00 00 00 00 01 00 \<length LSB\> \<length MSB\> \<rest of message\> F7 | Patch dump (a few seconds after user changes a parameter) |
-| 64 12          |    985 |      | *       | F0 52 00 6E 64 12 01 \<length LSB\> \<length MSB\> \<rest of message\> F7 | Patch dump (after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
+| 64 12          |    985 |      | *       | F0 52 00 6E 64 12 01 \<length LSB\> \<length MSB\> \<rest of message\> F7 | Patch dump, automatically sent after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
+| 45 00          |    989 |      | *       | F0 52 00 6E 45 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> \<length LSB\> \<length MSB\> \<rest of message\> F7 | Patch dump, automatically sent a few seconds after user changes a parameter, or after message type 46 00 is sent to the pedal |
 
 ## Needs investigating
 
