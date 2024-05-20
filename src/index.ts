@@ -1,6 +1,6 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
-import { MIDIDeviceDescription, getMIDIDeviceList } from "./miditools.js";
+import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array } from "./tools.js";
 import { decodeWFP, encodeWFP, WFPPayloadType } from "./wfp.js";
 import { ZoomPatch } from "./ZoomPatch.js";
@@ -343,6 +343,7 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
       let offset = 9 + current.length - 985;
       let eightBitCurrent = seven2eight(current, offset, current.length-2);
 
+      // F0 52 00 6E 46 00 00 01 00 01 00 F7
       let patch = ZoomPatch.fromPatchData(eightBitCurrent);
       console.log(`Patch name: ${patch.name}`);
     }
@@ -429,6 +430,16 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
     // sysexDataCell.innerHTML = hexString;
   
     updateSysexMonitorTable(device, data);
+
+    if (data.length > 10 && ((data[4] == 0x64 && data[5] == 0x12) || (data[4] == 0x45 && data[5] == 0x00)) ) {
+      let offset = 9 + data.length - 985;
+      let eightBitData = seven2eight(data, offset, data.length-2);
+
+      let patch = ZoomPatch.fromPatchData(eightBitData);
+
+      updatePatchInfoTable(patch);
+    }
+
   }
 }
 
@@ -442,6 +453,33 @@ function sleepForAWhile(timeoutMilliseconds: number)
       resolve("Timed out");
     }, timeoutMilliseconds);
   });
+}
+
+async function getCurrentPatch(zoomDevices: MIDIDeviceDescription[])
+{
+  let map = new Map<string, Uint8Array>();
+  let device = zoomDevices[0];
+
+  let data = await midi.sendAndGetReply(device.outputID, new Uint8Array([0xf0, 0x7e, 0x7f, 0x06, 0x01, 0xf7]), device.inputID, isMIDIIdentityResponse, 100);
+  console.log(`Received data: ${data?.length}`);
+  if (data == undefined)
+    return;
+  map.set("SIRX", data);
+
+  let requestPatch = toUint8Array("F0 52 00 6E 64 13 F7");
+  map.set("SPTX", requestPatch);
+
+  data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
+    (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000);
+  console.log(`Received data: ${data?.length}`);
+  if (data == undefined)
+    return;
+  map.set("SPRX", data);
+
+  let wfp = await encodeWFP(map, WFPPayloadType.GzipB64URL);
+  console.log(`WFP: "${wfp}"`);
+  let map2 = await decodeWFP(wfp);
+  console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`);
 }
 
 async function start()
@@ -498,40 +536,113 @@ async function start()
   //   sendZoomCommand(device.outputID, device.familyCode[0], commandIndex);
   // });
 
+  function togglePatchesTablePatch(cell: HTMLTableCellElement)
+  {
+    let cellNumber = parseInt(cell.id);
+    if (cellNumber === undefined)
+      return;
+    let row = cell.parentElement as HTMLTableRowElement;
+    if (row === null)
+      return;
+    let column = Math.floor(cellNumber / 2);
+    row.cells[column * 2].classList.toggle("highlight");
+    row.cells[column * 2 + 1].classList.toggle("highlight");
+  }
+
+  function getPatchNumber(cell: HTMLTableCellElement) : number
+  {
+    let cellNumber = parseInt(cell.id);
+    if (cellNumber === undefined)
+      return -1;
+    let row = cell.parentElement as HTMLTableRowElement;
+    if (row === null)
+      return -1;
+    let column = Math.floor(cellNumber / 2);
+    let text = row.cells[column * 2].textContent;
+    if (text === null)
+      return -1;
+    return parseInt(text);
+  }
+
+  let zoomPatches : Array<ZoomPatch>;
+
+  let lastSelected : HTMLTableCellElement | null = null;
+  let patchesTable = document.getElementById("patchesTable") as HTMLTableElement;
+  patchesTable.addEventListener("click", (event) => {
+    if (event.target == null)
+      return;
+    let cell = event.target as HTMLTableCellElement;
+    togglePatchesTablePatch(cell);
+
+    if (lastSelected != null)
+      togglePatchesTablePatch(lastSelected);
+
+    lastSelected = cell;
+
+    let patchNumber = getPatchNumber(cell) - 1;
+    console.log(`Patch number clicked: ${patchNumber}`);
+
+    // update patch info table
+
+    let patch = zoomPatches[patchNumber];
+
+    updatePatchInfoTable(patch);
+
+  });
+
   let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   testButton.addEventListener("click", async (event) => {
     
-    // test wpf stuff
+    // await getCurrentPatch(zoomDevices);
 
-    function isMIDIIdentityResponse(data: Uint8Array) : boolean
-    {
-      return (data.length >= 15 && data[0] == 0xF0 && data[1] == 0x7E && data[3] == 0x06 && data[4] == 0x02 && 
-        ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) );
+    let headerRow = patchesTable.rows[0];
+    let numColumns = headerRow.cells.length / 2;
+
+    let device = zoomDevices[0];
+  
+    let maxNumPatches = 500;
+    zoomPatches = new Array<ZoomPatch>(maxNumPatches);
+    for (let i=0; i<maxNumPatches; i++) {
+      let bank = Math.floor(i/10);
+      let program = i % 10;
+      let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
+      let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
+        (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
+      if (data == undefined) {
+        console.log(`Got no reply for patch number ${i}`);
+        zoomPatches.splice(i);
+        break;
+      }
+      console.log(`Received data: ${data.length}`);
+
+      let offset = 9 + data.length - 985;
+      let eightBitData = seven2eight(data, offset, data.length-2);
+
+      let patch = ZoomPatch.fromPatchData(eightBitData);
+      zoomPatches[i] = patch;
     }
 
-    let map = new Map<string, Uint8Array>(); 
-    let device = zoomDevices[0];
+    let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
 
-    let data = await midi.sendAndGetReply(device.outputID, new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]), device.inputID, isMIDIIdentityResponse, 100); 
-    console.log(`Received data: ${data?.length}`);
-    if (data == undefined)
-      return;
-    map.set("SIRX", data); 
+    for (let i=patchesTable.rows.length - 1; i<numPatchesPerRow; i++) {
+      let row = patchesTable.insertRow(-1);
+      for (let c=0; c<numColumns * 2; c++) {
+        let cell = row.insertCell(-1);
+        cell.id = `${c}`;
+      }
+    }
 
-    let requestPatch = toUint8Array("F0 52 00 6E 64 13 F7");
-    map.set("SPTX", requestPatch); 
-
-    data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID, 
-      (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000); 
-    console.log(`Received data: ${data?.length}`);
-    if (data == undefined)
-      return;
-    map.set("SPRX", data); 
-
-    let wfp = await encodeWFP(map, WFPPayloadType.GzipB64URL);
-    console.log(`WFP: "${wfp}"`);
-    let map2 = await decodeWFP(wfp);
-    console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`)
+    let row: HTMLTableRowElement;
+    let bodyCell: HTMLTableCellElement;
+    for (let i=0; i<zoomPatches.length; i++) {
+      let patch = zoomPatches[i];
+      row = patchesTable.rows[1 + i % numPatchesPerRow];
+      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2];
+      bodyCell.innerHTML = `${i + 1}`;
+      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2 + 1];
+      let name = patch.longName != null ? patch.longName : patch.name;
+      bodyCell.innerHTML = `${name}`;
+    }
 
   //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
   //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
@@ -558,6 +669,120 @@ async function start()
   //   let sysexDataEndFileListing = Uint8Array.from(sysexStringEndFileListing.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
   //   midi.send(device.outputID, sysexDataEndFileListing);
  });
+
+}
+
+let previousPatchInfoString = ""; 
+
+function updatePatchInfoTable(patch: ZoomPatch) {
+  let patchTable = document.getElementById("patchTable") as HTMLTableElement;
+
+  let headerCell = patchTable.rows[0].cells[0];
+  let bodyCell = patchTable.rows[1].cells[0];
+
+  let patchNameString = "";
+  if (patch.name !== null)
+    patchNameString = patch.name.trim();
+
+  let idString = "";
+  if (patch.ids !== null) {
+    for (let i = 0; i < patch.ids.length; i++)
+      idString += `${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")} `;
+    if (idString.length > 1)
+      idString = idString.slice(0, idString.length - 1);
+  };
+
+  let unknownString = "";
+  if (patch.ptcfUnknown !== null) {
+    for (let i = 0; i < patch.ptcfUnknown.length; i++)
+      unknownString += `${patch.ptcfUnknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+    if (unknownString.length > 1)
+      unknownString = unknownString.slice(0, unknownString.length - 1);
+  };
+
+  let targetString = "";
+  if (patch.target !== null) {
+    targetString = patch.target.toString(2).padStart(32, "0");
+    targetString = targetString.slice(0, 8) + " " + targetString.slice(8, 16) + " " + targetString.slice(16, 24) + " " + targetString.slice(24, 32);
+  }
+
+  headerCell.innerHTML = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}<br/>` +
+    `Effects: ${patch.numEffects}. IDs: ${idString}.`;
+
+  // TXJ1
+  unknownString = "";
+  if (patch.txj1Unknown !== null) {
+    for (let i = 0; i < patch.txj1Unknown.length; i++) {
+      unknownString += `${patch.txj1Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+      if (((i + 1) % 32 == 0) && (i + 1 < patch.txj1Unknown.length))
+        unknownString += "<br/>                          ";
+    }
+    if (unknownString.length > 1)
+      unknownString = unknownString.slice(0, unknownString.length - 26 - 5);
+  };
+  let txj1String = `${patch.TXJ1} Length: ${patch.txj1Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
+
+  // TXE1
+  let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1Description}"`;
+
+  // EDTB
+  let parameterString = "";
+  if (patch.edtbEffectParameters !== null && patch.ids != null) {
+    for (let i = 0; i < patch.edtbEffectParameters.length; i++) {
+      parameterString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Data: `;
+      let effect = patch.edtbEffectParameters[i];
+      for (let p = 0; p < effect.length; p++) {
+        parameterString += `${effect[p].toString(2).padStart(8, "0")} `;
+        if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
+          parameterString += "<br/>                                ";
+      }
+      parameterString += "<br/><br/>";
+    }
+    if (parameterString.length > 1)
+      parameterString = parameterString.slice(0, parameterString.length - 5 * 2);
+  };
+  let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + parameterString;
+
+  // PRM2
+  unknownString = "";
+  if (patch.prm2Unknown !== null) {
+    for (let i = 0; i < patch.prm2Unknown.length; i++) {
+      unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+      if (((i + 1) % 32 == 0) && (i + 1 < patch.prm2Unknown.length))
+        unknownString += "<br/>                          ";
+    }
+    if (unknownString.length > 1)
+      unknownString = unknownString.slice(0, unknownString.length - 26 - 5);
+  };
+  let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
+
+  // NAME
+  let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
+
+  let patchInfoString = nameString + "<br/>" + txe1String + "<br/>" + prm2String + "<br/>" + txj1String + "<br/>" + edtbString; 
+  let htmlPatchInfoString = "";
+  
+  if (patchInfoString.length === previousPatchInfoString.length) {
+    let first = 0;
+    let last = 0;
+    for (let i=0; i<patchInfoString.length; i++) {
+      if (patchInfoString[i] === previousPatchInfoString[i])
+        last++;
+      else {
+        htmlPatchInfoString += patchInfoString.slice(first, last) + `<b>${patchInfoString[i]}</b>`;
+        last++;
+        first = last;
+      }
+    }
+    if (first !== last)
+      htmlPatchInfoString += patchInfoString.slice(first, last);
+  }
+  else
+    htmlPatchInfoString = patchInfoString;
+
+  previousPatchInfoString = patchInfoString;
+
+  bodyCell.innerHTML = htmlPatchInfoString;
 }
 
 let seven=toUint8Array("01 02 03 04 05 06 07 08");

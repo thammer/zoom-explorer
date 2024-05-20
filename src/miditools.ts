@@ -308,6 +308,18 @@ function getDeviceName(manufacturerID: [number] | [number, number, number], fami
 }
 
 /**
+ * 
+ * @param data MIDI data
+ * @returns true if the MIDI data is a sysex identity response message
+ */
+export function isMIDIIdentityResponse(data: Uint8Array) : boolean
+{
+  return (data.length >= 15 && data[0] == 0xF0 && data[1] == 0x7E && data[3] == 0x06 && data[4] == 0x02 && 
+    ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) );
+}
+
+
+/**
  * Map from manufacturerId, familyCode, and modelNumber to device name
  */
 let MIDIDeviceHexStringToName: { [key: string]: string; } = 

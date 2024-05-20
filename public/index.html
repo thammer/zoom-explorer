@@ -74,8 +74,7 @@
 
 
       table#sysexMonitorTable {
-          clear:left;
-          float:left;
+          float:right;
       }
       table#sysexMonitorTable {
           border: 1px solid black;
@@ -113,6 +112,56 @@
       table#sysexMonitorTable td#time {
           background-image: linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 45%, rgb(180, 180, 180) 50%, rgb(255, 255, 255) 55%, rgb(255, 255, 255) 100%);
           background-repeat: no-repeat; 
+      }
+
+      table#patchTable {
+          border: 1px solid black;
+          border-collapse: collapse;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 2px 4px 8px 4px;
+      } 
+      table#patchTable tr {
+          border: 1px solid black;
+          border-collapse: collapse;
+      } 
+      table#patchTable td, table#patchTable th {
+          border: 1px solid black;
+          border-collapse: collapse;
+          font-family: 'Roboto Mono', monospace;
+          white-space:pre;
+          padding: 1px 4px 1px 4px;
+      } 
+      table#patchTable th {
+          text-align: left;
+      }
+      table#patchTable td {
+          text-align: left;
+      }
+
+      table#patchesTable {
+          border: 1px solid black;
+          border-collapse: collapse;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 2px 4px 8px 4px;
+      } 
+      table#patchesTable tr {
+          border: 1px solid black;
+          border-collapse: collapse;
+      } 
+      table#patchesTable td, table#patchesTable th {
+          border: 1px solid black;
+          border-collapse: collapse;
+          padding: 1px 4px 1px 4px;
+      } 
+      table#patchesTable td {
+          text-align: left;
+      }
+      table#patchesTable td.highlight {
+        background: lightslategray;
       }
 
       .sendSysexButton {
@@ -154,18 +203,57 @@
       <button id="testButton">Test</button>
 
       <div>
+        <table id="midiMonitorTable">
+          <tr>
+            <th>#</th>
+            <th>Device</th>
+            <th>Stat</th>
+            <th>D1</th>
+            <th>D2</th>
+            <th>Type</th>
+            <th>Length</th>
+          </tr>
+        </table>
 
-          <table id="midiMonitorTable">
-              <tr>
-                  <th>#</th>
-                  <th>Device</th>
-                  <th>Stat</th>
-                  <th>D1</th>
-                  <th>D2</th>
-                  <th>Type</th>
-                  <th>Length</th>
-                </tr>
-            </table>
+            <br/>
+            <br/>
+
+          <table id="patchTable">
+            <tr>
+                <th>Patch info</th>
+            </tr>
+            <tr>
+                <td>Patch info</td>
+            </tr>
+          </table>
+
+          <table id="patchesTable">
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>#</th>
+                <th>Name</th>
+                <th>#</th>
+                <th>Name</th>
+                <th>#</th>
+                <th>Name</th>
+                <th>#</th>
+                <th>Name</th>
+            </tr>
+            <!-- <tr>
+                <td>#</td>
+                <td>Name</td>
+                <td>#</td>
+                <td>Name</td>
+                <td>#</td>
+                <td>Name</td>
+                <td>#</td>
+                <td>Name</td>
+                <td>#</td>
+                <td>Name</td>
+            </tr> -->
+          </table>
+
             
             <table id="sysexMonitorTable">
                 <!--
