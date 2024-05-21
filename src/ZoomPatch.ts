@@ -1,5 +1,11 @@
 
-
+/**
+ * 
+ * 
+ * @see https://github.com/mungewell/zoom-zt2/
+ *      https://gnome.eu.org/index.php?title=Zoom_Patch_File
+ *      https://gnome.eu.org/index.php?title=Zoom_Effect_File
+ */
 
 export class ZoomPatch
 {
@@ -19,12 +25,12 @@ export class ZoomPatch
   // Unknown
   TXJ1: null | string = null; // 4 + 4 + txj1Length bytes
   txj1Length: null | number = null; // 4 bytes
-  txj1Unknown: null | Uint8Array = null; // txj1Length bytes
+  txj1DescriptionJapanese: null | Uint8Array = null; // txj1Length bytes
 
   // Description
   TXE1: null | string = null; // 4 + 4 + txe1Length bytes
   txe1Length: null | number = null; // 4 bytes
-  txe1Description: null | string = null; // txe1Length bytes
+  txe1DescriptionEnglish: null | string = null; // txe1Length bytes
 
   EDTB: null | string = null; // 4 + 4 + numEffects * 24 bytes == 4 + 4 + edtbLength bytes
   edtbLength: null | number = null; // 4 bytes
@@ -32,6 +38,9 @@ export class ZoomPatch
 
   PRM2: null | string = null; // 4 + 4 + prm2Length
   prm2Length: null | number = null; // 4 bytes
+  prm2Tempo: null | number = null; // based on the two last bytes in prm2Unknown
+  prm2EditEffectSlot: null | number = null; // based on byte 10, 11 and 12 in prm2Unknown
+  prm2FirstSlotWithDrivePerhaps: null | number = null; // based on byte 20 in prm2Unknown
   prm2Unknown: null | Uint8Array = null; // prm2Length bytes
 
   NAME: null | string = null;
@@ -92,13 +101,13 @@ export class ZoomPatch
     this.TXJ1 = this.readString(patch, offset, 4); offset +=4;
     this.txj1Length = this.readInt32(patch, offset); offset += 4;
     if (this.txj1Length != null && this.txj1Length > 0) {
-      this.txj1Unknown = patch.slice(offset, offset + this.txj1Length); offset += this.txj1Length;
+      this.txj1DescriptionJapanese = patch.slice(offset, offset + this.txj1Length); offset += this.txj1Length;
     }
 
     this.TXE1 = this.readString(patch, offset, 4); offset +=4;
     this.txe1Length = this.readInt32(patch, offset); offset += 4;
     if (this.txe1Length != null && this.txe1Length > 0) {
-      this.txe1Description = this.readString(patch, offset, this.txe1Length); offset += this.txe1Length;
+      this.txe1DescriptionEnglish = this.readString(patch, offset, this.txe1Length); offset += this.txe1Length;
     }
 
     if (this.numEffects !== null) {
@@ -114,6 +123,9 @@ export class ZoomPatch
     this.prm2Length = this.readInt32(patch, offset); offset += 4;
     if (this.prm2Length != null && this.prm2Length > 0) {
       this.prm2Unknown = patch.slice(offset, offset + this.prm2Length); offset += this.prm2Length;
+      let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
+      let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+      this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
     }
 
     this.NAME = this.readString(patch, offset, 4); offset +=4;

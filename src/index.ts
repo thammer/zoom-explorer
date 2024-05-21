@@ -439,6 +439,11 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
 
       updatePatchInfoTable(patch);
     }
+    else if (data.length === 15 && (data[4] == 0x64 && data[5] == 0x20)) {
+      // Parameter was edited on device
+      // Request patch immediately
+      midi.send(device.outputID, toUint8Array("F0 52 00 6E 64 13 F7"));
+    }
 
   }
 }
@@ -711,19 +716,17 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 
   // TXJ1
   unknownString = "";
-  if (patch.txj1Unknown !== null) {
-    for (let i = 0; i < patch.txj1Unknown.length; i++) {
-      unknownString += `${patch.txj1Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
-      if (((i + 1) % 32 == 0) && (i + 1 < patch.txj1Unknown.length))
-        unknownString += "<br/>                          ";
+  if (patch.txj1DescriptionJapanese !== null) {
+    for (let i = 0; i < patch.txj1DescriptionJapanese.length; i++) {
+      if ((i > 0) && (i % 32 == 0))
+        unknownString += "<br/>                           ";
+      unknownString += `${patch.txj1DescriptionJapanese[i].toString(16).toUpperCase().padStart(2, "0")} `;
     }
-    if (unknownString.length > 1)
-      unknownString = unknownString.slice(0, unknownString.length - 26 - 5);
   };
   let txj1String = `${patch.TXJ1} Length: ${patch.txj1Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
 
   // TXE1
-  let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1Description}"`;
+  let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1DescriptionEnglish}"`;
 
   // EDTB
   let parameterString = "";
@@ -732,7 +735,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       parameterString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Data: `;
       let effect = patch.edtbEffectParameters[i];
       for (let p = 0; p < effect.length; p++) {
-        parameterString += `${effect[p].toString(2).padStart(8, "0")} `;
+        parameterString += `${effect[effect.length - 1 - p].toString(2).padStart(8, "0")} `;
         if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
           parameterString += "<br/>                                ";
       }
@@ -745,16 +748,24 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 
   // PRM2
   unknownString = "";
+  let tempoString = "";
+  let editEffectSlotString = "";
+  let driveString = "";
   if (patch.prm2Unknown !== null) {
     for (let i = 0; i < patch.prm2Unknown.length; i++) {
+      if ((i > 0) && (i % 32 == 0))
+        unknownString += "<br/>                           ";
       unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
-      if (((i + 1) % 32 == 0) && (i + 1 < patch.prm2Unknown.length))
-        unknownString += "<br/>                          ";
     }
-    if (unknownString.length > 1)
-      unknownString = unknownString.slice(0, unknownString.length - 26 - 5);
+    if (patch.prm2Unknown.length > 2)
+      tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
+    if (patch.prm2Unknown.length > 12)
+      editEffectSlotString = `${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
+    if (patch.prm2Unknown.length > 20)
+      driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
   };
-  let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
+  let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
+    `                  Unknown: ${unknownString}`;
 
   // NAME
   let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
