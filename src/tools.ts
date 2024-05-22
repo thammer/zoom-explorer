@@ -31,3 +31,39 @@ export function partialArrayMatch(bigArray: Uint8Array, smallArray: Uint8Array):
 {
   return bigArray.length >= smallArray.length && bigArray.slice(0, smallArray.length).every( (element, index) => element === smallArray[index] );
 }
+
+/**
+ * 
+ * @param data array with 8-bit data
+ * @param startBit first bit to include, counting from the start of the array
+ * @param endBit last bit to include, counting from the start of the array
+ * @returns a number built from the specified bits
+ */
+export function getNumberFromBits(data: Uint8Array, startBit: number, endBit: number) : number
+{
+  let startByte = Math.floor(startBit / 8);
+  let endByte = Math.floor(endBit / 8);
+  let startBitOffset = startBit % 8;
+  let endBitOffset = endBit % 8;
+  
+  let startMask = 0b0000000011111111 >> startBitOffset; 
+  let endMask = (0b1111111100000000 >> (endBitOffset + 1)) & 0b11111111; 
+  
+  let value = 0;
+  let byte: number = 0;
+  
+  // loop through bytes, from end to start
+  // bitmask end and start if needed, keep the rest unmasked
+  for (let i = endByte; i>= startByte; i--) {
+    byte = data[i];
+    if (i == startByte)
+      byte = byte & startMask;
+    if (i == endByte)
+      byte = byte & endMask;
+
+    value += byte << ((endByte - i) * 8);
+  }
+  value = value >> (7-endBitOffset);
+
+  return value;
+}

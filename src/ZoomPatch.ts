@@ -1,3 +1,11 @@
+import { getNumberFromBits } from "./tools.js";
+
+export class EffectSettings
+{
+  enabled: boolean = false;
+  id: number = 0;
+  parameters: Array<number> = new Array<number>();
+}
 
 /**
  * 
@@ -34,7 +42,8 @@ export class ZoomPatch
 
   EDTB: null | string = null; // 4 + 4 + numEffects * 24 bytes == 4 + 4 + edtbLength bytes
   edtbLength: null | number = null; // 4 bytes
-  edtbEffectParameters: null | Array<Uint8Array> = null; // numEffects * 24 bytes == edtbLength bytes
+  edtbUnknown: null | Array<Uint8Array> = null; // numEffects * 24 bytes == edtbLength bytes
+  edtbEffectSettings: null | Array<EffectSettings> = null;
 
   PRM2: null | string = null; // 4 + 4 + prm2Length
   prm2Length: null | number = null; // 4 bytes
@@ -113,9 +122,24 @@ export class ZoomPatch
     if (this.numEffects !== null) {
       this.EDTB = this.readString(patch, offset, 4); offset +=4;
       this.edtbLength = this.readInt32(patch, offset); offset += 4;
-      this.edtbEffectParameters = new Array<Uint8Array>(this.numEffects);
+      this.edtbUnknown = new Array<Uint8Array>(this.numEffects);
+      this.edtbEffectSettings = new Array<EffectSettings>();
       for (let i=0; i<this.numEffects; i++) {
-        this.edtbEffectParameters[i] = patch.slice(offset, offset + 24); offset += 24;
+        this.edtbUnknown[i] = patch.slice(offset, offset + 24).reverse(); offset += 24;
+        let bitpos = this.edtbUnknown[i].length * 8 - 1;
+        let effectSettings = new EffectSettings();
+        effectSettings.enabled = (getNumberFromBits(this.edtbUnknown[i], bitpos, bitpos) === 1); bitpos -= 1;
+        effectSettings.id = getNumberFromBits(this.edtbUnknown[i], bitpos - 28, bitpos); bitpos -= 29;
+        effectSettings.parameters = new Array<number>();
+        for (let p=0; p<5; p++) {
+          let parameter = getNumberFromBits(this.edtbUnknown[i], bitpos - 11, bitpos); bitpos -= 12;
+          effectSettings.parameters.push(parameter);
+        }
+        for (let p=5; p<12 && bitpos - 8 >= 0; p++) {
+          let parameter = getNumberFromBits(this.edtbUnknown[i], bitpos - 7, bitpos); bitpos -= 8;
+          effectSettings.parameters.push(parameter);
+        }
+        this.edtbEffectSettings.push(effectSettings);
       }
     }
 

@@ -1,7 +1,7 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse } from "./miditools.js";
-import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array } from "./tools.js";
+import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array, getNumberFromBits } from "./tools.js";
 import { decodeWFP, encodeWFP, WFPPayloadType } from "./wfp.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 
@@ -44,6 +44,7 @@ function updateZoomDevicesTable(zoomDevices: MIDIDeviceDescription[]) {
     c = row.insertCell(-1); c.innerHTML = version.toString();
     c = row.insertCell(-1); c.innerHTML = device.inputName;
     c = row.insertCell(-1); c.innerHTML = device.outputName;
+    c = row.insertCell(-1); c.innerHTML = toHexString(device.identityResponse, " ");
 
     console.log(`  ${index + 1}: ${device.deviceName.padEnd(8)} OS v ${version} - input: ${device.inputName.padEnd(20)} output: ${device.outputName}`);
   };
@@ -729,22 +730,29 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1DescriptionEnglish}"`;
 
   // EDTB
-  let parameterString = "";
-  if (patch.edtbEffectParameters !== null && patch.ids != null) {
-    for (let i = 0; i < patch.edtbEffectParameters.length; i++) {
-      parameterString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Data: `;
-      let effect = patch.edtbEffectParameters[i];
-      for (let p = 0; p < effect.length; p++) {
-        parameterString += `${effect[effect.length - 1 - p].toString(2).padStart(8, "0")} `;
-        if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
-          parameterString += "<br/>                                ";
+  let effectSettingsString = "";
+  if (patch.edtbUnknown !== null && patch.ids !== null && patch.edtbEffectSettings !== null) {
+    for (let i = 0; i < patch.edtbUnknown.length; i++) {
+      let effectSettings = patch.edtbEffectSettings[i];
+      let parameterString = ""; 
+      for (let p=0; p<effectSettings.parameters.length; p++) {
+        parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
       }
-      parameterString += "<br/><br/>";
+      effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
+      effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
+      effectSettingsString += `                          Unknown: `;
+      let effect = patch.edtbUnknown[i];
+      for (let p = 0; p < effect.length - Math.ceil(90/8 + 5) + 3; p++) {
+        effectSettingsString += `${effect[p].toString(2).padStart(8, "0")} `;
+        if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
+          effectSettingsString += "<br/>                                   ";
+      }
+      effectSettingsString += "<br/><br/>";
     }
-    if (parameterString.length > 1)
-      parameterString = parameterString.slice(0, parameterString.length - 5 * 2);
+    if (effectSettingsString.length > 1)
+      effectSettingsString = effectSettingsString.slice(0, effectSettingsString.length - 5 * 2);
   };
-  let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + parameterString;
+  let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
 
   // PRM2
   unknownString = "";

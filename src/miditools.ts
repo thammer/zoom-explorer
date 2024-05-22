@@ -18,6 +18,7 @@ export class MIDIDeviceDescription
   public readonly modelNumber: [number, number] = [0, 0];
   public readonly deviceName: string = "unknown"; // deduced from manufacturerID, familyCode and modelNumber
   public readonly versionNumber: [number, number, number, number] = [0, 0, 0, 0];
+  public readonly identityResponse: Uint8Array = new Uint8Array();
 
   constructor(data: Partial<MIDIDeviceDescription>)
   {
@@ -70,6 +71,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
            ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) )
         {
           // We got a valid ID response message
+          let identityResponse = data;
           let dataOffset: number = data[5] != 0 ? 0 : 2; // if manufacturer ID is 3 bytes instead of just 1, data after that is offset with 2 bytes.
 
           let inputID: string = input.id;
@@ -98,6 +100,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
             modelNumber: modelNumber,
             deviceName: deviceName,
             versionNumber: versionNumber,
+            identityResponse: identityResponse,
           });
 
           if (logging) console.log(`      Received sysex ID reply ${toHexString(data, " ")} -> ${JSON.stringify(description)}`);
