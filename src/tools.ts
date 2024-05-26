@@ -27,9 +27,9 @@ export function toUint8Array(str: string, separator: string = '') : Uint8Array
   return dataArray != undefined ? Uint8Array.from(dataArray) : new Uint8Array();
 } 
 
-export function partialArrayMatch(bigArray: Uint8Array, smallArray: Uint8Array): boolean
+export function partialArrayMatch(bigArray: Uint8Array, smallArray: Uint8Array, bigArrayOffset: number = 0): boolean
 {
-  return bigArray.length >= smallArray.length && bigArray.slice(0, smallArray.length).every( (element, index) => element === smallArray[index] );
+  return bigArray.length + bigArrayOffset >= smallArray.length && bigArray.slice(bigArrayOffset, bigArrayOffset + smallArray.length).every( (element, index) => element === smallArray[index] );
 }
 
 /**
@@ -52,8 +52,6 @@ export function getNumberFromBits(data: Uint8Array, startBit: number, endBit: nu
   let value = 0;
   let byte: number = 0;
   
-  // loop through bytes, from end to start
-  // bitmask end and start if needed, keep the rest unmasked
   for (let i = endByte; i>= startByte; i--) {
     byte = data[i];
     if (i == startByte)
