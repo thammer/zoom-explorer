@@ -2,7 +2,7 @@ import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array, getNumberFromBits } from "./tools.js";
-import { decodeWFP, encodeWFP, WFPPayloadType } from "./wfp.js";
+import { decodeWFPFromString, encodeWFPToString, WFPFormatType } from "./wfp.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 
 function getZoomVersionNumber(versionBytes: [number, number, number, number]) : number
@@ -90,6 +90,83 @@ function sendZoomCommand(device: DeviceID, deviceId: number, command: number) : 
   }
 }
 
+function getZoomCommand(zoomDeviceID: number, command: string): Uint8Array
+{
+  return toUint8Array(`F0 52 00 ${zoomDeviceID.toString(16).padStart(2, "0")} ${command} F7`);
+}
+
+
+function sendZoomCommandLong(device: DeviceID, deviceId: number, data: Uint8Array) : void
+{
+  let output = midi.getOutputInfo(device);
+  if (output === undefined)
+  {
+    console.warn(`WARNING: Not sending MIDI message to device ${device} as the device is unknown"`);
+    return;
+  }
+  if (output.connection != "open")
+  {
+    console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
+    return;
+  }
+
+  let sendData = new Uint8Array(4 + data.length + 1);
+  sendData.set(toUint8Array(`F0 52 00`));
+  sendData[3] = deviceId & 0b01111111;
+  sendData.set(data, 4);
+  sendData[sendData.length - 1] = 0xF7;
+
+  try 
+  {
+    midi.send(device, sendData);
+  }
+  catch (err) 
+  {
+    let message = getExceptionErrorString(err, `for device ${output.name}`);
+    console.error(message);
+  }
+}
+
+async function sendZoomCommandAndGetReply(outputDevice: DeviceID,  zoomDeviceId: number, data: number[] | Uint8Array, inputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, 
+                         timeoutMilliseconds: number = 100) : Promise<Uint8Array | undefined>
+{
+  let output = midi.getOutputInfo(outputDevice);
+  if (output === undefined)
+  {
+    console.warn(`WARNING: Not sending MIDI message to device ${outputDevice} as the device is unknown"`);
+    return;
+  }
+  if (output.connection != "open")
+  {
+    console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
+    return;
+  }
+
+  let sendData = new Uint8Array(4 + data.length + 1);
+  sendData.set(toUint8Array(`F0 52 00`));
+  sendData[3] = zoomDeviceId & 0b01111111;
+  sendData.set(data, 4);
+  sendData[sendData.length - 1] = 0xF7;
+
+  try 
+  {
+    return await midi.sendAndGetReply(outputDevice, sendData, inputDevice, verifyReply, timeoutMilliseconds);
+  }
+  catch (err) 
+  {
+    let message = getExceptionErrorString(err, `for device ${output.name}`);
+    console.error(message);
+    return undefined;
+  }
+}
+
+function zoomCommandMatch(data: Uint8Array, zoomDeviceID: number, command: Uint8Array): boolean
+{
+  return data.length >= 4 + command.length && data[0] == 0xF0 && data[data.length-1] == 0xF7 && data[1] == 0x52 && data[2] == 0 && data[3] == zoomDeviceID && 
+    data.slice(4, 4 + command.length).every( (element, index) => element === command[index] );
+}
+
+
 function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array, messageType: MessageType) {
   let command = data[0] >> 4;
   let color = ["#005500", "#00BB00", "#000000", "#550000", "#000000", "#000000", "#000000", "#000000",];
@@ -112,6 +189,10 @@ function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array,
   if ((documentHeight > window.innerHeight) || (table.rows.length > 100)) {
     table.deleteRow(table.rows.length - 1);
   }
+  // if ((table.getBoundingClientRect().top + table.clientHeight > window.innerHeight) || (table.rows.length > 100)) {
+  //   table.deleteRow(table.rows.length - 1);
+  // }
+
 }
 
 function toHexString2(bytes: Iterable<number> | ArrayLike<number>, separator: string = '') : string
@@ -234,11 +315,12 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
     let dataType1 = toHexString([dataset.current[4]]);
     let dataType2 = toHexString([dataset.current[5]]);
     let dataTypeString = getZoomCommandName(dataset.current);
-
+    
     let updatedRow = false;
     let rowId = `Sysex_Row_Header_${length}`;
     row = document.getElementById(rowId) as HTMLTableRowElement;
     if (row === null) {
+      let dataLength = data.length; // for the click handler lambdas 
       updatedRow = true;
       row = table.insertRow(-1);
       row.id = rowId;
@@ -269,7 +351,10 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
         let useEightBit = inputEightBit.checked;
         let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
   
-        let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+        let dataset = sysexMap.get(dataLength);
+        let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
+        if (dataset !== undefined)
+          sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
         bodyCell.innerHTML = sysexString;   
       });
       headerCell.appendChild(inputEightBitOffset);
@@ -295,7 +380,10 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
         let useEightBit = inputEightBit.checked;
         let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
   
-        let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+        let dataset = sysexMap.get(dataLength);
+        let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
+        if (dataset !== undefined)
+          sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
         bodyCell.innerHTML = sysexString;   
       });
       headerCell.appendChild(inputEightBit);
@@ -315,7 +403,10 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
         let useEightBit = inputEightBit.checked;
         let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
   
-        let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+        let dataset = sysexMap.get(dataLength);
+        let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
+        if (dataset !== undefined)
+          sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
         bodyCell.innerHTML = sysexString;   
       });
       headerCell.appendChild(inputASCII);
@@ -441,9 +532,15 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
       updatePatchInfoTable(patch);
     }
     else if (data.length === 15 && (data[4] == 0x64 && data[5] == 0x20)) {
-      // Parameter was edited on device
+      // Parameter was edited on device (MS Plus series)
       // Request patch immediately
-      midi.send(device.outputID, toUint8Array("F0 52 00 6E 64 13 F7"));
+      //midi.send(device.outputID, toUint8Array("F0 52 00 6E 64 13 F7"));
+      sendZoomCommandLong(device.outputID, device.familyCode[0], toUint8Array("64 13"));
+    }
+    else if (data.length === 10 && (data[4] == 0x31)) {
+      // Parameter was edited on device (MS series)
+      // Request patch immediately
+      sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
     }
 
   }
@@ -463,28 +560,38 @@ function sleepForAWhile(timeoutMilliseconds: number)
 
 async function getCurrentPatch(zoomDevices: MIDIDeviceDescription[])
 {
-  let map = new Map<string, Uint8Array>();
+  let map = new Map<string, Array<Uint8Array>>();
   let device = zoomDevices[0];
 
   let data = await midi.sendAndGetReply(device.outputID, new Uint8Array([0xf0, 0x7e, 0x7f, 0x06, 0x01, 0xf7]), device.inputID, isMIDIIdentityResponse, 100);
   console.log(`Received data: ${data?.length}`);
   if (data == undefined)
     return;
-  map.set("SIRX", data);
+  let chunks = new Array<Uint8Array>();
+  chunks.push(data);
+  map.set("SIRX", chunks);
 
-  let requestPatch = toUint8Array("F0 52 00 6E 64 13 F7");
-  map.set("SPTX", requestPatch);
+  // let requestPatch = toUint8Array("F0 52 00 6E 64 13 F7");
+  let requestPatch = getZoomCommand(device.familyCode[0], "64 13");
+  chunks = new Array<Uint8Array>();
+  chunks.push(requestPatch);
+  map.set("SPTX", chunks);
 
-  data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
-    (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000);
+  // data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
+  //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000);
+  data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], toUint8Array("64 13"), device.inputID,
+    (received) => zoomCommandMatch(received, device.familyCode[0], toUint8Array("64 12")), 1000);
+
   console.log(`Received data: ${data?.length}`);
   if (data == undefined)
     return;
-  map.set("SPRX", data);
+  chunks = new Array<Uint8Array>();
+  chunks.push(data);
+  map.set("SPRX", chunks);
 
-  let wfp = await encodeWFP(map, WFPPayloadType.GzipB64URL);
+  let wfp = await encodeWFPToString(map, WFPFormatType.ASCIICompressed);
   console.log(`WFP: "${wfp}"`);
-  let map2 = await decodeWFP(wfp);
+  let map2 = await decodeWFPFromString(wfp);
   console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`);
 }
 
@@ -599,81 +706,112 @@ async function start()
   let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   testButton.addEventListener("click", async (event) => {
     
-    // await getCurrentPatch(zoomDevices);
+    await getCurrentPatch(zoomDevices);
 
-    let headerRow = patchesTable.rows[0];
-    let numColumns = headerRow.cells.length / 2;
 
-    let device = zoomDevices[0];
-  
-    let maxNumPatches = 500;
-    zoomPatches = new Array<ZoomPatch>(maxNumPatches);
-    for (let i=0; i<maxNumPatches; i++) {
-      let bank = Math.floor(i/10);
-      let program = i % 10;
-      let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
-      let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
-        (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
-      if (data == undefined) {
-        console.log(`Got no reply for patch number ${i}`);
-        zoomPatches.splice(i);
-        break;
-      }
-      console.log(`Received data: ${data.length}`);
+  //   let headerRow = patchesTable.rows[0];
+  //   let numColumns = headerRow.cells.length / 2;
 
-      let offset = 9 + data.length - 985;
-      let eightBitData = seven2eight(data, offset, data.length-2);
-
-      let patch = ZoomPatch.fromPatchData(eightBitData);
-      zoomPatches[i] = patch;
-    }
-
-    let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
-
-    for (let i=patchesTable.rows.length - 1; i<numPatchesPerRow; i++) {
-      let row = patchesTable.insertRow(-1);
-      for (let c=0; c<numColumns * 2; c++) {
-        let cell = row.insertCell(-1);
-        cell.id = `${c}`;
-      }
-    }
-
-    let row: HTMLTableRowElement;
-    let bodyCell: HTMLTableCellElement;
-    for (let i=0; i<zoomPatches.length; i++) {
-      let patch = zoomPatches[i];
-      row = patchesTable.rows[1 + i % numPatchesPerRow];
-      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2];
-      bodyCell.innerHTML = `${i + 1}`;
-      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2 + 1];
-      let name = patch.longName != null ? patch.longName : patch.name;
-      bodyCell.innerHTML = `${name}`;
-    }
-
-  //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
-  //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
-  
-  //   let sysexStringGetNextFile = "F0 52 00 6E 60 26 00 00 2a 2e 2a 00 F7";
-  //   let sysexDataGetNextFile = Uint8Array.from(sysexStringGetNextFile.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16))); 
-  
   //   let device = zoomDevices[0];
-  //   midi.addListener(device.inputID, (deviceHandle, data) => {
-  //     let response = toHexString(data, " ");
-  //     console.log(`${sysexStringGetNextFile} -> ${response}`)
-  //   });
+  
+  //   // If the user has recently (in the last few seconds) changed a parameter on the pedal,
+  //   // the pedal will send out a patch dump automatically. This automatically sent message would 
+  //   // confuse the patch request process below. I think it is the pedal itself that gets confused and sends out
+  //   // multiple patch dumps. For the MS-50G+, the automatically sent patch message is 989 bytes long,
+  //   // while the length of the patch message when we request a patch is 985 bytes long, so it is possible to filter,
+  //   // but it would be better if we could do this in a more generic way.
 
-  //   await sleepForAWhile(100);
-  //   midi.send(device.outputID, sysexDataListFiles);
-
-  //   for (let i=0; i<300; i++) {
+  //   for (const device of zoomDevices)
+  //   {
+  //     sendZoomCommand(device.outputID, device.familyCode[0], 0x51);
   //     await sleepForAWhile(100);
-  //     midi.send(device.outputID, sysexDataGetNextFile);
+  //     sendZoomCommand(device.outputID, device.familyCode[0], 0x50);
+  //     await sleepForAWhile(100);
+  //   }
+    
+
+  //   let maxNumPatches = 500;
+  //   zoomPatches = new Array<ZoomPatch>(maxNumPatches);
+  //   for (let i=0; i<maxNumPatches; i++) {
+  //     let bank = Math.floor(i/10);
+  //     let program = i % 10;
+  //     // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
+  //     // let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
+  //     //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
+  //     let requestPatch: Uint8Array;
+  //     let data: Uint8Array | undefined;
+
+  //     if (device.familyCode[0] === 0x58) { // MS-50G
+  //       // sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
+  //       requestPatch = toUint8Array(`09 00 00 ${toHexString([i])}`);
+  //       data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], requestPatch, device.inputID,
+  //         (received) => zoomCommandMatch(received, device.familyCode[0], toUint8Array("45 00")), 1000);  
+  //     }
+  //     else{
+  //       requestPatch = toUint8Array(`46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00`);
+  //       data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], requestPatch, device.inputID,
+  //         (received) => zoomCommandMatch(received, device.familyCode[0], toUint8Array("45 00")), 1000);
+  //       }
+  //     if (data === undefined) {
+  //       console.log(`Got no reply for patch number ${i}`);
+  //       zoomPatches.splice(i);
+  //       break;
+  //     }
+  //     console.log(`Received data: ${data.length}`);
+
+  //     let offset = 9 + data.length - 985;
+  //     let eightBitData = seven2eight(data, offset, data.length-2);
+
+  //     let patch = ZoomPatch.fromPatchData(eightBitData);
+  //     zoomPatches[i] = patch;
   //   }
 
-  //   await sleepForAWhile(100);
-  //   let sysexStringEndFileListing = "F0 52 00 6E 60 27 F7";
-  //   let sysexDataEndFileListing = Uint8Array.from(sysexStringEndFileListing.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
-  //   midi.send(device.outputID, sysexDataEndFileListing);
+  //   let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
+
+  //   for (let i=patchesTable.rows.length - 1; i<numPatchesPerRow; i++) {
+  //     let row = patchesTable.insertRow(-1);
+  //     for (let c=0; c<numColumns * 2; c++) {
+  //       let cell = row.insertCell(-1);
+  //       cell.id = `${c}`;
+  //     }
+  //   }
+
+  //   let row: HTMLTableRowElement;
+  //   let bodyCell: HTMLTableCellElement;
+  //   for (let i=0; i<zoomPatches.length; i++) {
+  //     let patch = zoomPatches[i];
+  //     row = patchesTable.rows[1 + i % numPatchesPerRow];
+  //     bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2];
+  //     bodyCell.innerHTML = `${i + 1}`;
+  //     bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2 + 1];
+  //     let name = patch.longName != null ? patch.longName : patch.name;
+  //     bodyCell.innerHTML = `${name}`;
+  //   }
+
+  // //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
+  // //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
+  
+  // //   let sysexStringGetNextFile = "F0 52 00 6E 60 26 00 00 2a 2e 2a 00 F7";
+  // //   let sysexDataGetNextFile = Uint8Array.from(sysexStringGetNextFile.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16))); 
+  
+  // //   let device = zoomDevices[0];
+  // //   midi.addListener(device.inputID, (deviceHandle, data) => {
+  // //     let response = toHexString(data, " ");
+  // //     console.log(`${sysexStringGetNextFile} -> ${response}`)
+  // //   });
+
+  // //   await sleepForAWhile(100);
+  // //   midi.send(device.outputID, sysexDataListFiles);
+
+  // //   for (let i=0; i<300; i++) {
+  // //     await sleepForAWhile(100);
+  // //     midi.send(device.outputID, sysexDataGetNextFile);
+  // //   }
+
+  // //   await sleepForAWhile(100);
+  // //   let sysexStringEndFileListing = "F0 52 00 6E 60 27 F7";
+  // //   let sysexDataEndFileListing = Uint8Array.from(sysexStringEndFileListing.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
+  // //   midi.send(device.outputID, sysexDataEndFileListing);
  });
 
 }
