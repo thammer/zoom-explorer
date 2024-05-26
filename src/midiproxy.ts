@@ -141,7 +141,7 @@ export abstract class MIDIProxy implements IMIDIProxy
           resolve(data);
         }
         else
-          console.log(`sendAndGetReply received MIDI data of length ${data.length} that failed verifyRepky`);
+          console.log(`sendAndGetReply received MIDI data of length ${data.length} that failed verifyReply`);
       };
       this.addListener(inputDevice, handleReply);
       this.send(outputDevice, data);
