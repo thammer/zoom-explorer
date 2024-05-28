@@ -1,6 +1,6 @@
 import { toHexString } from "./tools.js";
 
-export enum WFPFormatType
+export enum WFCFormatType
 {
   Unknown = "?",
   ASCII = "A",
@@ -10,19 +10,20 @@ export enum WFPFormatType
 }
 
 /**
- * Support for reading and writing data in the WFP (WaveFormerPatch) format, typically containing a patch for a MIDI device in the form of MIDI sysex data.
+ * Support for reading and writing data in the WFC (WaveFormerChunked) format, typically used for MIDI sysex data.
  * 
  * This is very much a work in progress, still at the brainstorming stage
  * 
  * The format can be ASCII or Binary, and the data can optionally be compressed and base64 encoded.
  * 
  * ASCII
- *   - Unencoded ASCII is humanry readable and easy to cut and paste.
- *   - Compressed binary data encoded with Base64 is more compact, easy to cut and paste, and compatible with being a part of an URL.
+ *   - Unencoded ASCII is humanry readable and easy to copy and paste.
+ *   - Compressed binary data encoded to ASCII with Base64URL is more compact, easy to copy and paste, and compatible with being a part of an URL.
+ *
  * Binary
- *   - Compressed binary is suitable for storing in files when it is not important to be humanly readable or to cut and paste.
+ *   - Compressed binary is suitable for storing in files when it is not important to be humanly readable and not important to copy and paste as text.
  * 
- * The format is not designed to be edited in a text editor, as it has a strict form with Chunk IDs and Chunk lengths which would be impractical to 
+ * The format is not designed to be edited in a text editor, as it has a strict form with Chunk IDs and Chunk sizes which would be impractical to 
  * keep consistent in a text editor.
  *  
  * At the top level, A WFP file consists of a four byte file ID (WFPA or WFPZ), a 2 byte version number (in human-readable hexadecimal ascii), and then a payload.
@@ -31,13 +32,13 @@ export enum WFPFormatType
  * If payload if gzipped and base-64-url encoded (file ID is WFPZ), the payload should be decompressed before the contents is processed further. 
  * After decompression, the processing should be identical to the ascii encoded payload (file ID is WFPA).
  * 
- * The payload consists of one or more chunks of data. Each chunk of data has a four byte chunk ID and a four character chunk length in hexadecimal format. 
- * Both the chunk ID and the chunk length are human readable strings. 
+ * The payload consists of one or more chunks of data. Each chunk of data has a four byte chunk ID and a four character chunk size in hexadecimal format. 
+ * Both the chunk ID and the chunk size are human readable strings. 
  * The chunk data would normally represent 8-bit binary data as 2-character hexadecimal ascii strings, 
  * however in there is nothing in the file format that prevents chunks to contain other types of data, like regular text strings. 
- * The chunk length is the number of characters in the data string.
+ * The chunk size is the number of characters in the data string.
  * 
- * <chunk ID> <chunk length> <chunk data>
+ * <chunk ID> <chunk size> <chunk data>
  * 
  * Example: A WFP file with one chunk of data with ID "ABCD" and 6 bytes (12 characters) of 
  * data (Decimal: 0, 5, 10, 15, 20, 25. Hexadecimal: 00, 05, 0A, 0F, 14, 19) would be represented as:
@@ -49,7 +50,7 @@ export enum WFPFormatType
  *   * SPQT = Sysex patch request command 
  *   * SPRR = Sysex patch response, includes all the patch data
  *   * SPST = Sysex patch send (???) Perhaps nice to let the program to send the patch know how to send it? Then the program doesn't need to know which device it's for ???
- *            or how to send patches to such a device. Something to think about
+ *            or how to send patches to such a device. Something to think about...
  * 
  * There will probably be other chunk IDs in the future, and some of those ChunkIDs might indicate that the
  * chunk data is ascii or unicode, and not hexadecimal ascii strings.
@@ -61,95 +62,64 @@ export enum WFPFormatType
  * 
  * Some brainstorming below, to be cleaned up
  * 
- * WFCF = WaveFormerChunkedFile
- * 1 = version
- * Formats:
- *   A = ASCII
- *   B = Binary
- *   Z = Gzipped binary
- *   G = Gzipped and Base64 encoded binary
- * 4 bytes of length of the data that follows (not including the header and the length itself)
- *   If format is ASCII, the four bytes is a four character hexadecimal number denoting the length of the ascii data, the number of characters
- *     Example: 9 bytes of data requires 18 characters of hex strings, the Chunk ID is ABCD, so the file would look like this (with spaces removed) 
- *     "WFCF 1 A 0020 ABCD 0012 010203040506070809"
- *   If format is binary, gzipped, gzipped and Base64 encoded, the length is the number of bytes, and the length is 
- *     a four byte (32 bit) unsigned little-endian integer, not an ASCII hexadecimal number  
  * 
  * Chunk ID = 4 character code
- * Chunk length takes up four bytes, and follows the same logic as for file length. 
- *   If the file type is ASCII, the length is four characters representing hexadecimal number, the number of characters to follow for this chunk.
+ * Chunk size takes up four bytes, and follows the same logic as for file size. 
+ *   If the file type is ASCII, the size is four characters representing hexadecimal number, the number of characters to follow for this chunk.
  *   This means that the maximum chunk data size for ASCII files is 64k characters, corresponding to 32k bytes of data (since each byte is written as hexadecimal)
  * 
  * There can be multiple chunks with the same name. The data parser should keep the order intact, as an array of data with the same chunk ID.
  * 
  * Useful chunks:
- *   - TFIN = Text, File info, as key-value pairs
+ *   - TFIN = Text, File INfo, as key-value pairs
+ *   - TPIN = Text Patch INfo, one TPIN for each SPRX (patch response)
  *   - TCIN = Text, Chunk info, support multiple chunks with same name?
  *   - TDIR = Text, chunk directory, some info about multiple chunks with same name?
- *   - TPIN = Patch info, one TPIN for each SPRX (patch response)
+ *  
  * 
- * Think about
- *   - Should I include file length in the header (before the chunks)?
- *     - Do I really need that? What is the purpose of the file length? 
- *     - It could be nice to know when I'm done reading a stream of bytes, not rely on a fixed buffer size
- *     - Could have a file length
- *     - could have a special chunk that means end of file
+ *   Formats
  * 
- * ASCII encoding
- *     - Try binary uuencoded and see if that's smaller than hex. It should be smaller!!!!!
- *       GZip uuencoded is bigger for smaller datasets, since there is a dictionary
+ *     WFCA = ASCII Plain, unencoded - humanly readable, easy to copy and paste
+ *     WFCE = ASCII Compressed and Encoded, gzip compressed binary and Base64URL encoded as ASCII, easy to copy and paste
+ *     WFCB = binary - typically used for files, but the binary gzipped version is recommended
+ *     WFCC = binary, gzipped - typically used for files
+ *     WFCX = new versions of the format can be defined later, with a unique letter
  * 
- * ASCII vs Binary
+ *   - "A" ASCII Plain 
  * 
- * ASCII:  WFCA 0020 1 U ABCD 0016 01 02 03 04 05 ...
- *         ^^^^ ^^^^ ^ ^ ^^^^ ^^^^ ^^
- *         |    |    | | |    |    +---- Chunk data starts here
- *         |    |    | | |    +--------- Chunk size
- *         |    |    | | +-------------- Chunk ID, compression/encoding starts here, from byte 10.
- *         |    |    | +---------------- Compression format, All compressed formats are base64 encoded, U = Uncompressed, G = gzipped base64 encoded binary
- *         |    |    +------------------ File format version
- *         |    +----------------------- File length is a 4 character hex string
- *         +---------------------------- 4 byte file format identifier, WaveFormer Chunked ASCII
- * 
- * Shorter ASCII
- * ASCII:  WFCA 0020 1 U ABCD 0016 01 02 03 04 05 ...  Minimum header is 18 bytes
- * ASCII:  WC1U AB 0016 01 02 03 04 05 ...             Minimum header is 10 bytes, skipping file length, file ID includes version and format/compression info
- *                                                     Chunks are two characters instead of four
- *                                                     Typical patch sizes will be >150*2, so 8 bytes is <3% 
- * Without version and compression info
- *         WFCA = ascii, unencoded - humanly readable
- *         WFCB = ascii, gzipped binary, base64 encoded - easy to cut and paste
- *         WFCC = binary - typically used for files, but the binary gzipped version is recommended
- *         WFCD = binary, gzipped - typically used for files
- *         WFCX = new versions of the format can be defined later, with a unique letter
- * 
- * ASCII:  WFCA 0020 ABCD 0016 01 02 03 04 05 ...
+ *         WFCA 0020 ABCD 0016 01 02 03 04 05 ...
  *         ^^^^ ^^^^ ^^^^ ^^^^ ^^
- *         |    |    |    |    +-------- Chunk data starts here
+ *         |    |    |    |    +-------- Chunk data starts here, 2 and 2 characters are the byte value in hexadecimal
  *         |    |    |    +------------- Chunk size
  *         |    |    +------------------ Chunk ID
- *         |    +----------------------- File size is a 4 character hex string. It is the overall file size minus 8 bytes
+ *         |    +----------------------- File size is a 4 character hex string. It is the overall file size minus 8 bytes.
  *         +---------------------------- 4 byte file format identifier, WaveFormer Chunked ASCII
  * 
- * ASCII:  WFCB 0020 d873gkd...
+ *   - "E" ASCII Compressed and Encoded  
+ * 
+ *         WFCB 0020 d873gkd...
  *         ^^^^ ^^^^ ^^^^^^^^^^
- *         |    |    +------------------ Payload starts here
- *         |    +----------------------- File size is a 4 character hex string. It is the overall file size minus 8 bytes
- *         +---------------------------- 4 byte file format identifier, WaveFormer Chunked gzipped binary Base64URL encoded
+ *         |    |    +------------------ Payload starts here, binary data is compressed and Base64URL encoded as ASCII, with chunk ids, sizes and data 
+ *         |    +----------------------- File size is a 4 character hex string. It is the overall file size minus 8 bytes.
+ *         +---------------------------- 4 byte file format identifier, WaveFormer Chunked gzipped binary base64url Encoded
  * 
- * Binary: WFCC BBBB ABCD BBBB
- *         ^^^^ ^^^^ ^^^^ ^^^^ ^^
- *         |    |    |    |    +---- Chunk data starts here
- *         |    |    |    +--------- Inside compressed data. Chunk size as unsigned 32-bit integer
- *         |    |    +-------------- Chunk ID. Compression starts from hee, including Chunk ID, so compression starts from byte 10
- *         |    +----------------------- File length is a (4-byte) unsigned 32-bit integer
+ *   - "B" Binary
+ * 
+ *         WFCC BBBB ABCD BBBB XXXXX...
+ *         ^^^^ ^^^^ ^^^^ ^^^^ ^^^^^
+ *         |    |    |    |    +-------- Chunk data starts here
+ *         |    |    |    +------------- Chunk size as unsigned little-endian 32-bit integer, size does not include the size of the ChunkID and the size field
+ *         |    |    +------------------ Chunk ID
+ *         |    +----------------------- File size is a (4-byte) unsigned 32-bit integer
+ *         +---------------------------- 4 byte file format identifier, WaveFormer Chunked Binary
+ * 
+ *   - "C" Binary Compressed
+ * 
+ *         WFCC BBBB a?9#$...
+ *         ^^^^ ^^^^ ^^^^^ 
+ *         |    |    +------------------ Payload starts here, binary data is compressed with gzip
+ *         |    +----------------------- File size is a (4-byte) unsigned little-endian 32-bit integer
  *         +---------------------------- 4 byte file format identifier, WaveFormer Chunked Compressed binary
- * 
- * Shorter Binary
- *         WC1B BBBB 
- * 
- * Even shorter
- *   - Skip chunk sizes. Text chunks are null-terminated (?), hex chunks are MIDI, ... Hmm. Probably finicky.
  * 
  * 
  */
@@ -273,12 +243,12 @@ function getChunkLength(data: Uint8Array, offset: number) : number
   return data[offset] + (data[offset + 1] << 8) + (data[offset + 2] << 16) + (data[offset + 3] << 24);
 }
 
-export async function encodeWFPToString(chunks: Map<string, Array<Uint8Array>>, format: WFPFormatType) : Promise<string>
+export async function encodeWFCToString(chunks: Map<string, Array<Uint8Array>>, format: WFCFormatType) : Promise<string>
 {
   let fileID = "WFP" + format;
   let payload = "";
 
-  if (format === WFPFormatType.ASCII)
+  if (format === WFCFormatType.ASCII)
   {
     for (let [id, dataArray] of chunks)
     {
@@ -295,7 +265,7 @@ export async function encodeWFPToString(chunks: Map<string, Array<Uint8Array>>, 
       }
     }
   } 
-  else if (format === WFPFormatType.ASCIICompressed) 
+  else if (format === WFCFormatType.ASCIICompressed) 
   {
     let uncompressedPayloadLength = 0;
 
@@ -325,11 +295,11 @@ export async function encodeWFPToString(chunks: Map<string, Array<Uint8Array>>, 
   return fileID + payloadSize + payload;
 }
 
-export async function decodeWFPFromString(file: string) : Promise<Map<string, Array<Uint8Array>>>
+export async function decodeWFCFromString(file: string) : Promise<Map<string, Array<Uint8Array>>>
 {
   let chunks = new Map<string, Array<Uint8Array>>();
   let fileID = file.slice(0, 4);
-  let format = file[3] as WFPFormatType;
+  let format = file[3] as WFCFormatType;
   let payloadSize = parseInt(file.slice(4, 8), 16);
   if (payloadSize + 8 > file.length) {
     console.error(`File size stored in file plus 8 bytes (${payloadSize} + 8) is larger than actual file size (${file.length}). Is the file truncated? Bailing out.`);
@@ -339,7 +309,7 @@ export async function decodeWFPFromString(file: string) : Promise<Map<string, Ar
     console.error(`File size stored in file plus 8 bytes (${payloadSize} + 8) is smaller than actual file size (${file.length}). Ignoring unknown data at the end of file.`);
   }
   
-  if (format === WFPFormatType.ASCII) {
+  if (format === WFCFormatType.ASCII) {
     let payload = file.slice(8, 8 + payloadSize);
     let offset = 0;
     while (offset + 8 <= payload.length) {
@@ -357,7 +327,7 @@ export async function decodeWFPFromString(file: string) : Promise<Map<string, Ar
       offset += 4 + 4 + chunkSize;
     }
   }  
-  else if (format === WFPFormatType.ASCIICompressed) {
+  else if (format === WFCFormatType.ASCIICompressed) {
     let encodedPayload = file.slice(8, 8 + payloadSize);
     let compressedPayload = decode(encodedPayload);
     let binaryPayload = await decompressBytes(compressedPayload);
