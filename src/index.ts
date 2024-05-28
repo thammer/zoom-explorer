@@ -2,8 +2,9 @@ import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array, getNumberFromBits } from "./tools.js";
-import { decodeWFPFromString, encodeWFPToString, WFPFormatType } from "./wfp.js";
+import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
+import { ZoomDevice } from "./ZoomDevice.js";
 
 function getZoomVersionNumber(versionBytes: [number, number, number, number]) : number
 {
@@ -60,7 +61,7 @@ function updateZoomDevicesTable(zoomDevices: MIDIDeviceDescription[]) {
  * @see https://github.com/g200kg/zoom-ms-utility/blob/master/midimessage.md
  * @see https://github.com/thammer/zoom-explorer/
  */
-let zoomCommandTempBuffer = new Uint8Array([0xF0, 0x52, 0x00, 0xB3, 0xB4, 0xF7]); 
+let zoomCommandTempBuffer = new Uint8Array(toUint8Array("F0 52 00 B3 B4 F7")); 
 
 function sendZoomCommand(device: DeviceID, deviceId: number, command: number) : void
 {
@@ -589,9 +590,9 @@ async function getCurrentPatch(zoomDevices: MIDIDeviceDescription[])
   chunks.push(data);
   map.set("SPRX", chunks);
 
-  let wfp = await encodeWFPToString(map, WFPFormatType.ASCIICompressed);
+  let wfp = await encodeWFCToString(map, WFCFormatType.ASCIICompressed);
   console.log(`WFP: "${wfp}"`);
-  let map2 = await decodeWFPFromString(wfp);
+  let map2 = await decodeWFCFromString(wfp);
   console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`);
 }
 
@@ -611,22 +612,24 @@ async function start()
     console.log(`  ${JSON.stringify(device)}`)
   }
 
-  let zoomDevices = midiDeviceList.filter( (device) => device.manufacturerID[0] === 0x52);
+  let zoomMidiDevices = midiDeviceList.filter( (device) => device.manufacturerID[0] === 0x52);
 
-  updateZoomDevicesTable(zoomDevices);
+  let zoomDevices = zoomMidiDevices.map( midiDevice => new ZoomDevice(midi, midiDevice));
+
+  updateZoomDevicesTable(zoomMidiDevices);
   
-  for (const device of zoomDevices)
+  for (const device of zoomMidiDevices)
   {
     await midi.openInput(device.inputID);
     await midi.openOutput(device.outputID);
   };
 
-  for (const device of zoomDevices)
+  for (const device of zoomMidiDevices)
   {
     sendZoomCommand(device.outputID, device.familyCode[0], 0x50);
   }
   
-  for (const device of zoomDevices)
+  for (const device of zoomMidiDevices)
   {
     midi.addListener(device.inputID, (deviceHandle, data) => {
       console.log(`Received: ${toHexString(data, " ")}`);
@@ -706,7 +709,7 @@ async function start()
   let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   testButton.addEventListener("click", async (event) => {
     
-    await getCurrentPatch(zoomDevices);
+    await getCurrentPatch(zoomMidiDevices);
 
 
   //   let headerRow = patchesTable.rows[0];
