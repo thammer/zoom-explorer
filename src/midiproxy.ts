@@ -38,10 +38,6 @@ export enum MessageType {
   SysExEnd =    0b11110111
 }
 
-// export let MessageTypeName = new Map<MessageType, string>() {}
-//   MessageType.Unknown : ****
-// }
-
 export interface IMIDIProxy 
 {
   readonly inputs: Map<DeviceID, DeviceInfo>; 
