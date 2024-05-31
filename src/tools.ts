@@ -32,6 +32,12 @@ export function partialArrayMatch(bigArray: Uint8Array, smallArray: Uint8Array, 
   return bigArray.length + bigArrayOffset >= smallArray.length && bigArray.slice(bigArrayOffset, bigArrayOffset + smallArray.length).every( (element, index) => element === smallArray[index] );
 }
 
+export function partialArrayStringMatch(bigArray: Uint8Array, str: string, bigArrayOffset: number = 0): boolean
+{
+  return bigArray.length + bigArrayOffset >= str.length && bigArray.slice(bigArrayOffset, bigArrayOffset + str.length).every( 
+    (element, index) => element === (str.charCodeAt(index) & 0xFF) );
+}
+
 /**
  * 
  * @param data array with 8-bit data
