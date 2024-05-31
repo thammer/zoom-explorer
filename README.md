@@ -41,7 +41,8 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 53             |      6 | *    |         | F0 52 00 6E 53 F7 | PC mode off |
 | 64 0B          |      7 | *    | *       | F0 52 00 6E 64 0B F7 | Tuner on |
 | 64 0C          |      7 | *    | *       | F0 52 00 6E 64 0C F7 | Tuner off |
-| 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer |
+| 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer (expects a reply with message type 64 12)|
+| 60 05 00       |      8 | *    |         | F0 52 00 6E 60 05 00 F7 | Flush buffer / clean data (needs more testing) |
 | 64 02          |     10 | *    |         | F0 52 00 6E 64 02 00 00 00 F7 | Get display information | 
 | 46 00          |     12 | *    |         | F0 52 00 6E 46 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Download patch from given bank/proram slot |
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
