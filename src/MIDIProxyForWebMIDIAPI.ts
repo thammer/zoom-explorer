@@ -234,7 +234,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       throw `No output found with ID "${deviceHandle}"`;
     }
 
-    // FIXME: This shuldn't be necessary with the browser based Web MIDI API
+    // FIXME: This shouldn't be necessary with the browser based Web MIDI API
     let dataArray = Array.from(data);
     console.log(`Sent: ${toHexString(dataArray, " ")}`)
     output.send(dataArray);
