@@ -1,4 +1,4 @@
-import { getNumberFromBits } from "./tools.js";
+import { getNumberFromBits, partialArrayMatch, partialArrayStringMatch } from "./tools.js";
 
 export class EffectSettings
 {
@@ -42,7 +42,7 @@ export class ZoomPatch
 
   EDTB: null | string = null; // 4 + 4 + numEffects * 24 bytes == 4 + 4 + edtbLength bytes
   edtbLength: null | number = null; // 4 bytes
-  edtbUnknown: null | Array<Uint8Array> = null; // numEffects * 24 bytes == edtbLength bytes
+  edtbReversedBytes: null | Array<Uint8Array> = null; // numEffects * 24 bytes == edtbLength bytes
   edtbEffectSettings: null | Array<EffectSettings> = null;
 
   PRM2: null | string = null; // 4 + 4 + prm2Length
@@ -55,6 +55,24 @@ export class ZoomPatch
   NAME: null | string = null;
   nameLength: null | number = null; // 4 bytes
   longName: null | string = null; // 28 bytes == nameLength bytes. The last four characters are sometimes (always?) 0x00.
+
+  // Zoom MS OriGinal pedal info below
+  MSOG: null | string = null; // This is not a named chunk. The original MS pedals doesn't have a chunk-based layout but rather a fixed structure.
+  msogEffectSettings: null | Array<EffectSettings> = null;
+  msogEffectsReversedBytes: null | Array<Uint8Array> = null; // numEffects * 18 bytes
+  msogUnknown1: null | Uint8Array = null; // 2 bytes
+  msogUnknown2: null | Uint8Array = null; // 1 byte
+  msogTempo: null | number = null; // 8 bits based on the last 2 bytes in msogUnknown1
+  msogEditEffectSlot: null | number = null; // 3 bits based on the two first bytes in msogUnknown1
+  msogDSPFullBits: null | number = null; // 6 bits based on the first byte in mspgUnknown1
+  msogNumEffects: null | number = null; // 3 bits based on the second byte in mspgUnknown1
+  // length: null | number = null;
+  // version: null | number = null;
+  // numEffects: null | number = null; 
+  // target: null | number = null;
+  // ptcfUnknown: null | Uint8Array = null; // 6 bytes
+  // shortName: null | string = null;
+  // ids: null | Uint32Array = null;
 
   readString(patch: Uint8Array, offset: number, length: number) : string | null
   {
@@ -119,24 +137,43 @@ export class ZoomPatch
       this.txe1DescriptionEnglish = this.readString(patch, offset, this.txe1Length); offset += this.txe1Length;
     }
 
+    // EDTB chunk
+    // Bit  # bits  Meanining
+    //   0       1  Effect on/off
+    //   1      29  Effect ID
+    //  30      12  Parameter 0
+    //  42      12  Parameter 1
+    //  54      12  Parameter 2
+    //  66      12  Parameter 3
+    //  78      12  Parameter 4
+    //  90       8  Parameter 5
+    //  98       8  Parameter 6
+    // 106       8  Parameter 7
+    // 114       8  Parameter 8
+    // 122       8  Parameter 9
+    // 130       8  Parameter 10
+    // 138       8  Parameter 11
+    // 146       8  Parameter 12
+    // 153          Last bit of parameter 12
+    // Total 154 bits = 19 bytes. There are 5 bytes with unknown data after the parameters.
     if (this.numEffects !== null) {
       this.EDTB = this.readString(patch, offset, 4); offset +=4;
       this.edtbLength = this.readInt32(patch, offset); offset += 4;
-      this.edtbUnknown = new Array<Uint8Array>(this.numEffects);
+      this.edtbReversedBytes = new Array<Uint8Array>(this.numEffects);
       this.edtbEffectSettings = new Array<EffectSettings>();
       for (let i=0; i<this.numEffects; i++) {
-        this.edtbUnknown[i] = patch.slice(offset, offset + 24).reverse(); offset += 24;
-        let bitpos = this.edtbUnknown[i].length * 8 - 1;
+        this.edtbReversedBytes[i] = patch.slice(offset, offset + 24).reverse(); offset += 24;
+        let bitpos = this.edtbReversedBytes[i].length * 8 - 1;
         let effectSettings = new EffectSettings();
-        effectSettings.enabled = (getNumberFromBits(this.edtbUnknown[i], bitpos, bitpos) === 1); bitpos -= 1;
-        effectSettings.id = getNumberFromBits(this.edtbUnknown[i], bitpos - 28, bitpos); bitpos -= 29;
+        effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
+        effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29; // One bit more than MS-50G
         effectSettings.parameters = new Array<number>();
         for (let p=0; p<5; p++) {
-          let parameter = getNumberFromBits(this.edtbUnknown[i], bitpos - 11, bitpos); bitpos -= 12;
+          let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
           effectSettings.parameters.push(parameter);
         }
         for (let p=5; p<12 && bitpos - 8 >= 0; p++) {
-          let parameter = getNumberFromBits(this.edtbUnknown[i], bitpos - 7, bitpos); bitpos -= 8;
+          let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
           effectSettings.parameters.push(parameter);
         }
         this.edtbEffectSettings.push(effectSettings);
@@ -150,6 +187,7 @@ export class ZoomPatch
       let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
       let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
       this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
+      // FIXME: Read prm2EditEffectSlot, see description above
     }
 
     this.NAME = this.readString(patch, offset, 4); offset +=4;
@@ -164,10 +202,86 @@ export class ZoomPatch
     return offset;
   }
 
+  // Byte  #bytes  Meaning
+  //    0  108     Effect parameters, 6x18 bytes
+  //  108    3     Unknown bytes
+  //  111   10     Name
+  //  121    1     Unknown byte
+  readMSPatch(patch: Uint8Array, offset: number): number 
+  {
+    this.MSOG = "MSOG";
+    this.length = patch.length - offset;
+    this.numEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects
+    this.msogEffectsReversedBytes = new Array<Uint8Array>(this.numEffects);
+    this.msogEffectSettings = new Array<EffectSettings>();
+    this.ids = new Uint32Array(this.numEffects);
+    for (let i=0; i<this.numEffects; i++) { // Each effect section is 18 bytes
+      // P0 = 11 bits. P1 = 10 bits. P2 = 10 bits. P3-P5 = 8 bits
+      this.msogEffectsReversedBytes[i] = patch.slice(offset, offset + 18).reverse(); offset += 18;
+      let bitpos = this.msogEffectsReversedBytes[i].length * 8 - 1;
+      let effectSettings = new EffectSettings();
+      effectSettings.enabled = (getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
+      effectSettings.id = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 27, bitpos); bitpos -= 28; // One bit less than MS-50G+
+      this.ids[i] = effectSettings.id;
+      effectSettings.parameters = new Array<number>();
+
+      // P0 = 13 bits. That's one more than for MS-50G+. Weird. Or is there one bit in there that we don't know what means?
+      let parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 12, bitpos); bitpos -= 13;
+      effectSettings.parameters.push(parameter);
+      // P1 = 13 bits
+      parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 12, bitpos); bitpos -= 13;
+      effectSettings.parameters.push(parameter);
+      // P2 = 13 bits
+      parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 12, bitpos); bitpos -= 13;
+      effectSettings.parameters.push(parameter);
+      // P3-P7 = 8 bits
+      for (let p=3; p<8 && bitpos - 8 >= 0; p++) {
+        parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
+        effectSettings.parameters.push(parameter);
+      }
+      // P9 = 8 bits. It is oddly placed, and we don't know what the surrounding bits are (20 unknown bits before, 8 unknown bits after)
+      // One byte is probably cab-related
+      bitpos -= 20.
+      parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
+      effectSettings.parameters.push(parameter);
+
+      this.msogEffectSettings.push(effectSettings);
+    }
+
+    this.msogUnknown1 = patch.slice(offset, offset + 3); offset += 3;
+
+    this.msogTempo = ((this.msogUnknown1[1] & 0b11100000) >> 5) + ((this.msogUnknown1[2] & 0b00011111) << 3);
+
+    this.msogEditEffectSlot = ((this.msogUnknown1[0] & 0b11000000) >> 6) + ((this.msogUnknown1[2] & 0b00000001) << 2);
+
+    this.msogDSPFullBits = (this.msogUnknown1[0] & 0b00111111);
+
+    this.msogNumEffects = (this.msogUnknown1[1] & 0b00011100) >> 2;
+    // FIXME: Think through the difference between num effects used in a patch and the max number of effects for a device
+    // we need to read 6 effects here to get the offsets right...
+
+    this.shortName = this.readString(patch, offset, 10); offset += 10; 
+    if (this.shortName != null)
+      this.shortName = this.shortName.replace(/\x00/g, ""); // Safety guard against characters being 0
+    this.name = this.shortName;
+
+    this.msogUnknown2 = patch.slice(offset, offset + 1); offset += 1;
+
+    // version: null | number = null;
+    // numEffects: null | number = null; 
+    // target: null | number = null;
+    // ids: null | Uint32Array = null;
+  
+    return offset;
+  }
+
   static fromPatchData(patch: Uint8Array, offset: number = 0) : ZoomPatch 
   {
     let zoomPatch = new ZoomPatch();
-    offset = zoomPatch.readPTCF(patch, offset);
+    if (partialArrayStringMatch(patch, "PTCF"))
+      offset = zoomPatch.readPTCF(patch, offset);
+    else
+      offset = zoomPatch.readMSPatch(patch, offset);
     return zoomPatch;
   }
 }

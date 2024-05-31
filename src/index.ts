@@ -31,23 +31,23 @@ function getZoomCommandName(data: Uint8Array) : string
   return name;
 }
 
-function updateZoomDevicesTable(zoomDevices: MIDIDeviceDescription[]) {
+function updateZoomDevicesTable(zoomDevices: ZoomDevice[]) {
   let midiDevicesTable: HTMLTableElement = document.getElementById("midiDevicesTable") as HTMLTableElement;
 
   for (let index = 0; index < zoomDevices.length; index++) {
-    let device = zoomDevices[index];
-    let version = getZoomVersionNumber(device.versionNumber);
+    let info = zoomDevices[index].deviceInfo;
+    let version = getZoomVersionNumber(info.versionNumber);
 
     let row = midiDevicesTable.insertRow(1);
     let c;
-    c = row.insertCell(-1); c.innerHTML = device.deviceName;
-    c = row.insertCell(-1); c.innerHTML = toHexString([device.familyCode[0]]);
+    c = row.insertCell(-1); c.innerHTML = info.deviceName;
+    c = row.insertCell(-1); c.innerHTML = toHexString([info.familyCode[0]]);
     c = row.insertCell(-1); c.innerHTML = version.toString();
-    c = row.insertCell(-1); c.innerHTML = device.inputName;
-    c = row.insertCell(-1); c.innerHTML = device.outputName;
-    c = row.insertCell(-1); c.innerHTML = toHexString(device.identityResponse, " ");
+    c = row.insertCell(-1); c.innerHTML = info.inputName;
+    c = row.insertCell(-1); c.innerHTML = info.outputName;
+    c = row.insertCell(-1); c.innerHTML = toHexString(info.identityResponse, " ");
 
-    console.log(`  ${index + 1}: ${device.deviceName.padEnd(8)} OS v ${version} - input: ${device.inputName.padEnd(20)} output: ${device.outputName}`);
+    console.log(`  ${index + 1}: ${info.deviceName.padEnd(8)} OS v ${version} - input: ${info.inputName.padEnd(20)} output: ${info.outputName}`);
   };
 }
 
@@ -510,10 +510,11 @@ function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, para
   return sysexString;
 }
 
-function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array): void
+function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): void
 {
   let [messageType, channel, data1, data2] = midi.getChannelMessage(data); 
 
+  let device = zoomDevice.deviceInfo;
   updateMidiMonitorTable(device, data, messageType);
 
   if (messageType === MessageType.SysEx)
@@ -524,8 +525,18 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
   
     updateSysexMonitorTable(device, data);
 
-    if (data.length > 10 && ((data[4] == 0x64 && data[5] == 0x12) || (data[4] == 0x45 && data[5] == 0x00)) ) {
-      let offset = 9 + data.length - 985;
+    if (data.length > 10 && ((data[4] == 0x64 && data[5] == 0x12) || (data[4] == 0x45 && data[5] == 0x00) || (data[4] == 0x28)) ) {
+      let offset;
+      
+      if ((data[4] == 0x28))
+        offset = 5; 
+      else if (data[4] == 0x64 && data[5] == 0x12)
+        offset = 9;
+      else // (data[4] == 0x45 && data[5] == 0x00)
+        offset = 13;
+
+//    offset = 9 + data.length - 985; 
+
       let eightBitData = seven2eight(data, offset, data.length-2);
 
       let patch = ZoomPatch.fromPatchData(eightBitData);
@@ -535,7 +546,6 @@ function handleMIDIDataFromZoom(device: MIDIDeviceDescription, data: Uint8Array)
     else if (data.length === 15 && (data[4] == 0x64 && data[5] == 0x20)) {
       // Parameter was edited on device (MS Plus series)
       // Request patch immediately
-      //midi.send(device.outputID, toUint8Array("F0 52 00 6E 64 13 F7"));
       sendZoomCommandLong(device.outputID, device.familyCode[0], toUint8Array("64 13"));
     }
     else if (data.length === 10 && (data[4] == 0x31)) {
@@ -559,10 +569,10 @@ function sleepForAWhile(timeoutMilliseconds: number)
   });
 }
 
-async function getCurrentPatch(zoomDevices: MIDIDeviceDescription[])
+async function getCurrentPatch(zoomDevice: ZoomDevice)
 {
   let map = new Map<string, Array<Uint8Array>>();
-  let device = zoomDevices[0];
+  let device = zoomDevice.deviceInfo;
 
   let data = await midi.sendAndGetReply(device.outputID, new Uint8Array([0xf0, 0x7e, 0x7f, 0x06, 0x01, 0xf7]), device.inputID, isMIDIIdentityResponse, 100);
   console.log(`Received data: ${data?.length}`);
@@ -572,7 +582,6 @@ async function getCurrentPatch(zoomDevices: MIDIDeviceDescription[])
   chunks.push(data);
   map.set("SIRX", chunks);
 
-  // let requestPatch = toUint8Array("F0 52 00 6E 64 13 F7");
   let requestPatch = getZoomCommand(device.familyCode[0], "64 13");
   chunks = new Array<Uint8Array>();
   chunks.push(requestPatch);
@@ -616,25 +625,22 @@ async function start()
 
   let zoomDevices = zoomMidiDevices.map( midiDevice => new ZoomDevice(midi, midiDevice));
 
-  updateZoomDevicesTable(zoomMidiDevices);
+  updateZoomDevicesTable(zoomDevices);
   
-  for (const device of zoomMidiDevices)
-  {
-    await midi.openInput(device.inputID);
-    await midi.openOutput(device.outputID);
-  };
+  for (const device of zoomDevices)
+    await device.open();
 
-  for (const device of zoomMidiDevices)
-  {
-    sendZoomCommand(device.outputID, device.familyCode[0], 0x50);
-  }
+  for (const device of zoomDevices)
+    device.parameterEditEnable();
   
-  for (const device of zoomMidiDevices)
+  for (const device of zoomDevices)
   {
-    midi.addListener(device.inputID, (deviceHandle, data) => {
-      console.log(`Received: ${toHexString(data, " ")}`);
-      handleMIDIDataFromZoom(device, data);
-    });
+    device.addListener(handleMIDIDataFromZoom);
+
+    // midi.addListener(device.inputID, (deviceHandle, data) => {
+    //   console.log(`Received: ${toHexString(data, " ")}`);
+    //   handleMIDIDataFromZoom(device, data);
+    // });
   };  
 
   // let callAndResponse = new Map<string, string>();
@@ -708,8 +714,8 @@ async function start()
 
   let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   testButton.addEventListener("click", async (event) => {
-    
-    await getCurrentPatch(zoomMidiDevices);
+
+  await getCurrentPatch(zoomDevices[0]);
 
 
   //   let headerRow = patchesTable.rows[0];
@@ -817,6 +823,14 @@ async function start()
   // //   midi.send(device.outputID, sysexDataEndFileListing);
  });
 
+ let loadCurrentPatchButton: HTMLButtonElement = document.getElementById("loadCurrentPatchButton") as HTMLButtonElement;
+ loadCurrentPatchButton.addEventListener("click", async (event) => {
+   let device = zoomDevices[0];
+
+   device.requestCurrentPatch();
+ });
+ 
+
 }
 
 let previousPatchInfoString = ""; 
@@ -840,12 +854,14 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   };
 
   let unknownString = "";
-  if (patch.ptcfUnknown !== null) {
-    for (let i = 0; i < patch.ptcfUnknown.length; i++)
-      unknownString += `${patch.ptcfUnknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
-    if (unknownString.length > 1)
-      unknownString = unknownString.slice(0, unknownString.length - 1);
-  };
+  if (patch.PTCF != null) {
+    if (patch.ptcfUnknown !== null) {
+      for (let i = 0; i < patch.ptcfUnknown.length; i++)
+        unknownString += `${patch.ptcfUnknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+      if (unknownString.length > 1)
+        unknownString = unknownString.slice(0, unknownString.length - 1);
+    };
+  }
 
   let targetString = "";
   if (patch.target !== null) {
@@ -856,70 +872,121 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   headerCell.innerHTML = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}<br/>` +
     `Effects: ${patch.numEffects}. IDs: ${idString}.`;
 
-  // TXJ1
-  unknownString = "";
-  if (patch.txj1DescriptionJapanese !== null) {
-    for (let i = 0; i < patch.txj1DescriptionJapanese.length; i++) {
-      if ((i > 0) && (i % 32 == 0))
-        unknownString += "<br/>                           ";
-      unknownString += `${patch.txj1DescriptionJapanese[i].toString(16).toUpperCase().padStart(2, "0")} `;
-    }
-  };
-  let txj1String = `${patch.TXJ1} Length: ${patch.txj1Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
 
-  // TXE1
-  let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1DescriptionEnglish}"`;
-
-  // EDTB
-  let effectSettingsString = "";
-  if (patch.edtbUnknown !== null && patch.ids !== null && patch.edtbEffectSettings !== null) {
-    for (let i = 0; i < patch.edtbUnknown.length; i++) {
-      let effectSettings = patch.edtbEffectSettings[i];
-      let parameterString = ""; 
-      for (let p=0; p<effectSettings.parameters.length; p++) {
-        parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
-      }
-      effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
-      effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
-      effectSettingsString += `                          Unknown: `;
-      let effect = patch.edtbUnknown[i];
-      for (let p = 0; p < effect.length - Math.ceil(90/8 + 5) + 3; p++) {
-        effectSettingsString += `${effect[p].toString(2).padStart(8, "0")} `;
-        if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
-          effectSettingsString += "<br/>                                   ";
-      }
-      effectSettingsString += "<br/><br/>";
-    }
-    if (effectSettingsString.length > 1)
-      effectSettingsString = effectSettingsString.slice(0, effectSettingsString.length - 5 * 2);
-  };
-  let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
-
-  // PRM2
-  unknownString = "";
-  let tempoString = "";
-  let editEffectSlotString = "";
-  let driveString = "";
-  if (patch.prm2Unknown !== null) {
-    for (let i = 0; i < patch.prm2Unknown.length; i++) {
-      if ((i > 0) && (i % 32 == 0))
-        unknownString += "<br/>                           ";
-      unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
-    }
-    if (patch.prm2Unknown.length > 2)
-      tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
-    if (patch.prm2Unknown.length > 12)
-      editEffectSlotString = `${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
-    if (patch.prm2Unknown.length > 20)
-      driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
-  };
-  let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
-    `                  Unknown: ${unknownString}`;
+  let patchInfoString: string = "";
 
   // NAME
-  let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
+  if (patch.NAME !== null) {
 
-  let patchInfoString = nameString + "<br/>" + txe1String + "<br/>" + prm2String + "<br/>" + txj1String + "<br/>" + edtbString; 
+    let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
+    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + nameString;
+  }
+
+  // TXE1
+  if (patch.TXE1 !== null) {
+    let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1DescriptionEnglish}"`;
+    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + txe1String;
+  }
+
+  // PRM2
+  if (patch.PRM2 != null) {
+    unknownString = "";
+    let tempoString = "";
+    let editEffectSlotString = "";
+    let driveString = "";
+    if (patch.prm2Unknown !== null) {
+      for (let i = 0; i < patch.prm2Unknown.length; i++) {
+        if ((i > 0) && (i % 32 == 0))
+          unknownString += "<br/>                           ";
+        unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+      }
+      if (patch.prm2Unknown.length > 2)
+        tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
+      if (patch.prm2Unknown.length > 12)
+        editEffectSlotString = `${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
+      if (patch.prm2Unknown.length > 20)
+        driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
+    };
+    let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
+      `                  Unknown: ${unknownString}`;
+    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + prm2String;
+  }
+
+  // TXJ1
+  if (patch.TXJ1 !== null) {
+    unknownString = "";
+    if (patch.txj1DescriptionJapanese !== null) {
+      for (let i = 0; i < patch.txj1DescriptionJapanese.length; i++) {
+        if ((i > 0) && (i % 32 == 0))
+          unknownString += "<br/>                           ";
+        unknownString += `${patch.txj1DescriptionJapanese[i].toString(16).toUpperCase().padStart(2, "0")} `;
+      }
+    };
+    let txj1String = `${patch.TXJ1} Length: ${patch.txj1Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
+    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + txj1String;
+  }
+
+  // EDTB
+  if (patch.EDTB !== null || patch.MSOG !== null) {
+    let reversedBytes = (patch.EDTB !== null) ? patch.edtbReversedBytes : patch.msogEffectsReversedBytes;
+    let effectSettingsArray = (patch.EDTB !== null) ? patch.edtbEffectSettings : patch.msogEffectSettings;
+    let unknownOffset = (patch.EDTB !== null) ? -Math.ceil(90/8 + 5) + 3 : 0 
+    let effectSettingsString = "";
+    if (reversedBytes !== null && patch.ids !== null && effectSettingsArray !== null) {
+      for (let i = 0; i < reversedBytes.length; i++) {
+        let effectSettings = effectSettingsArray[i];
+        let parameterString = ""; 
+        for (let p=0; p<effectSettings.parameters.length; p++) {
+          parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
+        }
+        effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
+        effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
+        effectSettingsString += `                          Reversed: `;
+        let effect = reversedBytes[i];
+        // for (let p = 0; p < effect.length - Math.ceil(90/8 + 5) + 3; p++) {
+        for (let p = 0; p < effect.length + unknownOffset; p++) {
+            effectSettingsString += `${effect[p].toString(2).padStart(8, "0")} `;
+          if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
+            effectSettingsString += "<br/>                                    ";
+        }
+        effectSettingsString += "<br/><br/>";
+      }
+      if (effectSettingsString.length > 1)
+        effectSettingsString = effectSettingsString.slice(0, effectSettingsString.length - 5 * 2);
+    };
+    if (patch.EDTB !== null) {
+      let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
+      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + edtbString;
+    }
+    else {
+      let msogString = `${patch.MSOG} Length: ${patch.length?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
+      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + msogString;
+    }
+  }
+
+  if (patch.MSOG !== null) {
+    let msogString = "";
+    if (patch.msogTempo != null)
+      msogString += `     Tempo: ${patch.msogTempo.toString().padStart(3, " ")}.`;
+    if (patch.msogNumEffects != null)
+      msogString += `  Number of effects: ${patch.msogNumEffects}.`;
+    if (patch.msogEditEffectSlot != null)
+      msogString += `  Edit effect slot: ${patch.msogEditEffectSlot.toString()}.`;
+    if (patch.msogDSPFullBits != null)
+      msogString += `  DSP Full: ${patch.msogDSPFullBits.toString(2).padStart(6, "0")}.`;
+    let driveString = "";
+    if (patch.msogUnknown1 !== null) {
+      let msogUnknown1_0_str = "EEDDDDDD";
+      let msogUnknown1_1_str = "TTTMMM" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
+      let msogUnknown1_2_str = patch.msogUnknown1[2].toString(2).padStart(8, "0").substring(0, 3) + "TTTTT";
+      msogString += `  Unknown1: ${msogUnknown1_0_str} ${msogUnknown1_1_str} ${msogUnknown1_2_str}.`;
+    }
+    if (patch.msogUnknown2 !== null)
+      msogString += `  Unknown2: ${patch.msogUnknown2[0].toString(2).padStart(8, "0")}.`;
+    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + msogString;
+  }
+
+  // let patchInfoString = nameString + "<br/>" + txe1String + "<br/>" + prm2String + "<br/>" + txj1String + "<br/>" + edtbString; 
   let htmlPatchInfoString = "";
   
   if (patchInfoString.length === previousPatchInfoString.length) {
@@ -944,6 +1011,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 
   bodyCell.innerHTML = htmlPatchInfoString;
 }
+
 
 let seven=toUint8Array("01 02 03 04 05 06 07 08");
 let eight = seven2eight(seven);
