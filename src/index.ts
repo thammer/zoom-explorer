@@ -437,8 +437,8 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
       let eightBitCurrent = seven2eight(current, offset, current.length-2);
 
       // F0 52 00 6E 46 00 00 01 00 01 00 F7
-      let patch = ZoomPatch.fromPatchData(eightBitCurrent);
-      console.log(`Patch name: ${patch.name}`);
+      // let patch = ZoomPatch.fromPatchData(eightBitCurrent);
+      // console.log(`Patch name: ${patch.name}`);
     }
 
     let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
