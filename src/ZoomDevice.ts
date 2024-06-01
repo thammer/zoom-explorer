@@ -235,9 +235,7 @@ export class ZoomDevice
   
     try 
     {
-      this._midi.send(this._midiDevice.outputID, commandBuffer);
       return await this._midi.sendAndGetReply(this._midiDevice.outputID, commandBuffer, this._midiDevice.inputID, verifyReply, timeoutMilliseconds);
-
     }
     catch (err) 
     {
