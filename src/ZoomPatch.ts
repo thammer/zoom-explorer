@@ -7,22 +7,6 @@ export class EffectSettings
   parameters: Array<number> = new Array<number>();
 }
 
-// export class Chunk
-// {
-//   readonly id: string;
-//   readonly length: number;
-//   readonly data: Uint8Array;
-
-//   constructor(id: string = "????", length: number = 0, data: Uint8Array = new Uint8Array())
-//   {
-//     this.id = id;
-//     this.length = length;
-//     this.data = data;
-//     if (this.length != this.data.length)
-//       console.error(`Chunk length (${this.length}) differs from data length (${this.data.length})`);
-//   }
-// }
-
 /**
  * 
  * 
@@ -33,21 +17,21 @@ export class EffectSettings
 
 export class ZoomPatch
 {
-  // Raw unparsed chunks
-  chunks: Map<string, Uint8Array> = new Map<string, Uint8Array>();
-
   // Derived properties
   name: null | string = null;
 
   // Toplevel chunk including header and subchunks
   PTCF: null | string = null;
-  length: null | number = null; // NB! This length includes the 4 byte ID and the 4 byte length number, in other words it is the total patch length starting from the P in PTCF. This is dirrerent from the chunk lengths below, which does not include these 8 bytes.
+  length: null | number = null; // NB! This length includes the 4 byte ID and the 4 byte length value, in other words it is the total patch length starting from the P in PTCF. This is different from the chunk lengths below, which does not include these 8 bytes.
   version: null | number = null;
   numEffects: null | number = null; 
   target: null | number = null;
   ptcfUnknown: null | Uint8Array = null; // 6 bytes
   shortName: null | string = null;
   ids: null | Uint32Array = null;
+  
+  ptcfChunk: null | Uint8Array = null; // Raw unparsed PTCF chunk, including the "PTCF" ID and 4 bytes for the length value
+  chunks: Map<string, Uint8Array> = new Map<string, Uint8Array>(); // Raw unparsed chunks
 
   // Unknown
   TXJ1: null | string = null; // 4 + 4 + txj1Length bytes
@@ -186,6 +170,8 @@ export class ZoomPatch
 
   readPTCF(data: Uint8Array, offset:number) : number
   {
+    let ptcfChunkStart = offset;
+
     if (data.length - offset < 8) {
       console.warn(`ZoomPatch.readPTCFChunks() got patch data with no space for chunks after offset - patch.length = ${data.length}, offset = ${offset}`)
       return offset;
@@ -202,6 +188,8 @@ export class ZoomPatch
       console.warn(`ZoomPatch.readPTCFChunks() PTCF chunk length (${this.length}) is greater than patch length (${data.length}) - offset (${offset})`)
       return offset;
     }
+
+    this.ptcfChunk = data.slice(ptcfChunkStart, ptcfChunkStart + this.length);
 
     let initialOffset = offset;
 
