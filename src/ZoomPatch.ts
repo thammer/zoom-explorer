@@ -176,7 +176,9 @@ export class ZoomPatch
       console.warn(`ZoomPatch.readPTCFChunks() got patch data with no space for chunks after offset - patch.length = ${data.length}, offset = ${offset}`)
       return offset;
     }
-      
+    
+    const initialDataOffset = offset;
+
     this.PTCF = this.readString(data, offset, 4); offset +=4;
     if (this.PTCF !== "PTCF") {
       console.warn(`ZoomPatch.readPTCFChunks() got patch data that doesn't start with ID "PTCF" - ID = ${this.PTCF}`)
@@ -184,14 +186,14 @@ export class ZoomPatch
     }
 
     this.length = this.readInt32(data, offset); offset += 4;
-    if (this.length === null || this.length > data.length - offset) {
+    if (this.length === null || this.length > data.length - initialDataOffset) {
       console.warn(`ZoomPatch.readPTCFChunks() PTCF chunk length (${this.length}) is greater than patch length (${data.length}) - offset (${offset})`)
       return offset;
     }
 
     this.ptcfChunk = data.slice(ptcfChunkStart, ptcfChunkStart + this.length);
 
-    let initialOffset = offset;
+    const initialOffset = offset;
 
     this.version = this.readInt32(data, offset); offset += 4;
     this.numEffects = this.readInt32(data, offset); offset += 4;
