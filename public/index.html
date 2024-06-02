@@ -183,7 +183,7 @@
         text-align: right;
       }
 
-      button#loadCurrentPatchButton {
+      button.loadSaveButtons {
         float: right;
         padding: 1px 2px 1px 2px;
       }
@@ -226,7 +226,12 @@
 
           <table id="patchTable">
             <tr>
-                <th>Patch info <button id="loadCurrentPatchButton">Load current patch</button> </th>
+                <th><label>Patch info line 1</label><br/><label>Patch info line 2</label> 
+                    <button id="loadCurrentPatchButton" class "loadSaveButtons">Load current patch from pedal</button> 
+                    <button id="saveCurrentPatchButton" class "loadSaveButtons">Save patch to pedal (as current patch)</button> 
+                    <button id="savePatchToDiskButton" class "loadSaveButtons">Save patch</button>
+                    <button id="loadPatchFromDiskButton" class "loadSaveButtons">Load patch</button>
+                </th>
             </tr>
             <tr>
                 <td>Patch info</td>
