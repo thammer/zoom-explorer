@@ -1,5 +1,9 @@
 # zoom-explorer
-This repository contains tools for exploring the Zoom MS Plus series effect pedals, as well as my findings regarding MIDI-communication with these pedals.
+Zoom Explorer is a web-based for exploring the Zoom MS Plus series effect pedals, and this Readme contains my findings regarding MIDI-communication with these pedals.
+
+The Zoom Explorer webpage is here: [www.waveformer.net/zoom-explorer](https://www.waveformer.net/zoom-explorer/).
+
+The user-friendly patch manager for the Zoom MS+ pedals is here: [sym.bios.is](https://sym.bios.is/)
 
 All numeric values listed below are in hexadecimal.
 
