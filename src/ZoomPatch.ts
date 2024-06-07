@@ -77,6 +77,11 @@ export class ZoomPatch
   // shortName: null | string = null;
   // ids: null | Uint32Array = null;
 
+  get nameTrimmed(): string | null
+  {
+    return this.name === null ? null : this.name.trim().replace(/[ ]{2,}/gi," ");
+  }
+
   readString(patch: Uint8Array, offset: number, length: number) : string | null
   {
     let str = "";
