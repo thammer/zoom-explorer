@@ -1,7 +1,7 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse } from "./miditools.js";
-import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array, getNumberFromBits } from "./tools.js";
+import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight } from "./tools.js";
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
@@ -214,109 +214,6 @@ async function getCurrentPatch(zoomDevice: ZoomDevice)
   console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`);
 }
 
-/**
- * Converts a buffer created with the eight2seven algorithm from 7-bit and back to 8 bit again.
- * @see https://www.echevarria.io/blog/midi-sysex/index.html
- * @see https://llllllll.co/t/midi-sysex-7bit-decoding-help-bits-and-bytes/40854 (but note the order of the hogh bits in the 7-bit high-bit byte)
- * @param sevenBitBytes 
- * @param start 
- * @param end 
- * @returns 
- *
- * @example
- * 8 7-bit bytes will be converted to 7 8-bit bytes.
- * 
- * byte 0: [a7][a6][a5][a4][a3][a2][a1][a0]
- * byte 1: [b7][b6][b5][b4][b3][b2][b1][b0]
- * byte 2: [c7][c6][c5][c4][c3][c2][c1][c0]
- * byte 3: [d7][d6][d5][d4][d3][d2][d1][d0]
- * byte 4: [e7][e6][e5][e4][e3][e2][e1][e0]
- * byte 5: [f7][f6][f5][f4][f3][f2][f1][f0]
- * byte 6: [g7][g6][g5][g4][g3][g2][g1][g0]
- * 
- * is converted to:
- * 
- * byte 0: [0][a7][b7][c7][d7][e7][f7][g7]
- * byte 1: [0][a6][a5][a4][a3][a2][a1][a0]
- * byte 2: [0][b6][b5][b4][b3][b2][b1][b0]
- * byte 3: [0][c6][c5][c4][c3][c2][c1][c0]
- * byte 4: [0][d6][d5][d4][d3][d2][d1][d0]
- * byte 5: [0][e6][e5][e4][e3][e2][e1][e0]
- * byte 6: [0][f6][f5][f4][f3][f2][f1][f0]
- * byte 7: [0][g6][g5][g4][g3][g2][g1][g0]
- */
-function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: number = -1) : Uint8Array
-{
-  if (end === -1)
-    end = sevenBitBytes.length - 1;
-
-  // let eightBitBytes: Uint8Array = new Uint8Array(end - start + 1); // FIXME: we don't need all this space. Calculate.
-  let remainder = (end - start + 1) % 8;
-  if (remainder === 1)
-  {
-    console.error(`remainder === 1. Illegal encoding for array of seven bit bytes of length ${sevenBitBytes.length}. Ignoring last seven bit byte`);
-  }
-  let eightBitBytes: Uint8Array = new Uint8Array( Math.floor((end - start + 1) / 8) * 7 + (remainder < 2 ? 0 : remainder - 1 ) );
-
-  let eightIndex = 0;
-  let bitIndex;
-  let seven;
-  let highBits: number = 0;
-  let sevenIndex = start;
-  
-  while (sevenIndex <= end) {
-    seven = sevenBitBytes[sevenIndex];
-    bitIndex = 7 - (sevenIndex - start) % 8;
-    if (bitIndex == 7)
-      highBits = seven;
-    else {
-      eightBitBytes[eightIndex++] = seven + (((highBits >> bitIndex) & 1) << 7);
-    }
-
-    sevenIndex++;
-  }
-
-  return eightBitBytes;
-}
-/**
- * Converts a buffer with 8-bit bytes to a (larger) buffer with 7-bit bytes, suitable to be sent over MIDI sysex.
- * @see https://www.echevarria.io/blog/midi-sysex/index.html
- * @see https://llllllll.co/t/midi-sysex-7bit-decoding-help-bits-and-bytes/40854
- * @param eightBitBytes 
- * @param start 
- * @param end inclusive
- * @returns 
- */
-function eight2seven(eightBitBytes: Uint8Array, start: number = 0, end: number = -1) : Uint8Array
-{
-  if (end === -1)
-    end = eightBitBytes.length - 1;
-
-  let sevenBitBytes: Uint8Array = new Uint8Array( (end - start + 1) + Math.ceil((end - start + 1) / 7) );
-
-  let eightIndex = start;
-  let eight;
-  let sevenIndex = 0;
-  let eightBlockOffset = 0;
-  let sevenBlockIndex = 0;
-  while (eightIndex <= end) {
-    eightBlockOffset = (eightIndex - start) % 7;
-
-    if (eightBlockOffset === 0)
-      sevenBlockIndex = sevenIndex++;
-    
-    eight = eightBitBytes[eightIndex];
-    sevenBitBytes[sevenBlockIndex] |= ( (eight & 0b10000000) >> (eightBlockOffset + 1) ); // The high-bit of the 8-bit-byte goes into the "high-bit" 7-bit-byte (the 7-bit-byte that contains all the high bits)
-    sevenBitBytes[sevenIndex] = eight & 0b01111111; // The rest of the bits in the 8-bit-byte
-    
-    sevenIndex++;
-    eightIndex++;
-  }
-
-  return sevenBitBytes;
-}
-
-
 async function start()
 {
   let success = await midi.enable().catch( (reason) => {
@@ -455,14 +352,17 @@ async function start()
   { 
     let table: HTMLTableElement = document.getElementById("sysexMonitorTable") as HTMLTableElement;  
     
-    let dataset = sysexMap.get(data.length);
+    let sysexLength = data.length;
+    let dataset = sysexMap.get(sysexLength);
+
     if (dataset === undefined) 
     {
-      sysexMap.set(data.length, { previous: data, current: data, device: device, messageNumber: messageCounter });      
+      dataset = { previous: data, current: data, device: device, messageNumber: messageCounter };
+      sysexMap.set(sysexLength, dataset);      
     }
     else
     {
-      sysexMap.set(data.length, { previous: dataset.current, current: data, device: device, messageNumber: messageCounter });      
+      sysexMap.set(sysexLength, { previous: dataset.current, current: data, device: device, messageNumber: messageCounter });      
     } 
   
     const sentenceLength = 10;
@@ -476,8 +376,9 @@ async function start()
   
     let cellCounter = 0;
   
-    for (let [length, dataset] of sysexMap) 
-    {
+
+    // for (let [length, dataset] of sysexMap) 
+    // {
       let headerCell: HTMLTableCellElement;
       let bodyCell: HTMLTableCellElement;
   
@@ -486,7 +387,7 @@ async function start()
       let dataTypeString = getZoomCommandName(dataset.current);
       
       let updatedRow = false;
-      let rowId = `Sysex_Row_Header_${length}`;
+      let rowId = `Sysex_Row_Header_${sysexLength}`;
       row = document.getElementById(rowId) as HTMLTableRowElement;
       if (row === null) {
         let dataLength = data.length; // for the click handler lambdas 
@@ -588,7 +489,7 @@ async function start()
   
       let headerSpan = getChildWithIdThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
       headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${toHexString([dataset.device.familyCode[0]])}]` +
-      ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${length}</b> &nbsp;&nbsp;`;
+      ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${sysexLength}</b> &nbsp;&nbsp;`;
   
       let current = dataset.current;
       let previous = dataset.previous;    
@@ -611,7 +512,7 @@ async function start()
   
       let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
   
-      rowId = `Sysex_Row_Body_${length}`;
+      rowId = `Sysex_Row_Body_${sysexLength}`;
       row = document.getElementById(rowId) as HTMLTableRowElement;
       if (row === null) {
         row = table.insertRow(-1);
@@ -624,7 +525,7 @@ async function start()
       bodyCell.innerHTML = sysexString; 
       bodyCell.contentEditable = supportsContentEditablePlaintextOnly ? "plaintext-only" : "true";
   
-    }
+    // }
   }
   
   function html2Uint8Array(html: string) {
@@ -695,34 +596,62 @@ async function start()
       updateSysexMonitorTable(device, data);
   
       if (data.length > 10 && ((data[4] == 0x64 && data[5] == 0x12) || (data[4] == 0x45 && data[5] == 0x00) || (data[4] == 0x28)) ) {
+        // We got a patch dump
+
         let offset;
+        let messageLengthFromSysex;
         
-        if ((data[4] == 0x28))
+        if ((data[4] == 0x28)) {
+          messageLengthFromSysex = 0;
           offset = 5; 
-        else if (data[4] == 0x64 && data[5] == 0x12)
+        }
+        else if (data[4] == 0x64 && data[5] == 0x12) {
+          messageLengthFromSysex = data[7] + (data[8] << 7);
           offset = 9;
-        else // (data[4] == 0x45 && data[5] == 0x00)
+        }
+        else { // (data[4] == 0x45 && data[5] == 0x00)
+          messageLengthFromSysex = data[11] + (data[12] << 7);
           offset = 13;
+        }
   
-  //    offset = 9 + data.length - 985; 
-  
-        let eightBitData = seven2eight(data, offset, data.length-2);
+        let eightBitData = seven2eight(data, offset, data.length-2); // FIXME: We should ignore the last 5 bytes of CRC, use messageLengthFromSysex as limiter (extend seven2eight to support max 8 bit size)
   
         let patch = ZoomPatch.fromPatchData(eightBitData);
   
+        if (eightBitData !== null && eightBitData.length > 5) {
+          console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
+          let crc = crc32(eightBitData, 0, eightBitData.length - 1 - 5); // FIXME: note that 8 bit length is incorrect since it's 5 bytes too long, for the CRC we failed to ignore above
+          crc = crc  ^ 0xFFFFFFFF;
+          console.log(`Patch CRC (7-bit): ${toHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]), " ")}`);
+          
+        }
         updatePatchInfoTable(patch);
       }
-      else if (data.length === 15 && (data[4] == 0x64 && data[5] == 0x20)) {
+      else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
         // Request patch immediately
         sendZoomCommandLong(device.outputID, device.familyCode[0], toUint8Array("64 13"));
       }
-      else if (data.length === 10 && (data[4] == 0x31)) {
+      else if (data.length === 10 && (data[4] === 0x31)) {
         // Parameter was edited on device (MS series)
         // Request patch immediately
         sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
       }
-  
+      else if (data.length === 10 && data[4] === 0x06) {
+        // Patch info
+        let numPatches = data[5] + (data[6] << 7);
+        let patchSize = data[7] + (data[8] << 7);
+        console.log(`Received patch info message (0x06). Number of patches: ${numPatches}, patch size: ${patchSize}`)
+      }
+      else if (data.length === 30 && data[4] === 0x43) {
+        // Bank/patch info
+        let numPatches = data[5] + (data[6] << 7);
+        let patchSize = data[7] + (data[8] << 7);
+        let unknown = data[9] + (data[10] << 7);
+        let bankSize = data[11] + (data[12] << 7);
+        console.log(`Received patch info message (0x43). Number of patches: ${numPatches}, patch size: ${patchSize}, unknown: ${unknown}, bank size: ${bankSize}.`)
+        console.log(`                                    Unknown: ${toHexString(data.slice(13, 30-1), " ")}.`);
+      }
     }
   }
 
@@ -783,120 +712,119 @@ async function start()
   let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   testButton.addEventListener("click", async (event) => {
 
-  await getCurrentPatch(zoomDevices[0]);
+  //await getCurrentPatch(zoomDevices[0]);
 
 
-  //   let headerRow = patchesTable.rows[0];
-  //   let numColumns = headerRow.cells.length / 2;
+    let headerRow = patchesTable.rows[0];
+    let numColumns = headerRow.cells.length / 2;
 
-  //   let device = zoomDevices[0];
+    let device = zoomDevices[0];
   
-  //   // If the user has recently (in the last few seconds) changed a parameter on the pedal,
-  //   // the pedal will send out a patch dump automatically. This automatically sent message would 
-  //   // confuse the patch request process below. I think it is the pedal itself that gets confused and sends out
-  //   // multiple patch dumps. For the MS-50G+, the automatically sent patch message is 989 bytes long,
-  //   // while the length of the patch message when we request a patch is 985 bytes long, so it is possible to filter,
-  //   // but it would be better if we could do this in a more generic way.
+    // If the user has recently (in the last few seconds) changed a parameter on the pedal,
+    // the pedal will send out a patch dump automatically. This automatically sent message would 
+    // confuse the patch request process below. I think it is the pedal itself that gets confused and sends out
+    // multiple patch dumps. For the MS-50G+, the automatically sent patch message is 989 bytes long,
+    // while the length of the patch message when we request a patch is 985 bytes long, so it is possible to filter,
+    // but it would be better if we could do this in a more generic way.
 
-  //   for (const device of zoomDevices)
-  //   {
-  //     sendZoomCommand(device.outputID, device.familyCode[0], 0x51);
-  //     await sleepForAWhile(100);
-  //     sendZoomCommand(device.outputID, device.familyCode[0], 0x50);
-  //     await sleepForAWhile(100);
-  //   }
+    // for (const device of zoomDevices)
+    // {
+    //   sendZoomCommand(device.outputID, device.familyCode[0], 0x51);
+    //   await sleepForAWhile(100);
+    //   sendZoomCommand(device.outputID, device.familyCode[0], 0x50);
+    //   await sleepForAWhile(100);
+    // }
     
+    let maxNumPatches = 500;
+    zoomPatches = new Array<ZoomPatch>(maxNumPatches);
+    for (let i=0; i<maxNumPatches; i++) {
+      let bank = Math.floor(i/10);
+      let program = i % 10;
+      // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
+      // let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
+      //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
+      let requestPatch: Uint8Array;
+      let data: Uint8Array | undefined;
 
-  //   let maxNumPatches = 500;
-  //   zoomPatches = new Array<ZoomPatch>(maxNumPatches);
-  //   for (let i=0; i<maxNumPatches; i++) {
-  //     let bank = Math.floor(i/10);
-  //     let program = i % 10;
-  //     // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
-  //     // let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
-  //     //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
-  //     let requestPatch: Uint8Array;
-  //     let data: Uint8Array | undefined;
+      if (device.deviceInfo.familyCode[0] === 0x58) { // MS-50G
+        // sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
+        requestPatch = toUint8Array(`09 00 00 ${toHexString([i])}`);
+        data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
+          (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);  
+      }
+      else {
+        requestPatch = toUint8Array(`46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00`);
+        data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
+          (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);
+      }
+      if (data === undefined) {
+        console.log(`Got no reply for patch number ${i}`);
+        zoomPatches.splice(i);
+        break;
+      }
+      console.log(`Received data: ${data.length}`);
 
-  //     if (device.familyCode[0] === 0x58) { // MS-50G
-  //       // sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
-  //       requestPatch = toUint8Array(`09 00 00 ${toHexString([i])}`);
-  //       data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], requestPatch, device.inputID,
-  //         (received) => zoomCommandMatch(received, device.familyCode[0], toUint8Array("45 00")), 1000);  
-  //     }
-  //     else{
-  //       requestPatch = toUint8Array(`46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00`);
-  //       data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], requestPatch, device.inputID,
-  //         (received) => zoomCommandMatch(received, device.familyCode[0], toUint8Array("45 00")), 1000);
-  //       }
-  //     if (data === undefined) {
-  //       console.log(`Got no reply for patch number ${i}`);
-  //       zoomPatches.splice(i);
-  //       break;
-  //     }
-  //     console.log(`Received data: ${data.length}`);
+      let offset = 9 + data.length - 985;
+      let eightBitData = seven2eight(data, offset, data.length-2);
 
-  //     let offset = 9 + data.length - 985;
-  //     let eightBitData = seven2eight(data, offset, data.length-2);
+      let patch = ZoomPatch.fromPatchData(eightBitData);
+      zoomPatches[i] = patch;
+    }
 
-  //     let patch = ZoomPatch.fromPatchData(eightBitData);
-  //     zoomPatches[i] = patch;
-  //   }
+    let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
 
-  //   let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
+    for (let i=patchesTable.rows.length - 1; i<numPatchesPerRow; i++) {
+      let row = patchesTable.insertRow(-1);
+      for (let c=0; c<numColumns * 2; c++) {
+        let cell = row.insertCell(-1);
+        cell.id = `${c}`;
+      }
+    }
 
-  //   for (let i=patchesTable.rows.length - 1; i<numPatchesPerRow; i++) {
-  //     let row = patchesTable.insertRow(-1);
-  //     for (let c=0; c<numColumns * 2; c++) {
-  //       let cell = row.insertCell(-1);
-  //       cell.id = `${c}`;
-  //     }
-  //   }
+    let row: HTMLTableRowElement;
+    let bodyCell: HTMLTableCellElement;
+    for (let i=0; i<zoomPatches.length; i++) {
+      let patch = zoomPatches[i];
+      row = patchesTable.rows[1 + i % numPatchesPerRow];
+      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2];
+      bodyCell.innerHTML = `${i + 1}`;
+      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2 + 1];
+      let name = patch.longName != null ? patch.longName : patch.name;
+      bodyCell.innerHTML = `${name}`;
+    }
 
-  //   let row: HTMLTableRowElement;
-  //   let bodyCell: HTMLTableCellElement;
-  //   for (let i=0; i<zoomPatches.length; i++) {
-  //     let patch = zoomPatches[i];
-  //     row = patchesTable.rows[1 + i % numPatchesPerRow];
-  //     bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2];
-  //     bodyCell.innerHTML = `${i + 1}`;
-  //     bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2 + 1];
-  //     let name = patch.longName != null ? patch.longName : patch.name;
-  //     bodyCell.innerHTML = `${name}`;
-  //   }
-
-  // //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
-  // //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
+  //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
+  //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
   
-  // //   let sysexStringGetNextFile = "F0 52 00 6E 60 26 00 00 2a 2e 2a 00 F7";
-  // //   let sysexDataGetNextFile = Uint8Array.from(sysexStringGetNextFile.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16))); 
+  //   let sysexStringGetNextFile = "F0 52 00 6E 60 26 00 00 2a 2e 2a 00 F7";
+  //   let sysexDataGetNextFile = Uint8Array.from(sysexStringGetNextFile.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16))); 
   
-  // //   let device = zoomDevices[0];
-  // //   midi.addListener(device.inputID, (deviceHandle, data) => {
-  // //     let response = toHexString(data, " ");
-  // //     console.log(`${sysexStringGetNextFile} -> ${response}`)
-  // //   });
+  //   let device = zoomDevices[0];
+  //   midi.addListener(device.inputID, (deviceHandle, data) => {
+  //     let response = toHexString(data, " ");
+  //     console.log(`${sysexStringGetNextFile} -> ${response}`)
+  //   });
 
-  // //   await sleepForAWhile(100);
-  // //   midi.send(device.outputID, sysexDataListFiles);
+  //   await sleepForAWhile(100);
+  //   midi.send(device.outputID, sysexDataListFiles);
 
-  // //   for (let i=0; i<300; i++) {
-  // //     await sleepForAWhile(100);
-  // //     midi.send(device.outputID, sysexDataGetNextFile);
-  // //   }
+  //   for (let i=0; i<300; i++) {
+  //     await sleepForAWhile(100);
+  //     midi.send(device.outputID, sysexDataGetNextFile);
+  //   }
 
-  // //   await sleepForAWhile(100);
-  // //   let sysexStringEndFileListing = "F0 52 00 6E 60 27 F7";
-  // //   let sysexDataEndFileListing = Uint8Array.from(sysexStringEndFileListing.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
-  // //   midi.send(device.outputID, sysexDataEndFileListing);
+  //   await sleepForAWhile(100);
+  //   let sysexStringEndFileListing = "F0 52 00 6E 60 27 F7";
+  //   let sysexDataEndFileListing = Uint8Array.from(sysexStringEndFileListing.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
+  //   midi.send(device.outputID, sysexDataEndFileListing);
  });
 
- let loadCurrentPatchButton: HTMLButtonElement = document.getElementById("loadCurrentPatchButton") as HTMLButtonElement;
- loadCurrentPatchButton.addEventListener("click", async (event) => {
-   let device = zoomDevices[0];
+//  let loadCurrentPatchButton: HTMLButtonElement = document.getElementById("loadCurrentPatchButton") as HTMLButtonElement;
+//  loadCurrentPatchButton.addEventListener("click", async (event) => {
+//    let device = zoomDevices[0];
 
-   device.requestCurrentPatch();
- });
+//    device.requestCurrentPatch();
+//  });
  
  let previousPatchInfoString = ""; 
 
@@ -954,7 +882,7 @@ async function start()
    headerCell.appendChild(label);
 
    let button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Load from pedal";
+   button.textContent = "Load current patch from pedal";
    button.id = "loadCurrentPatchButton";
    button.className = "loadSaveButtons";
    button.addEventListener("click", (event) => {
@@ -963,17 +891,61 @@ async function start()
    });
    headerCell.appendChild(button);
 
+   let savePatch = patch;
    button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Save to pedal";
+   button.textContent = "Save to current patch on pedal";
    button.id = "saveCurrentPatchButton";
    button.className = "loadSaveButtons";
    button.addEventListener("click", (event) => {
-      let device = zoomDevices[0];
-      device.requestCurrentPatch();
+      if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
+        let device = zoomDevices[0];
+        let eightBitData = savePatch.ptcfChunk;
+        let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+        crc = crc  ^ 0xFFFFFFFF;
+        let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+        console.log(`Patch name: ${savePatch.name}`);
+        console.log(`Patch data length: ${eightBitData.length}`);
+        console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+
+        device.uploadCurrentPatch(eightBitData);
+      }
    });
    headerCell.appendChild(button);
 
-   let savePatch = patch;
+   button = document.createElement("button") as HTMLButtonElement;
+   button.textContent = "Save to memory slot on pedal";
+   button.id = "savePatchToMemorySlotButton";
+   button.className = "loadSaveButtons";
+   button.addEventListener("click", (event) => {
+      if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
+        if (lastSelected === null) {
+          console.log("Cannot upload patch to memory slot since no memory slot was selected");
+          return;
+        }
+        let memoryNumber = getPatchNumber(lastSelected) - 1;
+
+        let device = zoomDevices[0];
+        let eightBitData = savePatch.ptcfChunk;
+        let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+        crc = crc  ^ 0xFFFFFFFF;
+        let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+        console.log(`Patch name: ${savePatch.name}`);
+        console.log(`Memory slot number: ${memoryNumber + 1} "${zoomPatches[memoryNumber].nameTrimmed}"`);
+        console.log(`Patch data length: ${eightBitData.length}`);
+        console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+
+        // FIXME: rewrite as async
+        confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memoryNumber + 1} "${zoomPatches[memoryNumber].nameTrimmed}" ?`
+        confirmEvent = (result: boolean) => {
+          if (result) {
+            device.uploadPatchToMemoryNumber(eightBitData, memoryNumber);
+          }
+        }
+        confirmDialog.showModal();
+
+      }
+   });
+   headerCell.appendChild(button);
    button = document.createElement("button") as HTMLButtonElement;
    button.textContent = "Save file";
    button.id = "savePatchToDiskButton";
@@ -1202,8 +1174,28 @@ console.log(`Seven: ${toHexString(seven, " ")}`);
 let eight2 = seven2eight(seven);
 console.log(`Eight: ${toHexString(eight2, " ")}`);
 
+let crc = crc32(seven) ^ 0xFFFFFFFF;
+console.log(`CRC (7-bit): ${toHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x7F]), " ")}`);
+
 // toHexString(seven2eight(toUint8Array("01 02 03 04 05 06 07 08")), " ");
 
+const confirmDialog = document.getElementById("confirmDialog") as HTMLDialogElement;
+const confirmLabel = document.getElementById("confirmLabel") as HTMLLabelElement;
+const confirmButton = document.getElementById("confirmButton") as HTMLButtonElement;
+
+confirmButton.addEventListener("click", (event) => {
+  event.preventDefault(); // 
+  confirmDialog.close("ok");
+  confirmEvent(true);
+});
+
+let confirmEvent = (result: boolean) => {
+  console.log("Confirm event result: " + result);
+}
+
+confirmDialog.addEventListener("close", (e) => {
+  confirmEvent(false);
+});
 
 
 let messageCounter: number = 0;
@@ -1213,4 +1205,3 @@ let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
 let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, device: MIDIDeviceDescription, messageNumber: number}>(); 
 
 start();
-

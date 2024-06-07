@@ -206,7 +206,7 @@
         </tr>
       </table>
       
-      <button id="testButton">Test</button>
+      <button id="testButton">Download all patches</button>
 
       <div>
         <table id="midiMonitorTable">
@@ -226,11 +226,14 @@
 
           <table id="patchTable">
             <tr>
-                <th><label>Patch info line 1</label><br/><label>Patch info line 2</label> 
+                <th>
+                    <!--
+                    <label>Patch info line 1</label><br/><label>Patch info line 2</label> 
                     <button id="loadCurrentPatchButton" class "loadSaveButtons">Load current patch from pedal</button> 
                     <button id="saveCurrentPatchButton" class "loadSaveButtons">Save patch to pedal (as current patch)</button> 
                     <button id="savePatchToDiskButton" class "loadSaveButtons">Save patch</button>
                     <button id="loadPatchFromDiskButton" class "loadSaveButtons">Load patch</button>
+                    -->
                 </th>
             </tr>
             <tr>
@@ -295,6 +298,19 @@
             </table>
         </div>
   </div>
+  <dialog id="confirmDialog">
+    <form>
+      <p>
+        <label id="confirmLabel">
+          Are you sure?
+        </label>
+      </p>
+      <div>
+        <button formmethod="dialog" value="cancel">No</button>
+        <button id="confirmButton" value="ok">Yes</button>
+      </div>
+    </form>
+  </dialog>
   <script type="module" src="./index.js"></script>
   <!-- For www.waveformer.net <script>includeHTML();</script> -->
 </body>
