@@ -1,6 +1,6 @@
 import { IMIDIProxy } from "./midiproxy.js";
 import { MIDIDeviceDescription } from "./miditools.js";
-import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array } from "./tools.js";
+import { crc32, eight2seven, getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array } from "./tools.js";
 
 export class ZoomBankProgram
 {
@@ -27,6 +27,10 @@ export class ZoomDevice
   private _commandBuffers: Map<number, Uint8Array> = new Map<number, Uint8Array>();
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
   private _commands: ZoomMessageTypes = new ZoomMessageTypes();
+
+  private _numPatches: number = -1;
+  private _patchLength: number = -1;
+  private _patchesPerBank: number = -1;
 
   public loggingEnabled: boolean = true;
 
@@ -103,16 +107,16 @@ export class ZoomDevice
 
   }
 
-  public async getCurrentPatch() : Promise<Uint8Array | undefined>
+  public async downloadCurrentPatch() : Promise<Uint8Array | undefined>
   {
     let reply: Uint8Array | undefined;
     if (this._supportedCommands.get(this._commands.requestCurrentPatchV2.str) === SupportType.Supported) {
       reply = await this.sendCommandAndGetReply(this._commands.requestCurrentPatchV2.bytes, 
-        received => this.zoomCommandMatch(received, this._commands.patchDumpV2.bytes));
+        received => this.zoomCommandMatch(received, this._commands.patchDumpForCurrentPatchV2.bytes));
     }
     else { 
       reply = await this.sendCommandAndGetReply(this._commands.requestCurrentPatchV1.bytes, 
-        received => this.zoomCommandMatch(received, this._commands.patchDumpV1.bytes));
+        received => this.zoomCommandMatch(received, this._commands.patchDumpForCurrentPatchV1.bytes));
     }
     return reply;
   }
@@ -124,6 +128,60 @@ export class ZoomDevice
     else 
       this.sendCommand(this._commands.requestCurrentPatchV1.bytes);
   }
+
+  public uploadCurrentPatch(data: Uint8Array) 
+  {
+    let paddedData = data;
+    if (this._patchLength != -1) {
+      if (data.length > paddedData.length) {
+        console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
+      }
+      paddedData = new Uint8Array(this._patchLength);
+      paddedData.set(data);
+    }
+    let sevenBitData = eight2seven(paddedData);
+    this.sendCommand(sevenBitData, this._commands.uploadCurrentPatchV1.bytes);
+  }
+
+  /**
+   * 
+   * @param data 
+   * @param memoryNumber Zero-based memory location. Typically between 0-49 or 0-99 depending on pedal. 
+   */
+  public uploadPatchToMemoryNumber(data: Uint8Array, memoryNumber: number) 
+  {
+    let paddedData = data;
+    if (this._patchLength != -1) {
+      if (data.length > paddedData.length) {
+        console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
+      }
+      paddedData = new Uint8Array(this._patchLength);
+      paddedData.set(data);
+    }
+    let sevenBitData = eight2seven(paddedData);
+    
+    let crc = crc32(paddedData, 0, paddedData.length - 1);
+    crc = crc  ^ 0xFFFFFFFF;
+    let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+
+    let command = new Uint8Array(this._commands.patchDumpForMemoryLocationV2.bytes.length + 6);
+    command.set(this._commands.patchDumpForMemoryLocationV2.bytes);
+
+    let bank = Math.floor(memoryNumber / this._patchesPerBank);
+    let program = memoryNumber %this._patchesPerBank;
+    let length = paddedData.length;
+    let bankProgramLength = new Uint8Array(6);
+    bankProgramLength[0] = bank & 0x7F;
+    bankProgramLength[1] = (bank >> 7) & 0x7F;
+    bankProgramLength[2] = program & 0x7F;
+    bankProgramLength[3] = (program >> 7) & 0x7F;
+    bankProgramLength[4] = length & 0x7F;
+    bankProgramLength[5] = (length >> 7) & 0x7F;
+    command.set(bankProgramLength, this._commands.patchDumpForMemoryLocationV2.bytes.length);
+
+    this.sendCommand(sevenBitData, command, crcBytes);
+  }
+
 
   private isCommandSupported(command: StringAndBytes): boolean
   {
@@ -173,7 +231,7 @@ export class ZoomDevice
     }
   }
 
-  private sendCommand(data: Uint8Array) : void
+  private sendCommand(data: Uint8Array, prependCommand: Uint8Array | null = null, appendCRC: Uint8Array | null = null) : void
   {
     let output = this._midi.getOutputInfo(this._midiDevice.outputID);
     if (output === undefined)
@@ -187,7 +245,7 @@ export class ZoomDevice
       return;
     }
 
-    let commandBuffer = this.getCommandBufferFromData(data);
+    let commandBuffer = this.getCommandBufferFromData(data, prependCommand, appendCRC);
   
     try 
     {
@@ -200,9 +258,11 @@ export class ZoomDevice
     }
   }
 
-  private getCommandBufferFromData(data: Uint8Array) : Uint8Array
+  private getCommandBufferFromData(data: Uint8Array, prependCommand: Uint8Array | null = null, appendCRC: Uint8Array | null = null) : Uint8Array
   {
-    let commandLength = 5 + data.length;
+    let prependCommandLength = (prependCommand !== null) ? prependCommand.length : 0; 
+    let appendCRCLength = (appendCRC !== null) ? appendCRC.length : 0; 
+    let commandLength = 5 + data.length + prependCommandLength + appendCRCLength;
     let commandBuffer = this._commandBuffers.get(commandLength);
     if (commandBuffer === undefined) {
       commandBuffer = new Uint8Array(commandLength);
@@ -213,7 +273,11 @@ export class ZoomDevice
       this._commandBuffers.set(commandLength, commandBuffer);
     }
 
-    commandBuffer.set(data, 4);
+    if (prependCommand !== null)
+      commandBuffer.set(prependCommand, 4);
+    commandBuffer.set(data, 4 + prependCommandLength);
+    if (appendCRC !== null)
+      commandBuffer.set(appendCRC, 4 + prependCommandLength + data.length);
     return commandBuffer;
   }
 
@@ -282,16 +346,28 @@ export class ZoomDevice
     let reply: Uint8Array | undefined;
 
     command =this._commands.requestCurrentPatchV1.str;
-    expectedReply = this._commands.patchDumpV1.str;
+    expectedReply = this._commands.patchDumpForCurrentPatchV1.str;
     reply = await this.sendCommandAndGetReply(toUint8Array(command), (received) => 
       partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
     this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
 
     command =this._commands.requestCurrentPatchV2.str;
-    expectedReply = this._commands.patchDumpV2.str;
+    expectedReply = this._commands.patchDumpForCurrentPatchV2.str;
     reply = await this.sendCommandAndGetReply(toUint8Array(command), (received) => 
       partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
     this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+
+    command =this._commands.requestBankAndPatchInfoV2.str;
+    expectedReply = this._commands.bankAndPatchInfoV2.str;
+    reply = await this.sendCommandAndGetReply(toUint8Array(command), (received) => 
+      partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
+    this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+    if (reply !== undefined && reply.length > 13) {
+      this._numPatches = reply[5] + (reply[6] << 7);
+      this._patchLength = reply[7] + (reply[8] << 7);
+      let unknown = reply[9] + (reply[10] << 7);
+      this._patchesPerBank = reply[11] + (reply[12] << 7);
+    }
   }
 }
 
@@ -313,10 +389,14 @@ class ZoomMessageTypes
   parameterEditDisable = new StringAndBytes("51");
   pcModeEnable = new StringAndBytes("52");
   pcModeDisable = new StringAndBytes("53");
-  patchDumpV1 = new StringAndBytes("28");
+  patchDumpForCurrentPatchV1 = new StringAndBytes("28");
   requestCurrentPatchV1 = new StringAndBytes("29");
-  patchDumpV2 = new StringAndBytes("64 12");
+  patchDumpForCurrentPatchV2 = new StringAndBytes("64 12");
   requestCurrentPatchV2 = new StringAndBytes("64 13");
+  uploadCurrentPatchV1 =  new StringAndBytes("28");
+  patchDumpForMemoryLocationV2 =  new StringAndBytes("45 00 00");
+  requestBankAndPatchInfoV2 =  new StringAndBytes("44");
+  bankAndPatchInfoV2 =  new StringAndBytes("43");
 }
 
 enum SupportType
