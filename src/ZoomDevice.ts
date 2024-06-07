@@ -1,6 +1,7 @@
+import { ZoomPatch } from "./ZoomPatch.js";
 import { IMIDIProxy } from "./midiproxy.js";
 import { MIDIDeviceDescription } from "./miditools.js";
-import { crc32, eight2seven, getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array } from "./tools.js";
+import { crc32, eight2seven, getExceptionErrorString, partialArrayMatch, seven2eight, toHexString, toUint8Array } from "./tools.js";
 
 export class ZoomBankProgram
 {
@@ -129,6 +130,43 @@ export class ZoomDevice
       this.sendCommand(this._commands.requestCurrentPatchV1.bytes);
   }
 
+  public async downloadPatchFromMemorySlot(memorySlot: number) : Promise<ZoomPatch | undefined>
+  {
+    let reply: Uint8Array | undefined;
+    let eightBitData: Uint8Array | undefined = undefined;
+
+    if (this._supportedCommands.get(this._commands.requestPatchDumpForMemoryLocationV2.str) === SupportType.Supported) {
+      let bank = Math.floor(memorySlot / this._patchesPerBank);
+      let program = memorySlot % this._patchesPerBank;
+      let bankProgram = new Uint8Array(4);
+      bankProgram[0] = bank & 0x7F;
+      bankProgram[1] = (bank >> 7) & 0x7F;
+      bankProgram[2] = program & 0x7F;
+      bankProgram[3] = (program >> 7) & 0x7F;
+      let command = new Uint8Array(this._commands.requestPatchDumpForMemoryLocationV2.bytes.length + bankProgram.length);
+      command.set(this._commands.requestPatchDumpForMemoryLocationV2.bytes);
+      command.set(bankProgram, this._commands.requestPatchDumpForMemoryLocationV2.bytes.length);
+       
+      reply = await this.sendCommandAndGetReply(command, 
+        received => this.zoomCommandMatch(received, this._commands.patchDumpForMemoryLocationV2.bytes));
+      if (reply !== undefined) {
+        let offset = 13;
+        eightBitData = seven2eight(reply, offset, reply.length-2);
+      }
+    }
+    // FIXME: Implement v1 as well
+    // else { 
+    //   reply = await this.sendCommandAndGetReply(this._commands.requestCurrentPatchV1.bytes, 
+    //     received => this.zoomCommandMatch(received, this._commands.patchDumpForCurrentPatchV1.bytes));
+    // }
+    if (eightBitData != undefined) {
+      let patch = ZoomPatch.fromPatchData(eightBitData);
+      return patch;
+    }
+    else
+      return undefined;
+  }
+
   public uploadCurrentPatch(data: Uint8Array) 
   {
     let paddedData = data;
@@ -146,9 +184,9 @@ export class ZoomDevice
   /**
    * 
    * @param data 
-   * @param memoryNumber Zero-based memory location. Typically between 0-49 or 0-99 depending on pedal. 
+   * @param memorySlot Zero-based memory location. Typically between 0-49 or 0-99 depending on pedal. 
    */
-  public uploadPatchToMemoryNumber(data: Uint8Array, memoryNumber: number) 
+  public uploadPatchToMemorySlot(data: Uint8Array, memorySlot: number) 
   {
     let paddedData = data;
     if (this._patchLength != -1) {
@@ -167,8 +205,8 @@ export class ZoomDevice
     let command = new Uint8Array(this._commands.patchDumpForMemoryLocationV2.bytes.length + 6);
     command.set(this._commands.patchDumpForMemoryLocationV2.bytes);
 
-    let bank = Math.floor(memoryNumber / this._patchesPerBank);
-    let program = memoryNumber %this._patchesPerBank;
+    let bank = Math.floor(memorySlot / this._patchesPerBank);
+    let program = memorySlot %this._patchesPerBank;
     let length = paddedData.length;
     let bankProgramLength = new Uint8Array(6);
     bankProgramLength[0] = bank & 0x7F;
@@ -337,6 +375,17 @@ export class ZoomDevice
 
   _supportedCommands: Map<string, SupportType> = new Map<string, SupportType>();
 
+  private async probeCommand(command: string, parameters: string, expectedReply: string, probeTimeoutMilliseconds: number) : Promise<Uint8Array | undefined>
+  {
+    let reply: Uint8Array | undefined;
+    if (parameters.length > 0)
+      parameters = " " + parameters
+    reply = await this.sendCommandAndGetReply(toUint8Array(command + parameters), (received) => 
+      partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
+    this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+    return reply;
+  }
+
   private async probeDevice() 
   {
     let probeTimeoutMilliseconds = 300;
@@ -347,27 +396,25 @@ export class ZoomDevice
 
     command =this._commands.requestCurrentPatchV1.str;
     expectedReply = this._commands.patchDumpForCurrentPatchV1.str;
-    reply = await this.sendCommandAndGetReply(toUint8Array(command), (received) => 
-      partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
-    this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+    reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
     command =this._commands.requestCurrentPatchV2.str;
     expectedReply = this._commands.patchDumpForCurrentPatchV2.str;
-    reply = await this.sendCommandAndGetReply(toUint8Array(command), (received) => 
-      partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
-    this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+    reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
     command =this._commands.requestBankAndPatchInfoV2.str;
     expectedReply = this._commands.bankAndPatchInfoV2.str;
-    reply = await this.sendCommandAndGetReply(toUint8Array(command), (received) => 
-      partialArrayMatch(received, toUint8Array(`F0 52 00 ${this._zoomDeviceIdString} ${expectedReply}`)), probeTimeoutMilliseconds);
-    this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+    reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
     if (reply !== undefined && reply.length > 13) {
       this._numPatches = reply[5] + (reply[6] << 7);
       this._patchLength = reply[7] + (reply[8] << 7);
       let unknown = reply[9] + (reply[10] << 7);
       this._patchesPerBank = reply[11] + (reply[12] << 7);
     }
+
+    command = this._commands.requestPatchDumpForMemoryLocationV2.str; 
+    expectedReply = this._commands.patchDumpForMemoryLocationV2.str + " 00 00 00 00"; // bank 0, program 0
+    reply = await this.probeCommand(command, "00 00 00 00", expectedReply, probeTimeoutMilliseconds);
   }
 }
 
@@ -385,18 +432,19 @@ class StringAndBytes
 
 class ZoomMessageTypes
 {
+  uploadCurrentPatchV1 =  new StringAndBytes("28");
+  patchDumpForCurrentPatchV1 = new StringAndBytes("28");
+  requestCurrentPatchV1 = new StringAndBytes("29");
+  bankAndPatchInfoV2 =  new StringAndBytes("43");
+  requestBankAndPatchInfoV2 =  new StringAndBytes("44");
+  patchDumpForMemoryLocationV2 =  new StringAndBytes("45 00 00");
+  requestPatchDumpForMemoryLocationV2 = new StringAndBytes("46 00 00");
   parameterEditEnable = new StringAndBytes("50");
   parameterEditDisable = new StringAndBytes("51");
   pcModeEnable = new StringAndBytes("52");
   pcModeDisable = new StringAndBytes("53");
-  patchDumpForCurrentPatchV1 = new StringAndBytes("28");
-  requestCurrentPatchV1 = new StringAndBytes("29");
   patchDumpForCurrentPatchV2 = new StringAndBytes("64 12");
   requestCurrentPatchV2 = new StringAndBytes("64 13");
-  uploadCurrentPatchV1 =  new StringAndBytes("28");
-  patchDumpForMemoryLocationV2 =  new StringAndBytes("45 00 00");
-  requestBankAndPatchInfoV2 =  new StringAndBytes("44");
-  bankAndPatchInfoV2 =  new StringAndBytes("43");
 }
 
 enum SupportType
