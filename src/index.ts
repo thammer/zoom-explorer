@@ -715,9 +715,6 @@ async function start()
   //await getCurrentPatch(zoomDevices[0]);
 
 
-    let headerRow = patchesTable.rows[0];
-    let numColumns = headerRow.cells.length / 2;
-
     let device = zoomDevices[0];
   
     // If the user has recently (in the last few seconds) changed a parameter on the pedal,
@@ -771,27 +768,7 @@ async function start()
       zoomPatches[i] = patch;
     }
 
-    let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
-
-    for (let i=patchesTable.rows.length - 1; i<numPatchesPerRow; i++) {
-      let row = patchesTable.insertRow(-1);
-      for (let c=0; c<numColumns * 2; c++) {
-        let cell = row.insertCell(-1);
-        cell.id = `${c}`;
-      }
-    }
-
-    let row: HTMLTableRowElement;
-    let bodyCell: HTMLTableCellElement;
-    for (let i=0; i<zoomPatches.length; i++) {
-      let patch = zoomPatches[i];
-      row = patchesTable.rows[1 + i % numPatchesPerRow];
-      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2];
-      bodyCell.innerHTML = `${i + 1}`;
-      bodyCell = row.cells[Math.floor(i/numPatchesPerRow) * 2 + 1];
-      let name = patch.longName != null ? patch.longName : patch.name;
-      bodyCell.innerHTML = `${name}`;
-    }
+    updatePatchesTable();
 
   //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
   //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
@@ -825,184 +802,253 @@ async function start()
 
 //    device.requestCurrentPatch();
 //  });
- 
- let previousPatchInfoString = ""; 
 
- function updatePatchInfoTable(patch: ZoomPatch) {
-   let patchTable = document.getElementById("patchTable") as HTMLTableElement;
- 
-   let headerCell = patchTable.rows[0].cells[0];
-   let bodyCell = patchTable.rows[1].cells[0];
- 
-   let patchNameString = "";
-   if (patch.name !== null)
-     patchNameString = patch.name.trim();
- 
-   let idString = "";
-   if (patch.ids !== null) {
-     for (let i = 0; i < patch.ids.length; i++)
-       idString += `${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")} `;
-     if (idString.length > 1)
-       idString = idString.slice(0, idString.length - 1);
-   };
- 
-   let unknownString = "";
-   if (patch.PTCF != null) {
-     if (patch.ptcfUnknown !== null) {
-       for (let i = 0; i < patch.ptcfUnknown.length; i++)
-         unknownString += `${patch.ptcfUnknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
-       if (unknownString.length > 1)
-         unknownString = unknownString.slice(0, unknownString.length - 1);
-     };
-   }
- 
-   let targetString = "";
-   if (patch.target !== null) {
-     targetString = patch.target.toString(2).padStart(32, "0");
-     targetString = targetString.slice(0, 8) + " " + targetString.slice(8, 16) + " " + targetString.slice(16, 24) + " " + targetString.slice(24, 32);
-   }
- 
-   // headerCell.innerHTML = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}<br/>` +
-   //   `Effects: ${patch.numEffects}. IDs: ${idString}.`;
- 
-   headerCell.innerHTML = "";
-   let headerSpan = document.createElement("span");
-   headerSpan.id = "patchTableHeader";
-   headerCell.appendChild(headerSpan);
- 
-   let label = document.createElement("label") as HTMLLabelElement;
-   label.textContent = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}`;
-   headerCell.appendChild(label);
 
-   let lineBreak = document.createElement("br");
-   headerCell.appendChild(lineBreak);
+  let previousPatchInfoString = ""; 
 
-   label = document.createElement("label") as HTMLLabelElement;
-   label.textContent = `Effects: ${patch.numEffects}. IDs: ${idString}.`;
-   headerCell.appendChild(label);
+  function updatePatchesTable() {
+    let headerRow = patchesTable.rows[0];
+    let numColumns = headerRow.cells.length / 2;
 
-   let button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Load current patch from pedal";
-   button.id = "loadCurrentPatchButton";
-   button.className = "loadSaveButtons";
-   button.addEventListener("click", (event) => {
-      let device = zoomDevices[0];
-       device.requestCurrentPatch();
-   });
-   headerCell.appendChild(button);
+    let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
 
-   let savePatch = patch;
-   button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Save to current patch on pedal";
-   button.id = "saveCurrentPatchButton";
-   button.className = "loadSaveButtons";
-   button.addEventListener("click", (event) => {
-      if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
+    for (let i = patchesTable.rows.length - 1; i < numPatchesPerRow; i++) {
+      let row = patchesTable.insertRow(-1);
+      for (let c = 0; c < numColumns * 2; c++) {
+        let cell = row.insertCell(-1);
+        cell.id = `${c}`;
+      }
+    }
+
+    let row: HTMLTableRowElement;
+    let bodyCell: HTMLTableCellElement;
+    for (let i = 0; i < zoomPatches.length; i++) {
+      let patch = zoomPatches[i];
+      row = patchesTable.rows[1 + i % numPatchesPerRow];
+      bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2];
+      bodyCell.innerHTML = `${i + 1}`;
+      bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2 + 1];
+      let name = patch.longName != null ? patch.longName : patch.name;
+      bodyCell.innerHTML = `${name}`;
+    }
+  }
+
+  function updatePatchInfoTable(patch: ZoomPatch) {
+    let patchTable = document.getElementById("patchTable") as HTMLTableElement;
+  
+    let headerCell = patchTable.rows[0].cells[0];
+    let bodyCell = patchTable.rows[1].cells[0];
+  
+    let patchNameString = "";
+    if (patch.name !== null)
+      patchNameString = patch.name.trim();
+  
+    let idString = "";
+    if (patch.ids !== null) {
+      for (let i = 0; i < patch.ids.length; i++)
+        idString += `${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")} `;
+      if (idString.length > 1)
+        idString = idString.slice(0, idString.length - 1);
+    };
+  
+    let unknownString = "";
+    if (patch.PTCF != null) {
+      if (patch.ptcfUnknown !== null) {
+        for (let i = 0; i < patch.ptcfUnknown.length; i++)
+          unknownString += `${patch.ptcfUnknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+        if (unknownString.length > 1)
+          unknownString = unknownString.slice(0, unknownString.length - 1);
+      };
+    }
+  
+    let targetString = "";
+    if (patch.target !== null) {
+      targetString = patch.target.toString(2).padStart(32, "0");
+      targetString = targetString.slice(0, 8) + " " + targetString.slice(8, 16) + " " + targetString.slice(16, 24) + " " + targetString.slice(24, 32);
+    }
+  
+    // headerCell.innerHTML = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}<br/>` +
+    //   `Effects: ${patch.numEffects}. IDs: ${idString}.`;
+  
+    headerCell.innerHTML = "";
+    let headerSpan = document.createElement("span");
+    headerSpan.id = "patchTableHeader";
+    headerCell.appendChild(headerSpan);
+  
+    let label = document.createElement("label") as HTMLLabelElement;
+    label.textContent = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}`;
+    headerCell.appendChild(label);
+
+    let lineBreak = document.createElement("br");
+    headerCell.appendChild(lineBreak);
+
+    label = document.createElement("label") as HTMLLabelElement;
+    label.textContent = `Effects: ${patch.numEffects}. IDs: ${idString}.`;
+    headerCell.appendChild(label);
+
+    let button = document.createElement("button") as HTMLButtonElement;
+    button.textContent = "Load current patch from pedal";
+    button.id = "loadCurrentPatchButton";
+    button.className = "loadSaveButtons";
+    button.addEventListener("click", (event) => {
         let device = zoomDevices[0];
-        let eightBitData = savePatch.ptcfChunk;
-        let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-        crc = crc  ^ 0xFFFFFFFF;
-        let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-        console.log(`Patch name: ${savePatch.name}`);
-        console.log(`Patch data length: ${eightBitData.length}`);
-        console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+        device.requestCurrentPatch();
+    });
+    headerCell.appendChild(button);
 
-        device.uploadCurrentPatch(eightBitData);
-      }
-   });
-   headerCell.appendChild(button);
+    let savePatch = patch;
+    button = document.createElement("button") as HTMLButtonElement;
+    button.textContent = "Save to current patch on pedal";
+    button.id = "saveCurrentPatchButton";
+    button.className = "loadSaveButtons";
+    button.addEventListener("click", (event) => {
+        if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
+          let device = zoomDevices[0];
+          let eightBitData = savePatch.ptcfChunk;
+          let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+          crc = crc  ^ 0xFFFFFFFF;
+          let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+          console.log(`Patch name: ${savePatch.name}`);
+          console.log(`Patch data length: ${eightBitData.length}`);
+          console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
-   button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Save to memory slot on pedal";
-   button.id = "savePatchToMemorySlotButton";
-   button.className = "loadSaveButtons";
-   button.addEventListener("click", (event) => {
-      if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
-        if (lastSelected === null) {
-          console.log("Cannot upload patch to memory slot since no memory slot was selected");
-          return;
+          device.uploadCurrentPatch(eightBitData);
         }
-        let memoryNumber = getPatchNumber(lastSelected) - 1;
+    });
+    headerCell.appendChild(button);
 
-        let device = zoomDevices[0];
-        let eightBitData = savePatch.ptcfChunk;
-        let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-        crc = crc  ^ 0xFFFFFFFF;
-        let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-        console.log(`Patch name: ${savePatch.name}`);
-        console.log(`Memory slot number: ${memoryNumber + 1} "${zoomPatches[memoryNumber].nameTrimmed}"`);
-        console.log(`Patch data length: ${eightBitData.length}`);
-        console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+    button = document.createElement("button") as HTMLButtonElement;
+    button.textContent = "Save to memory slot on pedal";
+    button.id = "savePatchToMemorySlotButton";
+    button.className = "loadSaveButtons";
+    button.addEventListener("click", (event) => {
+        if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
+          if (lastSelected === null) {
+            console.log("Cannot upload patch to memory slot since no memory slot was selected");
+            return;
+          }
+          let memorySlot = getPatchNumber(lastSelected) - 1;
 
-        // FIXME: rewrite as async
-        confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memoryNumber + 1} "${zoomPatches[memoryNumber].nameTrimmed}" ?`
-        confirmEvent = (result: boolean) => {
-          if (result) {
-            device.uploadPatchToMemoryNumber(eightBitData, memoryNumber);
+          let device = zoomDevices[0];
+          let eightBitData = savePatch.ptcfChunk;
+          let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+          crc = crc  ^ 0xFFFFFFFF;
+          let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+          console.log(`Patch name: ${savePatch.name}`);
+          console.log(`Memory slot number: ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}"`);
+          console.log(`Patch data length: ${eightBitData.length}`);
+          console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+
+          // FIXME: rewrite as async
+          confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`
+          confirmEvent = async (result: boolean) => {
+            if (result) {
+              device.uploadPatchToMemorySlot(eightBitData, memorySlot);
+              let patch = await device.downloadPatchFromMemorySlot(memorySlot);
+              if (patch !== undefined) {
+                zoomPatches[memorySlot] = patch;
+                updatePatchesTable();
+              }
+            }
+          }
+          confirmDialog.showModal();
+        }
+    });
+    headerCell.appendChild(button);
+    button = document.createElement("button") as HTMLButtonElement;
+    button.textContent = "Save file";
+    button.id = "savePatchToDiskButton";
+    button.className = "loadSaveButtons";
+    button.addEventListener("click", async (event) => {
+        if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 0) {
+          const blob = new Blob([savePatch.ptcfChunk]);
+          let suggestedName = savePatch.shortName !== null ? savePatch.shortName + ".zptc" : "patch.zptc";
+          let newHandle;
+          try {
+            if (window.showSaveFilePicker !== undefined) {
+              newHandle = await window.showSaveFilePicker({
+                suggestedName: suggestedName,
+                types: [
+                  { description: "Zoom patch file",
+                    accept: { "application/octet-stream" : [".zptc"]}
+                  }
+                ] 
+              });
+              const writableStream = await newHandle.createWritable();
+              await writableStream.write(blob);
+              await writableStream.close();        
+            }
+            else {
+              // Fallback to old-school file download
+              let dummy=document.createElement("a");
+              dummy.href = URL.createObjectURL(blob);
+              dummy.target = "_blank";
+              dummy.download = suggestedName;
+              dummy.click();
+            }
+          } catch (err) {
+            console.log(err); 
           }
         }
-        confirmDialog.showModal();
+    });
+    headerCell.appendChild(button);
 
-      }
-   });
-   headerCell.appendChild(button);
-   button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Save file";
-   button.id = "savePatchToDiskButton";
-   button.className = "loadSaveButtons";
-   button.addEventListener("click", async (event) => {
-      if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 0) {
-        const blob = new Blob([savePatch.ptcfChunk]);
-        let suggestedName = savePatch.shortName !== null ? savePatch.shortName + ".zptc" : "patch.zptc";
-        let newHandle;
-        try {
-          // FIXME: Safari and Firefox doesn't support this API. Should fallback to old file download API instead.
-          if (window.showSaveFilePicker !== undefined) {
-            newHandle = await window.showSaveFilePicker({
-              suggestedName: suggestedName,
-              types: [
-                { description: "Zoom patch file",
-                  accept: { "application/octet-stream" : [".zptc"]}
-                }
-              ] 
-            });
-            const writableStream = await newHandle.createWritable();
-            await writableStream.write(blob);
-            await writableStream.close();        
-          }
-          else {
-            // Fallback to old-school file download
-            let dummy=document.createElement("a");
-            dummy.href = URL.createObjectURL(blob);
-            dummy.target = "_blank";
-            dummy.download = suggestedName;
-            dummy.click();
-          }
-        } catch (err) {
-          console.log(err); 
-        }
-      }
-   });
-   headerCell.appendChild(button);
-
-   button = document.createElement("button") as HTMLButtonElement;
-   button.textContent = "Load file";
-   button.id = "loadPatchFromDiskButton";
-   button.className = "loadSaveButtons";
-   button.addEventListener("click", async (event) => {
+    button = document.createElement("button") as HTMLButtonElement;
+    button.textContent = "Load file";
+    button.id = "loadPatchFromDiskButton";
+    button.className = "loadSaveButtons";
+    button.addEventListener("click", async (event) => {
     try {
-      const [fileHandle] = await window.showOpenFilePicker({
-        types: [
-          { description: "Zoom patch file",
-            accept: { "application/octet-stream" : [".zptc"]}
-          }
-        ] 
-      });
-      const blob = await fileHandle.getFile();
-      const buffer = await blob.arrayBuffer();
-      const data = new Uint8Array(buffer);
-      let patch = ZoomPatch.fromPatchData(data);
-      updatePatchInfoTable(patch);
+      if (window.showOpenFilePicker !== undefined) {
+          const [fileHandle] = await window.showOpenFilePicker({
+          types: [
+            { description: "Zoom patch file",
+              accept: { "application/octet-stream" : [".zptc"]}
+            }
+          ] 
+        });
+        const blob = await fileHandle.getFile();
+        const buffer = await blob.arrayBuffer();
+        const data = new Uint8Array(buffer);
+        let patch = ZoomPatch.fromPatchData(data);
+        updatePatchInfoTable(patch);
+      } else {
+        // Fallback to old-school file upload
+        let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
+        if (input === null) {
+          input = document.createElement("input") as HTMLInputElement;
+          input.id = "fileInput";
+          input.type = "file";
+          input.accept = ".zptc";
+          input.style.opacity = "0";
+          let content = document.getElementById("content") as HTMLDivElement;
+          content.appendChild(input);
+        }
+
+        // Clear old event listeners
+        let clonedInput = input.cloneNode(true) as HTMLInputElement;
+        input.parentNode?.replaceChild(clonedInput, input);
+        input = clonedInput;
+        input.files = null;
+        input.value = "";
+
+        input.addEventListener("change", () => {
+          console.log(`Selected filename: ${input.value}`);
+          const fileReader = new FileReader();
+          fileReader.onload = (e) => {
+            console.log("File loaded");
+            if (fileReader.result != null) {
+              let buffer = fileReader.result as ArrayBuffer;
+              const data = new Uint8Array(buffer);
+              let patch = ZoomPatch.fromPatchData(data);
+              updatePatchInfoTable(patch);
+            }
+          };
+          if (input.files != null)
+            fileReader.readAsArrayBuffer(input.files[0])
+        }, false);
+        input.click();
+      }
     } catch (err) {
       console.log(err); 
     }
