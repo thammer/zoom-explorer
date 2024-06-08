@@ -132,18 +132,21 @@ F0 52 00 6e 64 18 00 00 64 00 F7 -> F0 52 00 6E 64 19 01 00 00 09 00 0A 00 00 00
 * https://github.com/mungewell/zoom-zt2/
 * https://github.com/Barsik-Barbosik/Zoom-Firmware-Editor/issues/16
 * https://github.com/shooking/ZoomPedalFun
+* https://github.com/shooking/ZoomPedalFun/wiki/De-re-MS-70-CDR
 * https://github.com/g200kg/zoom-ms-utility/blob/master/midimessage.md
 * https://web.archive.org/web/20201031104706/https://github.com/zoom-dev/MIDIDocs
 
 * http://midi.teragonaudio.com/tech/midispec/identity.htm
 
-* https://github.com/shooking/ZoomPedalFun/wiki/De-re-MS-70-CDR
-
-
 ## Acknowledgements
 
+A huge thank you to all those who have previously worked on figuring out the MIDI protocol for the Zoom pedals and shared their work with the world.
+
+A special thanks to these guys who have answered my questions and guided me along the way:
 * Mungewell, for very helpful input on Reddit and github
   * https://www.reddit.com/r/zoommultistomp/comments/1clsyfn/midi_sysex_for_ms_plus_series/
   * https://github.com/mungewell/zoom-zt2/issues/70
 * Nomadbyte, for very helpful input on github
+  * https://github.com/mungewell/zoom-zt2/issues/70
+* Shooking, for very helpful input on github
   * https://github.com/mungewell/zoom-zt2/issues/70
