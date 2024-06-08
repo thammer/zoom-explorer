@@ -40,6 +40,8 @@ export enum MessageType {
 
 export interface IMIDIProxy 
 {
+  loggingEnabled: boolean;
+
   readonly inputs: Map<DeviceID, DeviceInfo>; 
   readonly outputs: Map<DeviceID, DeviceInfo>;
   get enabled(): boolean; 
@@ -75,6 +77,8 @@ export interface IMIDIProxy
 export abstract class MIDIProxy implements IMIDIProxy
 {
   protected messageBuffer3: Uint8Array;
+
+  public loggingEnabled: boolean = true;
 
   constructor()
   {
