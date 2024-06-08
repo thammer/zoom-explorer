@@ -904,15 +904,15 @@ async function start()
     button.addEventListener("click", (event) => {
         if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
           let device = zoomDevices[0];
-          let eightBitData = savePatch.ptcfChunk;
-          let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-          crc = crc  ^ 0xFFFFFFFF;
-          let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-          console.log(`Patch name: ${savePatch.name}`);
-          console.log(`Patch data length: ${eightBitData.length}`);
-          console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+          // let eightBitData = savePatch.ptcfChunk;
+          // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+          // crc = crc  ^ 0xFFFFFFFF;
+          // let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+          // console.log(`Patch name: ${savePatch.name}`);
+          // console.log(`Patch data length: ${eightBitData.length}`);
+          // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
-          device.uploadCurrentPatch(eightBitData);
+          device.uploadCurrentPatch(savePatch);
         }
     });
     headerCell.appendChild(button);
@@ -930,20 +930,20 @@ async function start()
           let memorySlot = getPatchNumber(lastSelected) - 1;
 
           let device = zoomDevices[0];
-          let eightBitData = savePatch.ptcfChunk;
-          let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-          crc = crc  ^ 0xFFFFFFFF;
-          let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-          console.log(`Patch name: ${savePatch.name}`);
-          console.log(`Memory slot number: ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}"`);
-          console.log(`Patch data length: ${eightBitData.length}`);
-          console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+          // let eightBitData = savePatch.ptcfChunk;
+          // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+          // crc = crc  ^ 0xFFFFFFFF;
+          // let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+          // console.log(`Patch name: ${savePatch.name}`);
+          // console.log(`Memory slot number: ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}"`);
+          // console.log(`Patch data length: ${eightBitData.length}`);
+          // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
           // FIXME: rewrite as async
           confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`
           confirmEvent = async (result: boolean) => {
             if (result) {
-              device.uploadPatchToMemorySlot(eightBitData, memorySlot);
+              device.uploadPatchToMemorySlot(savePatch, memorySlot);
               let patch = await device.downloadPatchFromMemorySlot(memorySlot);
               if (patch !== undefined) {
                 zoomPatches[memorySlot] = patch;

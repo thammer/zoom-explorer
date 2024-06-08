@@ -108,18 +108,34 @@ export class ZoomDevice
 
   }
 
-  public async downloadCurrentPatch() : Promise<Uint8Array | undefined>
+  public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
   {
     let reply: Uint8Array | undefined;
+    let eightBitData: Uint8Array | undefined = undefined;
+
     if (this._supportedCommands.get(this._commands.requestCurrentPatchV2.str) === SupportType.Supported) {
       reply = await this.sendCommandAndGetReply(this._commands.requestCurrentPatchV2.bytes, 
         received => this.zoomCommandMatch(received, this._commands.patchDumpForCurrentPatchV2.bytes));
+      if (reply !== undefined) {
+        let offset = 13;
+        eightBitData = seven2eight(reply, offset, reply.length-2);
+      }
     }
     else { 
       reply = await this.sendCommandAndGetReply(this._commands.requestCurrentPatchV1.bytes, 
         received => this.zoomCommandMatch(received, this._commands.patchDumpForCurrentPatchV1.bytes));
+      // FIXME: Untested code below, used to return data buffer, not patch
+      if (reply !== undefined) {
+        let offset = 5;
+        eightBitData = seven2eight(reply, offset, reply.length-2);
+      }
     }
-    return reply;
+    if (eightBitData != undefined) {
+      let patch = ZoomPatch.fromPatchData(eightBitData);
+      return patch;
+    }
+    else
+      return undefined;
   }
 
   public requestCurrentPatch() 
@@ -167,8 +183,13 @@ export class ZoomDevice
       return undefined;
   }
 
-  public uploadCurrentPatch(data: Uint8Array) 
+  public uploadCurrentPatch(patch: ZoomPatch) 
   {
+    if (patch.ptcfChunk === null || patch.ptcfChunk.length < 11) {
+      console.error(`ZoomDevice.uploadCurrentPatch() received Invalid patch parameter`);
+      return;
+    }
+    let data = patch.ptcfChunk;
     let paddedData = data;
     if (this._patchLength != -1) {
       if (data.length > paddedData.length) {
@@ -186,8 +207,13 @@ export class ZoomDevice
    * @param data 
    * @param memorySlot Zero-based memory location. Typically between 0-49 or 0-99 depending on pedal. 
    */
-  public uploadPatchToMemorySlot(data: Uint8Array, memorySlot: number) 
+  public uploadPatchToMemorySlot(patch: ZoomPatch, memorySlot: number) 
   {
+    if (patch.ptcfChunk === null || patch.ptcfChunk.length < 11) {
+      console.error(`ZoomDevice.uploadCurrentPatch() received Invalid patch parameter`);
+      return;
+    }
+    let data = patch.ptcfChunk;
     let paddedData = data;
     if (this._patchLength != -1) {
       if (data.length > paddedData.length) {
