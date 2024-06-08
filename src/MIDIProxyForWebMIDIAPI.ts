@@ -236,7 +236,8 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
     // FIXME: This shouldn't be necessary with the browser based Web MIDI API
     let dataArray = Array.from(data);
-    console.log(`Sent: ${toHexString(dataArray, " ")}`)
+    if (this.loggingEnabled)
+      console.log(`Sent: ${toHexString(dataArray, " ")}`)
     output.send(dataArray);
   }
 
@@ -300,7 +301,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let existingListener = this.connectionStateChangeListeners.find( (l) => l === listener);
     if (existingListener !== undefined)
     {
-      console.log(`WARNING: Attempting to add a connection listener twice`);
+      console.warn(`Attempting to add a connection listener twice`);
     }
     else
     {
@@ -313,7 +314,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let existingListener = this.connectionStateChangeListeners.find( (l) => l === listener);
     if (existingListener === undefined)
     {
-      console.log(`WARNING: Attempting to remove a connection listener that hasn't been added`);
+      console.warn(`Attempting to remove a connection listener that hasn't been added`);
     }
     else
     {
@@ -332,7 +333,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       if (message.data !== null)
         listener(deviceHandle, message.data);    
       else
-        console.log("WARNING: message.data == null");  
+        console.warn("message.data == null");  
     }
   }
 
@@ -348,7 +349,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
         listener(deviceHandle, portType, state);        
       }
       else
-        console.log("WARNING: event.port === null");
+        console.warn("event.port === null");
     }
   }
 }
