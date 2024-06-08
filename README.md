@@ -118,7 +118,7 @@ F0 52 00 6e 64 18 00 00 64 00 F7 -> F0 52 00 6E 64 19 01 00 00 09 00 0A 00 00 00
 | 07             |      6 | *    |         | F0 52 00 58 07 F7 | Get total number of patches and patch length (reply with message type 06) |
 | 08             |    156 |      | *       | F0 52 00 58 08 00 00 \<patch number\> \<length LSB\> \<length MSB\> \<patch\>  F7 | Patch dump, after message type 09 is sent to the pedal. Length is for unpacked 8-bit patch data. |
 | 09             |      9 | *    |         | F0 52 00 58 09 00 00 \<patch number\> F7 | Download patch from given patch slot (reply with message 08) |
-| 28             |    146 |      | *       | F0 52 00 58 28 \<patch\>  F7 | Patch dump, after message type 29 is sent to the pedal |
+| 28             |    146 |      | *       | F0 52 00 58 28 \<patch\> F7 | Patch dump, after message type 29 is sent to the pedal |
 | 29             |      6 | *    |         | F0 52 00 58 29 F7 | Download current patch from edit buffer (reply with message type 28) |
 | 31             |     10 | *    | *       | F0 52 00 58 31 \<effect slot\> \<param number\> \<LSB\> \<MSB\> F7 | Update (edit) parameter |
 | 32             |     15 | *    |         | F0 52 00 58 32 01 00 00 \<patch number\> 00 00 00 00 00 F7 | Store current (non-saved) edit patch into the given patch number |
