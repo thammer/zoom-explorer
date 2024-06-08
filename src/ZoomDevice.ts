@@ -383,7 +383,8 @@ export class ZoomDevice
   private connectMessageHandler() 
   {
     this._midi.addListener(this._midiDevice.inputID, (deviceHandle, data) => {
-      console.log(`Received: ${toHexString(data, " ")}`);
+      if (this.loggingEnabled) 
+        console.log(`Received: ${toHexString(data, " ")}`);
       this.handleMIDIDataFromZoom(data);
     });
   }
