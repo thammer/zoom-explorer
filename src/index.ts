@@ -1,7 +1,7 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
-import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse } from "./miditools.js";
-import { getExceptionErrorString, partialArrayMatch, toHexString, toUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight } from "./tools.js";
+import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
+import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString } from "./tools.js";
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
@@ -41,11 +41,11 @@ function updateZoomDevicesTable(zoomDevices: ZoomDevice[]) {
     let row = midiDevicesTable.insertRow(1);
     let c;
     c = row.insertCell(-1); c.innerHTML = info.deviceName;
-    c = row.insertCell(-1); c.innerHTML = toHexString([info.familyCode[0]]);
+    c = row.insertCell(-1); c.innerHTML = bytesToHexString([info.familyCode[0]]);
     c = row.insertCell(-1); c.innerHTML = version.toString();
     c = row.insertCell(-1); c.innerHTML = info.inputName;
     c = row.insertCell(-1); c.innerHTML = info.outputName;
-    c = row.insertCell(-1); c.innerHTML = toHexString(info.identityResponse, " ");
+    c = row.insertCell(-1); c.innerHTML = bytesToHexString(info.identityResponse, " ");
 
     console.log(`  ${index + 1}: ${info.deviceName.padEnd(8)} OS v ${version} - input: ${info.inputName.padEnd(20)} output: ${info.outputName}`);
   };
@@ -61,7 +61,7 @@ function updateZoomDevicesTable(zoomDevices: ZoomDevice[]) {
  * @see https://github.com/g200kg/zoom-ms-utility/blob/master/midimessage.md
  * @see https://github.com/thammer/zoom-explorer/
  */
-let zoomCommandTempBuffer = new Uint8Array(toUint8Array("F0 52 00 B3 B4 F7")); 
+let zoomCommandTempBuffer = new Uint8Array(hexStringToUint8Array("F0 52 00 B3 B4 F7")); 
 
 function sendZoomCommand(device: DeviceID, deviceId: number, command: number) : void
 {
@@ -93,7 +93,7 @@ function sendZoomCommand(device: DeviceID, deviceId: number, command: number) : 
 
 function getZoomCommand(zoomDeviceID: number, command: string): Uint8Array
 {
-  return toUint8Array(`F0 52 00 ${zoomDeviceID.toString(16).padStart(2, "0")} ${command} F7`);
+  return hexStringToUint8Array(`F0 52 00 ${zoomDeviceID.toString(16).padStart(2, "0")} ${command} F7`);
 }
 
 
@@ -112,7 +112,7 @@ function sendZoomCommandLong(device: DeviceID, deviceId: number, data: Uint8Arra
   }
 
   let sendData = new Uint8Array(4 + data.length + 1);
-  sendData.set(toUint8Array(`F0 52 00`));
+  sendData.set(hexStringToUint8Array(`F0 52 00`));
   sendData[3] = deviceId & 0b01111111;
   sendData.set(data, 4);
   sendData[sendData.length - 1] = 0xF7;
@@ -144,7 +144,7 @@ async function sendZoomCommandAndGetReply(outputDevice: DeviceID,  zoomDeviceId:
   }
 
   let sendData = new Uint8Array(4 + data.length + 1);
-  sendData.set(toUint8Array(`F0 52 00`));
+  sendData.set(hexStringToUint8Array(`F0 52 00`));
   sendData[3] = zoomDeviceId & 0b01111111;
   sendData.set(data, 4);
   sendData[sendData.length - 1] = 0xF7;
@@ -198,8 +198,8 @@ async function getCurrentPatch(zoomDevice: ZoomDevice)
 
   // data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
   //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000);
-  data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], toUint8Array("64 13"), device.inputID,
-    (received) => zoomCommandMatch(received, device.familyCode[0], toUint8Array("64 12")), 1000);
+  data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], hexStringToUint8Array("64 13"), device.inputID,
+    (received) => zoomCommandMatch(received, device.familyCode[0], hexStringToUint8Array("64 12")), 1000);
 
   console.log(`Received data: ${data?.length}`);
   if (data == undefined)
@@ -276,9 +276,9 @@ async function start()
     messageCounter++;
     c = row.insertCell(-1); c.innerHTML = messageCounter.toString();
     c = row.insertCell(-1); c.innerHTML = device.deviceName;
-    c = row.insertCell(-1); c.innerHTML = toHexString([data[0]]); c.style.color = color[command - 8];
-    c = row.insertCell(-1); c.innerHTML = toHexString([data[1]]);
-    c = row.insertCell(-1); c.innerHTML = toHexString([data[2]]); c.id = "value"; c.style.backgroundSize = (data[2] / 127 * 100) + "%";
+    c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[0]]); c.style.color = color[command - 8];
+    c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[1]]);
+    c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[2]]); c.id = "value"; c.style.backgroundSize = (data[2] / 127 * 100) + "%";
     c = row.insertCell(-1); c.innerHTML = MessageType[messageType];
     c = row.insertCell(-1); c.innerHTML = data.length.toString();
   
@@ -382,8 +382,8 @@ async function start()
       let headerCell: HTMLTableCellElement;
       let bodyCell: HTMLTableCellElement;
   
-      let dataType1 = toHexString([dataset.current[4]]);
-      let dataType2 = toHexString([dataset.current[5]]);
+      let dataType1 = bytesToHexString([dataset.current[4]]);
+      let dataType2 = bytesToHexString([dataset.current[5]]);
       let dataTypeString = getZoomCommandName(dataset.current);
       
       let updatedRow = false;
@@ -488,7 +488,7 @@ async function start()
       }
   
       let headerSpan = getChildWithIdThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
-      headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${toHexString([dataset.device.familyCode[0]])}]` +
+      headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${bytesToHexString([dataset.device.familyCode[0]])}]` +
       ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${sysexLength}</b> &nbsp;&nbsp;`;
   
       let current = dataset.current;
@@ -560,7 +560,7 @@ async function start()
     let sysexString = "";
     for (let i = 0; i < current.length; i++) {
       let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : current[i] == 0 ? 95 : 39; // printable, _ or '
-      let hexString = ascii ? `&#${printableASCIIValue};` : toHexString([current[i]]);
+      let hexString = ascii ? `&#${printableASCIIValue};` : bytesToHexString([current[i]]);
       //let hexString = String.fromCharCode(current[i]);
       if (previous[i] !== current[i])
         sysexString += "<b>" + hexString + "</b>";
@@ -595,6 +595,8 @@ async function start()
     
       updateSysexMonitorTable(device, data);
   
+      // FIXME: Use ZoomDevice.sysexToPatchData() instead if the code below
+
       if (data.length > 10 && ((data[4] == 0x64 && data[5] == 0x12) || (data[4] == 0x45 && data[5] == 0x00) || (data[4] == 0x28)) ) {
         // We got a patch dump
 
@@ -622,7 +624,7 @@ async function start()
           console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
           let crc = crc32(eightBitData, 0, eightBitData.length - 1 - 5); // FIXME: note that 8 bit length is incorrect since it's 5 bytes too long, for the CRC we failed to ignore above
           crc = crc  ^ 0xFFFFFFFF;
-          console.log(`Patch CRC (7-bit): ${toHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]), " ")}`);
+          console.log(`Patch CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]), " ")}`);
           
         }
         updatePatchInfoTable(patch);
@@ -630,7 +632,7 @@ async function start()
       else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
         // Request patch immediately
-        sendZoomCommandLong(device.outputID, device.familyCode[0], toUint8Array("64 13"));
+        sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 13"));
       }
       else if (data.length === 10 && (data[4] === 0x31)) {
         // Parameter was edited on device (MS series)
@@ -650,7 +652,7 @@ async function start()
         let unknown = data[9] + (data[10] << 7);
         let bankSize = data[11] + (data[12] << 7);
         console.log(`Received patch info message (0x43). Number of patches: ${numPatches}, patch size: ${patchSize}, unknown: ${unknown}, bank size: ${bankSize}.`)
-        console.log(`                                    Unknown: ${toHexString(data.slice(13, 30-1), " ")}.`);
+        console.log(`                                    Unknown: ${bytesToHexString(data.slice(13, 30-1), " ")}.`);
       }
     }
   }
@@ -709,8 +711,8 @@ async function start()
 
   });
 
-  let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
-  testButton.addEventListener("click", async (event) => {
+  let downloadPatchesButton: HTMLButtonElement = document.getElementById("downloadPatchesButton") as HTMLButtonElement;
+  downloadPatchesButton.addEventListener("click", async (event) => {
 
   //await getCurrentPatch(zoomDevices[0]);
 
@@ -735,36 +737,43 @@ async function start()
     let maxNumPatches = 500;
     zoomPatches = new Array<ZoomPatch>(maxNumPatches);
     for (let i=0; i<maxNumPatches; i++) {
-      let bank = Math.floor(i/10);
-      let program = i % 10;
-      // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
-      // let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
-      //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
-      let requestPatch: Uint8Array;
-      let data: Uint8Array | undefined;
+      // let bank = Math.floor(i/10);
+      // let program = i % 10;
+      // // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
+      // // let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
+      // //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
+      // let requestPatch: Uint8Array;
+      // let data: Uint8Array | undefined;
 
-      if (device.deviceInfo.familyCode[0] === 0x58) { // MS-50G
-        // sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
-        requestPatch = toUint8Array(`09 00 00 ${toHexString([i])}`);
-        data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
-          (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);  
-      }
-      else {
-        requestPatch = toUint8Array(`46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00`);
-        data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
-          (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);
-      }
-      if (data === undefined) {
+      // if (device.deviceInfo.familyCode[0] === 0x58) { // MS-50G
+      //   // sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
+      //   requestPatch = toUint8Array(`09 00 00 ${toHexString([i])}`);
+      //   data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
+      //     (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);  
+      // }
+      // else {
+      //   requestPatch = toUint8Array(`46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00`);
+      //   data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
+      //     (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);
+      // }
+      // if (data === undefined) {
+      //   console.log(`Got no reply for patch number ${i}`);
+      //   zoomPatches.splice(i);
+      //   break;
+      // }
+      // console.log(`Received data: ${data.length}`);
+
+      // let offset = 9 + data.length - 985;
+      // let eightBitData = seven2eight(data, offset, data.length-2);
+
+      // let patch = ZoomPatch.fromPatchData(eightBitData);
+
+      let patch = await device.downloadPatchFromMemorySlot(i)
+      if (patch === undefined) {
         console.log(`Got no reply for patch number ${i}`);
         zoomPatches.splice(i);
         break;
       }
-      console.log(`Received data: ${data.length}`);
-
-      let offset = 9 + data.length - 985;
-      let eightBitData = seven2eight(data, offset, data.length-2);
-
-      let patch = ZoomPatch.fromPatchData(eightBitData);
       zoomPatches[i] = patch;
     }
 
@@ -902,18 +911,18 @@ async function start()
     button.id = "saveCurrentPatchButton";
     button.className = "loadSaveButtons";
     button.addEventListener("click", (event) => {
-        if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
-          let device = zoomDevices[0];
-          // let eightBitData = savePatch.ptcfChunk;
-          // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-          // crc = crc  ^ 0xFFFFFFFF;
-          // let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-          // console.log(`Patch name: ${savePatch.name}`);
-          // console.log(`Patch data length: ${eightBitData.length}`);
-          // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
+      if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
+        let device = zoomDevices[0];
+        // let eightBitData = savePatch.ptcfChunk;
+        // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
+        // crc = crc  ^ 0xFFFFFFFF;
+        // let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
+        // console.log(`Patch name: ${savePatch.name}`);
+        // console.log(`Patch data length: ${eightBitData.length}`);
+        // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
-          device.uploadCurrentPatch(savePatch);
-        }
+        device.uploadCurrentPatch(savePatch);
+      }
     });
     headerCell.appendChild(button);
 
@@ -921,8 +930,8 @@ async function start()
     button.textContent = "Save to memory slot on pedal";
     button.id = "savePatchToMemorySlotButton";
     button.className = "loadSaveButtons";
-    button.addEventListener("click", (event) => {
-        if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 10) {
+    button.addEventListener("click", async (event) => {
+        if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
           if (lastSelected === null) {
             console.log("Cannot upload patch to memory slot since no memory slot was selected");
             return;
@@ -939,19 +948,29 @@ async function start()
           // console.log(`Patch data length: ${eightBitData.length}`);
           // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
-          // FIXME: rewrite as async
-          confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`
-          confirmEvent = async (result: boolean) => {
-            if (result) {
-              device.uploadPatchToMemorySlot(savePatch, memorySlot);
-              let patch = await device.downloadPatchFromMemorySlot(memorySlot);
-              if (patch !== undefined) {
-                zoomPatches[memorySlot] = patch;
-                updatePatchesTable();
-              }
+          let result = await confirmDialog.getUserConfirmation(`Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`);
+          if (result) {
+            await device.uploadPatchToMemorySlot(savePatch, memorySlot, true);
+            let patch = await device.downloadPatchFromMemorySlot(memorySlot);
+            //let patch = savePatch;
+            if (patch !== undefined) {
+              zoomPatches[memorySlot] = patch;
+              updatePatchesTable();
             }
           }
-          confirmDialog.showModal();
+
+          // confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`
+          // confirmEvent = async (result: boolean) => {
+          //   if (result) {
+          //     device.uploadPatchToMemorySlot(savePatch, memorySlot);
+          //     let patch = await device.downloadPatchFromMemorySlot(memorySlot);
+          //     if (patch !== undefined) {
+          //       zoomPatches[memorySlot] = patch;
+          //       updatePatchesTable();
+          //     }
+          //   }
+          // }
+          // confirmDialog.showModal();
         }
     });
     headerCell.appendChild(button);
@@ -960,36 +979,24 @@ async function start()
     button.id = "savePatchToDiskButton";
     button.className = "loadSaveButtons";
     button.addEventListener("click", async (event) => {
-        if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 0) {
-          const blob = new Blob([savePatch.ptcfChunk]);
-          let suggestedName = savePatch.shortName !== null ? savePatch.shortName + ".zptc" : "patch.zptc";
-          let newHandle;
-          try {
-            if (window.showSaveFilePicker !== undefined) {
-              newHandle = await window.showSaveFilePicker({
-                suggestedName: suggestedName,
-                types: [
-                  { description: "Zoom patch file",
-                    accept: { "application/octet-stream" : [".zptc"]}
-                  }
-                ] 
-              });
-              const writableStream = await newHandle.createWritable();
-              await writableStream.write(blob);
-              await writableStream.close();        
-            }
-            else {
-              // Fallback to old-school file download
-              let dummy=document.createElement("a");
-              dummy.href = URL.createObjectURL(blob);
-              dummy.target = "_blank";
-              dummy.download = suggestedName;
-              dummy.click();
-            }
-          } catch (err) {
-            console.log(err); 
-          }
+      let device = zoomDevices[0];
+      let [fileEnding, shortFileEnding, fileDescription] = device.getSuggestedFileEndingForPatch();
+      let suggestedName = savePatch.name !== null ? savePatch.name.trim().replace(/[ ]{2,}/gi," ") + "." + fileEnding : `patch.${fileEnding}`;
+      if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 0) {
+        const blob = new Blob([savePatch.ptcfChunk]);
+        await saveBlobToFile(blob, suggestedName, shortFileEnding, fileDescription);
+      }
+      else if (savePatch.msogDataBuffer !== null && savePatch.msogDataBuffer.length > 0) {
+        let sysex = device.getSysexForCurrentPatch(patch);
+        if (sysex === undefined) {
+          console.warn(`getSysexForCurrentPatch() failed for patch "${savePatch.name}"`);
+          return;
         }
+        let sysexString = bytesToHexString(sysex).toLowerCase();
+        const blob = new Blob([sysexString]);
+        await saveBlobToFile(blob, suggestedName, fileEnding, fileDescription);
+      }
+
     });
     headerCell.appendChild(button);
 
@@ -998,204 +1005,335 @@ async function start()
     button.id = "loadPatchFromDiskButton";
     button.className = "loadSaveButtons";
     button.addEventListener("click", async (event) => {
-    try {
-      if (window.showOpenFilePicker !== undefined) {
-          const [fileHandle] = await window.showOpenFilePicker({
-          types: [
-            { description: "Zoom patch file",
-              accept: { "application/octet-stream" : [".zptc"]}
-            }
-          ] 
-        });
-        const blob = await fileHandle.getFile();
-        const buffer = await blob.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        let patch = ZoomPatch.fromPatchData(data);
-        updatePatchInfoTable(patch);
-      } else {
-        // Fallback to old-school file upload
-        let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
-        if (input === null) {
-          input = document.createElement("input") as HTMLInputElement;
-          input.id = "fileInput";
-          input.type = "file";
-          input.accept = ".zptc";
-          input.style.opacity = "0";
-          let content = document.getElementById("content") as HTMLDivElement;
-          content.appendChild(input);
+      let device = zoomDevices[0];
+      let [fileEnding, shortFileEnding, fileDescription] = device.getSuggestedFileEndingForPatch();
+      let data: Uint8Array | undefined;
+      let filename: string | undefined;
+      [data, filename] = await loadDataFromFile(shortFileEnding, fileDescription);
+      if (data === undefined || filename === undefined)
+        return;
+      if (partialArrayStringMatch(data, "PTCF")) {
+          let patch = ZoomPatch.fromPatchData(data);
+          updatePatchInfoTable(patch);
+          return;
+      }
+      let sysexString = bytesWithCharactersToString(data);
+      let convertedData = hexStringToUint8Array(sysexString);
+      if (!isSysex(convertedData)) {
+        console.error(`Unknown file format in file ${filename}`);
+      }
+      else if (convertedData[1] != 0x52) {
+        console.error(`Sysex file is not for a Zoom device, filename: ${filename}, device ID: ${bytesToHexString([convertedData[1]])}`);
+      }
+      else {
+        if (convertedData.length < 5 || convertedData[3] != device.deviceInfo.familyCode[0]) {
+          console.log(`Sysex file with filename ${filename} is for Zoom device ID ${bytesToHexString([convertedData[3]])}, ` +
+            `but attached device has device ID: ${bytesToHexString([device.deviceInfo.familyCode[0]])}. Attempting to load patch anyway.`);
         }
 
-        // Clear old event listeners
-        let clonedInput = input.cloneNode(true) as HTMLInputElement;
-        input.parentNode?.replaceChild(clonedInput, input);
-        input = clonedInput;
-        input.files = null;
-        input.value = "";
+        let [patchData, program, bank] = ZoomDevice.sysexToPatchData(convertedData);
 
-        input.addEventListener("change", () => {
-          console.log(`Selected filename: ${input.value}`);
-          const fileReader = new FileReader();
-          fileReader.onload = (e) => {
-            console.log("File loaded");
-            if (fileReader.result != null) {
-              let buffer = fileReader.result as ArrayBuffer;
-              const data = new Uint8Array(buffer);
-              let patch = ZoomPatch.fromPatchData(data);
-              updatePatchInfoTable(patch);
-            }
-          };
-          if (input.files != null)
-            fileReader.readAsArrayBuffer(input.files[0])
-        }, false);
-        input.click();
-      }
-    } catch (err) {
-      console.log(err); 
+        if (patchData !== undefined) {
+          let patch = ZoomPatch.fromPatchData(patchData);
+          updatePatchInfoTable(patch);
+        }
+      } 
+      // try {
+      //   if (window.showOpenFilePicker !== undefined) {
+      //       const [fileHandle] = await window.showOpenFilePicker({
+      //       types: [
+      //         { description: fileDescription,
+      //           accept: { "application/octet-stream" : [`.${fileEnding}`]}
+      //         }
+      //       ] 
+      //     });
+      //     const blob = await fileHandle.getFile();
+      //     const buffer = await blob.arrayBuffer();
+      //     const data = new Uint8Array(buffer);
+      //     let patch = ZoomPatch.fromPatchData(data);
+      //     updatePatchInfoTable(patch);
+      //   } else {
+      //     // Fallback to old-school file upload
+      //     let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
+      //     if (input === null) {
+      //       input = document.createElement("input") as HTMLInputElement;
+      //       input.id = "fileInput";
+      //       input.type = "file";
+      //       input.accept = `.${fileEnding}`;
+      //       input.style.opacity = "0";
+      //       let content = document.getElementById("content") as HTMLDivElement;
+      //       content.appendChild(input);
+      //     }
+
+      //     // Clear old event listeners
+      //     let clonedInput = input.cloneNode(true) as HTMLInputElement;
+      //     input.parentNode?.replaceChild(clonedInput, input);
+      //     input = clonedInput;
+      //     input.files = null;
+      //     input.value = "";
+
+      //     input.addEventListener("change", () => {
+      //       console.log(`Selected filename: ${input.value}`);
+      //       const fileReader = new FileReader();
+      //       fileReader.onload = (e) => {
+      //         console.log("File loaded");
+      //         if (fileReader.result != null) {
+      //           let buffer = fileReader.result as ArrayBuffer;
+      //           const data = new Uint8Array(buffer);
+      //           let patch = ZoomPatch.fromPatchData(data);
+      //           updatePatchInfoTable(patch);
+      //         }
+      //       };
+      //       if (input.files != null)
+      //         fileReader.readAsArrayBuffer(input.files[0])
+      //     }, false);
+      //     input.click();
+      //   }
+      // } catch (err) {
+      //   console.log(err); 
+      // }
+    });
+
+    headerCell.appendChild(button);
+
+    let patchInfoString: string = "";
+
+    // NAME
+    if (patch.NAME !== null) {
+
+      let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
+      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + nameString;
     }
 
-  });
-
-  headerCell.appendChild(button);
-
-  let patchInfoString: string = "";
-
-  // NAME
-  if (patch.NAME !== null) {
-
-    let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
-    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + nameString;
-  }
-
-  // TXE1
-  if (patch.TXE1 !== null) {
-    let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1DescriptionEnglish}"`;
-    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + txe1String;
-  }
-
-  // PRM2
-  if (patch.PRM2 != null) {
-    unknownString = "";
-    let tempoString = "";
-    let editEffectSlotString = "";
-    let driveString = "";
-    if (patch.prm2Unknown !== null) {
-      for (let i = 0; i < patch.prm2Unknown.length; i++) {
-        if ((i > 0) && (i % 32 == 0))
-          unknownString += "<br/>                           ";
-        unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
-      }
-      if (patch.prm2Unknown.length > 2)
-        tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
-      if (patch.prm2Unknown.length > 12)
-        editEffectSlotString = `${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
-      if (patch.prm2Unknown.length > 20)
-        driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
-    };
-    let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
-      `                  Unknown: ${unknownString}`;
-    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + prm2String;
-  }
-
-  // TXJ1
-  if (patch.TXJ1 !== null) {
-    unknownString = "";
-    if (patch.txj1DescriptionJapanese !== null) {
-      for (let i = 0; i < patch.txj1DescriptionJapanese.length; i++) {
-        if ((i > 0) && (i % 32 == 0))
-          unknownString += "<br/>                           ";
-        unknownString += `${patch.txj1DescriptionJapanese[i].toString(16).toUpperCase().padStart(2, "0")} `;
-      }
-    };
-    let txj1String = `${patch.TXJ1} Length: ${patch.txj1Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
-    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + txj1String;
-  }
-
-  // EDTB
-  if (patch.EDTB !== null || patch.MSOG !== null) {
-    let reversedBytes = (patch.EDTB !== null) ? patch.edtbReversedBytes : patch.msogEffectsReversedBytes;
-    let effectSettingsArray = (patch.EDTB !== null) ? patch.edtbEffectSettings : patch.msogEffectSettings;
-    let unknownOffset = (patch.EDTB !== null) ? -Math.ceil(90/8 + 5) + 3 : 0 
-    let effectSettingsString = "";
-    if (reversedBytes !== null && patch.ids !== null && effectSettingsArray !== null) {
-      for (let i = 0; i < reversedBytes.length; i++) {
-        let effectSettings = effectSettingsArray[i];
-        let parameterString = ""; 
-        for (let p=0; p<effectSettings.parameters.length; p++) {
-          parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
-        }
-        effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
-        effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
-        effectSettingsString += `                          Reversed: `;
-        let effect = reversedBytes[i];
-        // for (let p = 0; p < effect.length - Math.ceil(90/8 + 5) + 3; p++) {
-        for (let p = 0; p < effect.length + unknownOffset; p++) {
-            effectSettingsString += `${effect[p].toString(2).padStart(8, "0")} `;
-          if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
-            effectSettingsString += "<br/>                                    ";
-        }
-        effectSettingsString += "<br/><br/>";
-      }
-      if (effectSettingsString.length > 1)
-        effectSettingsString = effectSettingsString.slice(0, effectSettingsString.length - 5 * 2);
-    };
-    if (patch.EDTB !== null) {
-      let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
-      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + edtbString;
+    // TXE1
+    if (patch.TXE1 !== null) {
+      let txe1String = `${patch.TXE1} Length: ${patch.txe1Length?.toString().padStart(3, " ")}  Description: "${patch.txe1DescriptionEnglish}"`;
+      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + txe1String;
     }
-    else {
-      let msogString = `${patch.MSOG} Length: ${patch.length?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
+
+    // PRM2
+    if (patch.PRM2 != null) {
+      unknownString = "";
+      let tempoString = "";
+      let editEffectSlotString = "";
+      let driveString = "";
+      if (patch.prm2Unknown !== null) {
+        for (let i = 0; i < patch.prm2Unknown.length; i++) {
+          if ((i > 0) && (i % 32 == 0))
+            unknownString += "<br/>                           ";
+          unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+        }
+        if (patch.prm2Unknown.length > 2)
+          tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
+        if (patch.prm2Unknown.length > 12)
+          editEffectSlotString = `${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
+        if (patch.prm2Unknown.length > 20)
+          driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
+      };
+      let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
+        `                  Unknown: ${unknownString}`;
+      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + prm2String;
+    }
+
+    // TXJ1
+    if (patch.TXJ1 !== null) {
+      unknownString = "";
+      if (patch.txj1DescriptionJapanese !== null) {
+        for (let i = 0; i < patch.txj1DescriptionJapanese.length; i++) {
+          if ((i > 0) && (i % 32 == 0))
+            unknownString += "<br/>                           ";
+          unknownString += `${patch.txj1DescriptionJapanese[i].toString(16).toUpperCase().padStart(2, "0")} `;
+        }
+      };
+      let txj1String = `${patch.TXJ1} Length: ${patch.txj1Length?.toString().padStart(3, " ")}  Unknown: ${unknownString}`;
+      patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + txj1String;
+    }
+
+    // EDTB
+    if (patch.EDTB !== null || patch.MSOG !== null) {
+      let reversedBytes = (patch.EDTB !== null) ? patch.edtbReversedBytes : patch.msogEffectsReversedBytes;
+      let effectSettingsArray = (patch.EDTB !== null) ? patch.edtbEffectSettings : patch.msogEffectSettings;
+      let unknownOffset = (patch.EDTB !== null) ? -Math.ceil(90/8 + 5) + 3 : 0 
+      let effectSettingsString = "";
+      if (reversedBytes !== null && patch.ids !== null && effectSettingsArray !== null) {
+        for (let i = 0; i < reversedBytes.length; i++) {
+          let effectSettings = effectSettingsArray[i];
+          let parameterString = ""; 
+          for (let p=0; p<effectSettings.parameters.length; p++) {
+            parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
+          }
+          effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
+          effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
+          effectSettingsString += `                          Reversed: `;
+          let effect = reversedBytes[i];
+          // for (let p = 0; p < effect.length - Math.ceil(90/8 + 5) + 3; p++) {
+          for (let p = 0; p < effect.length + unknownOffset; p++) {
+              effectSettingsString += `${effect[p].toString(2).padStart(8, "0")} `;
+            if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
+              effectSettingsString += "<br/>                                    ";
+          }
+          effectSettingsString += "<br/><br/>";
+        }
+        if (effectSettingsString.length > 1)
+          effectSettingsString = effectSettingsString.slice(0, effectSettingsString.length - 5 * 2);
+      };
+      if (patch.EDTB !== null) {
+        let edtbString = `${patch.EDTB} Length: ${patch.edtbLength?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
+        patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + edtbString;
+      }
+      else {
+        let msogString = `${patch.MSOG} Length: ${patch.length?.toString().padStart(3, " ")}<br/>` + effectSettingsString;
+        patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + msogString;
+      }
+    }
+
+    if (patch.MSOG !== null) {
+      let msogString = "";
+      if (patch.msogTempo != null)
+        msogString += `     Tempo: ${patch.msogTempo.toString().padStart(3, " ")}.`;
+      if (patch.msogNumEffects != null)
+        msogString += `  Number of effects: ${patch.msogNumEffects}.`;
+      if (patch.msogEditEffectSlot != null)
+        msogString += `  Edit effect slot: ${patch.msogEditEffectSlot.toString()}.`;
+      if (patch.msogDSPFullBits != null)
+        msogString += `  DSP Full: ${patch.msogDSPFullBits.toString(2).padStart(6, "0")}.`;
+      let driveString = "";
+      if (patch.msogUnknown1 !== null) {
+        let msogUnknown1_0_str = "EEDDDDDD";
+        let msogUnknown1_1_str = "TTTMMM" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
+        let msogUnknown1_2_str = patch.msogUnknown1[2].toString(2).padStart(8, "0").substring(0, 3) + "TTTTT";
+        msogString += `  Unknown1: ${msogUnknown1_0_str} ${msogUnknown1_1_str} ${msogUnknown1_2_str}.`;
+      }
+      if (patch.msogUnknown2 !== null)
+        msogString += `  Unknown2: ${patch.msogUnknown2[0].toString(2).padStart(8, "0")}.`;
       patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + msogString;
     }
-  }
 
-  if (patch.MSOG !== null) {
-    let msogString = "";
-    if (patch.msogTempo != null)
-      msogString += `     Tempo: ${patch.msogTempo.toString().padStart(3, " ")}.`;
-    if (patch.msogNumEffects != null)
-      msogString += `  Number of effects: ${patch.msogNumEffects}.`;
-    if (patch.msogEditEffectSlot != null)
-      msogString += `  Edit effect slot: ${patch.msogEditEffectSlot.toString()}.`;
-    if (patch.msogDSPFullBits != null)
-      msogString += `  DSP Full: ${patch.msogDSPFullBits.toString(2).padStart(6, "0")}.`;
-    let driveString = "";
-    if (patch.msogUnknown1 !== null) {
-      let msogUnknown1_0_str = "EEDDDDDD";
-      let msogUnknown1_1_str = "TTTMMM" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
-      let msogUnknown1_2_str = patch.msogUnknown1[2].toString(2).padStart(8, "0").substring(0, 3) + "TTTTT";
-      msogString += `  Unknown1: ${msogUnknown1_0_str} ${msogUnknown1_1_str} ${msogUnknown1_2_str}.`;
-    }
-    if (patch.msogUnknown2 !== null)
-      msogString += `  Unknown2: ${patch.msogUnknown2[0].toString(2).padStart(8, "0")}.`;
-    patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + msogString;
-  }
-
-  // let patchInfoString = nameString + "<br/>" + txe1String + "<br/>" + prm2String + "<br/>" + txj1String + "<br/>" + edtbString; 
-  let htmlPatchInfoString = "";
-  
-  if (patchInfoString.length === previousPatchInfoString.length) {
-    let first = 0;
-    let last = 0;
-    for (let i=0; i<patchInfoString.length; i++) {
-      if (patchInfoString[i] === previousPatchInfoString[i])
-        last++;
-      else {
-        htmlPatchInfoString += patchInfoString.slice(first, last) + `<b>${patchInfoString[i]}</b>`;
-        last++;
-        first = last;
+    // let patchInfoString = nameString + "<br/>" + txe1String + "<br/>" + prm2String + "<br/>" + txj1String + "<br/>" + edtbString; 
+    let htmlPatchInfoString = "";
+    
+    if (patchInfoString.length === previousPatchInfoString.length) {
+      let first = 0;
+      let last = 0;
+      for (let i=0; i<patchInfoString.length; i++) {
+        if (patchInfoString[i] === previousPatchInfoString[i])
+          last++;
+        else {
+          htmlPatchInfoString += patchInfoString.slice(first, last) + `<b>${patchInfoString[i]}</b>`;
+          last++;
+          first = last;
+        }
       }
+      if (first !== last)
+        htmlPatchInfoString += patchInfoString.slice(first, last);
     }
-    if (first !== last)
-      htmlPatchInfoString += patchInfoString.slice(first, last);
+    else
+      htmlPatchInfoString = patchInfoString;
+  
+    previousPatchInfoString = patchInfoString;
+  
+    bodyCell.innerHTML = htmlPatchInfoString;
   }
-  else
-    htmlPatchInfoString = patchInfoString;
- 
-   previousPatchInfoString = patchInfoString;
- 
-   bodyCell.innerHTML = htmlPatchInfoString;
- }
- 
+
+  /**
+   * Prompts the user to select a file and loads the selected file
+   * @param fileEnding 
+   * @param fileDescription 
+   * @returns [data, filename] where any of them can be undefined
+   */
+  async function loadDataFromFile(fileEnding: string, fileDescription: string): Promise<[Uint8Array | undefined, string | undefined]>
+  {
+    return new Promise<[Uint8Array | undefined, string | undefined]> ( async (resolve, reject) => {
+      let filename: string | undefined = undefined;
+      try {
+        if (window.showOpenFilePicker !== undefined) {
+            const [fileHandle] = await window.showOpenFilePicker({
+            types: [
+              { description: fileDescription,
+                accept: { "application/octet-stream" : [`.${fileEnding}`]}
+              }
+            ] 
+          });
+          filename = fileHandle.name;
+          const file = await fileHandle.getFile();
+          const buffer = await file.arrayBuffer();
+          const data = new Uint8Array(buffer);
+          resolve([data, filename]);
+        } else {
+          // Fallback to old-school file upload
+          let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
+          if (input === null) {
+            input = document.createElement("input") as HTMLInputElement;
+            input.id = "fileInput";
+            input.type = "file";
+            input.accept = `.${fileEnding}`;
+            input.style.opacity = "0";
+            let content = document.getElementById("content") as HTMLDivElement;
+            content.appendChild(input);
+          }
+
+          // Clear old event listeners
+          let clonedInput = input.cloneNode(true) as HTMLInputElement;
+          input.parentNode?.replaceChild(clonedInput, input);
+          input = clonedInput;
+          input.files = null;
+          input.value = "";
+
+          input.addEventListener("change", () => {
+            if (input.files !== null && input.files.length > 0)
+              filename = input.files[0].name;
+            console.log(`Selected filename: ${filename}`);
+            const fileReader = new FileReader();
+            fileReader.onload = (e) => {
+              console.log("File loaded");
+              if (fileReader.result != null) {
+                let buffer = fileReader.result as ArrayBuffer;
+                const data = new Uint8Array(buffer);
+                resolve([data, filename]);
+              }
+            };
+            if (input.files !== null)
+              fileReader.readAsArrayBuffer(input.files[0])
+          }, false);
+          input.click();
+        }
+      } catch (err) {
+        console.log("Exception when attempting to load file " + filename + " " + err); 
+        resolve([undefined, filename]);
+      }
+    });
+  }
+
+
+  async function saveBlobToFile(blob: Blob, suggestedName: string, fileEnding: string, fileDescription: string) {
+    try {
+      let newHandle;
+      if (window.showSaveFilePicker !== undefined) {
+        newHandle = await window.showSaveFilePicker({
+          suggestedName: suggestedName,
+          types: [
+            {
+              description: fileDescription,
+              accept: { "application/octet-stream": [`.${fileEnding}`] }
+            }
+          ]
+        });
+        const writableStream = await newHandle.createWritable();
+        await writableStream.write(blob);
+        await writableStream.close();
+      }
+      else {
+        // Fallback to old-school file download
+        let dummy = document.createElement("a");
+        dummy.href = URL.createObjectURL(blob);
+        dummy.target = "_blank";
+        dummy.download = suggestedName;
+        dummy.click();
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  }
 }
 
 function supportsPlaintextEdit () {
@@ -1211,38 +1349,70 @@ let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
 // let eight = seven2eight(seven);
 // console.log(`Eight: ${toHexString(eight, " ")}`);
 
-let eight = toUint8Array("81 02 83 04 85 06 07 08 09 8A");
-console.log(`Eight: ${toHexString(eight, " ")}`);
+let eight = hexStringToUint8Array("81 02 83 04 85 06 07 08 09 8A");
+console.log(`Eight: ${bytesToHexString(eight, " ")}`);
 
 let seven = eight2seven(eight);
-console.log(`Seven: ${toHexString(seven, " ")}`);
+console.log(`Seven: ${bytesToHexString(seven, " ")}`);
 
 let eight2 = seven2eight(seven);
-console.log(`Eight: ${toHexString(eight2, " ")}`);
+console.log(`Eight: ${bytesToHexString(eight2, " ")}`);
 
 let crc = crc32(seven) ^ 0xFFFFFFFF;
-console.log(`CRC (7-bit): ${toHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x7F]), " ")}`);
+console.log(`CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x7F]), " ")}`);
 
 // toHexString(seven2eight(toUint8Array("01 02 03 04 05 06 07 08")), " ");
 
-const confirmDialog = document.getElementById("confirmDialog") as HTMLDialogElement;
-const confirmLabel = document.getElementById("confirmLabel") as HTMLLabelElement;
-const confirmButton = document.getElementById("confirmButton") as HTMLButtonElement;
+class ConfirmDialog
+{
+  private confirmDialog: HTMLDialogElement;
+  private confirmLabel: HTMLLabelElement;
+  private confirmButton: HTMLButtonElement;
+  private confirmEvent: (result: boolean) => void;
 
-confirmButton.addEventListener("click", (event) => {
-  event.preventDefault(); // 
-  confirmDialog.close("ok");
-  confirmEvent(true);
-});
+  constructor(dialogID: string, labelID: string, buttonID: string)
+  {
+    this.confirmDialog = document.getElementById(dialogID) as HTMLDialogElement;
+    this.confirmLabel = document.getElementById(labelID) as HTMLLabelElement;
+    this.confirmButton = document.getElementById(buttonID) as HTMLButtonElement;
 
-let confirmEvent = (result: boolean) => {
-  console.log("Confirm event result: " + result);
+    // Clear old event listeners
+    // let clonedButton = this.confirmButton.cloneNode(true) as HTMLButtonElement;
+    // this.confirmButton.parentNode?.replaceChild(clonedButton, this.confirmButton);
+    // this.confirmButton = clonedButton;
+
+    // let clonedDialog = this.confirmDialog.cloneNode(true) as HTMLDialogElement;
+    // this.confirmDialog.parentNode?.replaceChild(clonedDialog, this.confirmDialog);
+    // this.confirmDialog = clonedDialog;
+
+    this.confirmButton.addEventListener("click", (event) => {
+      event.preventDefault(); // 
+      this.confirmDialog.close("ok");
+      this.confirmEvent(true);
+    });
+
+    this.confirmEvent = (result: boolean) => {
+      console.log("Confirm event result: " + result);
+    }
+
+    this.confirmDialog.addEventListener("close", (e) => {
+      this.confirmEvent(false);
+    });
+  }
+
+  public async getUserConfirmation(text: string): Promise<boolean>
+  {
+    return new Promise<boolean>( (resolve, reject) => {
+      this.confirmLabel.textContent = text;
+      this.confirmEvent = async (result: boolean) => {
+        resolve(result);
+      }
+      this.confirmDialog.showModal();
+    });
+  }
 }
 
-confirmDialog.addEventListener("close", (e) => {
-  confirmEvent(false);
-});
-
+let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
 
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
