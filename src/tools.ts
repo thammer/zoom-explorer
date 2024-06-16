@@ -15,12 +15,30 @@ export function getExceptionErrorString(err:any, extra?: string): string
   return message;
 }
 
-export function toHexString(bytes: Iterable<number> | ArrayLike<number>, separator: string = '') : string
+export function bytesWithCharactersToString(bytes: Iterable<number> | ArrayLike<number>) : string
+{
+  return Array.from(bytes, byte => String.fromCharCode(byte)).join("");
+}
+
+/**
+ * 
+ * @param bytes Array of bytes
+ * @param separator Optional separator character for the returned string 
+ * @returns Hexadecimal string with each byte in the bytes arrae represented as a two-character hexadecimal string, with an optional separator between each two-character hexadecimal
+ * @example Example return string "F0 52 00 6E 00 00 F7"
+ */
+export function bytesToHexString(bytes: Iterable<number> | ArrayLike<number>, separator: string = '') : string
 {
   return Array.from(bytes, byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join(separator).toUpperCase();
 }
 
-export function toUint8Array(str: string, separator: string = '') : Uint8Array
+/**
+ * 
+ * @param str Hexadecimal string
+ * @param separator 
+ * @returns Uint8Array where each byte is converted from a 2-character hexadecimal string in the str string
+ */
+export function hexStringToUint8Array(str: string, separator: string = '') : Uint8Array
 {
   str = str.replace(new RegExp(`/${separator}/g`), "").replace(/ /g, "").replace(/0x/g, "");
   let dataArray = str.match(/.{1,2}/g)?.map((hex) => parseInt(hex, 16));
@@ -34,7 +52,7 @@ export function partialArrayMatch(bigArray: Uint8Array, smallArray: Uint8Array, 
 
 export function partialArrayStringMatch(bigArray: Uint8Array, str: string, bigArrayOffset: number = 0): boolean
 {
-  return bigArray.length + bigArrayOffset >= str.length && bigArray.slice(bigArrayOffset, bigArrayOffset + str.length).every( 
+  return bigArray.length - bigArrayOffset >= str.length && bigArray.slice(bigArrayOffset, bigArrayOffset + str.length).every( 
     (element, index) => element === (str.charCodeAt(index) & 0xFF) );
 }
 
@@ -114,11 +132,11 @@ export function crc32(data: Uint8Array, offset: number = 0, end: number = -1)
 /**
  * Converts a buffer created with the eight2seven algorithm from 7-bit and back to 8 bit again.
  * @see https://www.echevarria.io/blog/midi-sysex/index.html
- * @see https://llllllll.co/t/midi-sysex-7bit-decoding-help-bits-and-bytes/40854 (but note the order of the hogh bits in the 7-bit high-bit byte)
+ * @see https://llllllll.co/t/midi-sysex-7bit-decoding-help-bits-and-bytes/40854 (but note the order of the high bits in the 7-bit high-bit byte)
  * @param sevenBitBytes 
- * @param start 
- * @param end 
- * @returns 
+ * @param start First byte in the sevenBitBytes array to include in the conversion
+ * @param end Last byte (inclusive) in the sevenBitBytes array to include in the conversion.
+ * @returns 8-bit buffer with converted data
  *
  * @example
  * 8 7-bit bytes will be converted to 7 8-bit bytes.
@@ -147,13 +165,16 @@ export function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: n
   if (end === -1)
     end = sevenBitBytes.length - 1;
 
-  // let eightBitBytes: Uint8Array = new Uint8Array(end - start + 1); // FIXME: we don't need all this space. Calculate.
+  //let eightBitBytes: Uint8Array = new Uint8Array(end - start + 1); // FIXME: we don't need all this space. Calculate.
   let remainder = (end - start + 1) % 8;
   if (remainder === 1)
   {
-    console.error(`remainder === 1. Illegal encoding for array of seven bit bytes of length ${sevenBitBytes.length}. Ignoring last seven bit byte`);
+    console.error(`remainder === 1. Illegal encoding for array of seven bit bytes of length ${sevenBitBytes.length} [${start}, ${end}]. Ignoring last seven bit byte`);
   }
   let eightBitBytes: Uint8Array = new Uint8Array( Math.floor((end - start + 1) / 8) * 7 + (remainder < 2 ? 0 : remainder - 1 ) );
+
+//  let [numberOf8BitBytes, remainder] = getNumberOfEightBitBytes(end - start + 1);
+//  let eightBitBytes: Uint8Array = new Uint8Array(numberOf8BitBytes);
 
   let eightIndex = 0;
   let bitIndex;
@@ -177,13 +198,24 @@ export function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: n
 }
 
 /**
+ * 
+ * @param numberOf7BitBytes 
+ * @returns [number of 8 bit bytes, remainder]
+ */
+export function getNumberOfEightBitBytes(numberOf7BitBytes: number): [number, number]
+{
+  let remainder = numberOf7BitBytes % 8;
+  return [Math.floor(numberOf7BitBytes / 8) * 7 + (remainder < 2 ? 0 : remainder - 1), remainder];
+}
+
+/**
  * Converts a buffer with 8-bit bytes to a (larger) buffer with 7-bit bytes, suitable to be sent over MIDI sysex.
  * @see https://www.echevarria.io/blog/midi-sysex/index.html
  * @see https://llllllll.co/t/midi-sysex-7bit-decoding-help-bits-and-bytes/40854
  * @param eightBitBytes 
- * @param start 
- * @param end inclusive
- * @returns 
+ * @param start First byte in the eightBitBytes array to include in the conversion
+ * @param end Last byte (inclusive) in the eightBitBytes array to include in the conversion.
+ * @returns 7-bit buffer with converted data
  */
 export function eight2seven(eightBitBytes: Uint8Array, start: number = 0, end: number = -1) : Uint8Array
 {

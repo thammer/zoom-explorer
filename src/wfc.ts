@@ -1,4 +1,4 @@
-import { toHexString } from "./tools.js";
+import { bytesToHexString } from "./tools.js";
 
 export enum WFCFormatType
 {
@@ -255,7 +255,7 @@ export async function encodeWFCToString(chunks: Map<string, Array<Uint8Array>>, 
       for (let i=0; i<dataArray.length; i++) 
       {
         let data = dataArray[i];
-        let hex = toHexString(data);
+        let hex = bytesToHexString(data);
         if (hex.length > 0xFFFF) {
           hex = hex.slice(0, 0xFFFF);
           console.warn(`encodeWFP cannot encode more than ${0xFFFF/2} bytes in one chunk`);
