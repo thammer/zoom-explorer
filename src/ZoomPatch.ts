@@ -76,6 +76,7 @@ export class ZoomPatch
   // ptcfUnknown: null | Uint8Array = null; // 6 bytes
   // shortName: null | string = null;
   // ids: null | Uint32Array = null;
+  msogDataBuffer: null | Uint8Array = null; // Complete 8-bit data buffer for the patch
 
   get nameTrimmed(): string | null
   {
@@ -443,13 +444,14 @@ export class ZoomPatch
   readMSPatch(data: Uint8Array, offset: number): number 
   {
     this.MSOG = "MSOG";
+    this.msogDataBuffer = data.slice(offset, data.length);
     this.length = data.length - offset;
     this.numEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects
     this.msogEffectsReversedBytes = new Array<Uint8Array>(this.numEffects);
     this.msogEffectSettings = new Array<EffectSettings>();
     this.ids = new Uint32Array(this.numEffects);
     for (let i=0; i<this.numEffects; i++) { // Each effect section is 18 bytes
-      // P0 = 11 bits. P1 = 10 bits. P2 = 10 bits. P3-P5 = 8 bits
+      // P0 = 13 bits. P1 = 13 bits. P2 = 13 bits. P3-P8 = 8 bits
       this.msogEffectsReversedBytes[i] = data.slice(offset, offset + 18).reverse(); offset += 18;
       let bitpos = this.msogEffectsReversedBytes[i].length * 8 - 1;
       let effectSettings = new EffectSettings();
@@ -472,8 +474,9 @@ export class ZoomPatch
         parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
         effectSettings.parameters.push(parameter);
       }
-      // P9 = 8 bits. It is oddly placed, and we don't know what the surrounding bits are (20 unknown bits before, 8 unknown bits after)
+      // P8 = 8 bits. It is oddly placed, and we don't know what the surrounding bits are (20 unknown bits before, 8 unknown bits after)
       // One byte is probably cab-related
+      // FIXME: Store unknown bytes in effectSettings
       bitpos -= 20.
       parameter = getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
       effectSettings.parameters.push(parameter);
@@ -500,6 +503,10 @@ export class ZoomPatch
 
     this.msogUnknown2 = data.slice(offset, offset + 1); offset += 1;
 
+    // tempo
+    // dsp full
+    // max effect number (numEffects?)
+
     // version: null | number = null;
     // numEffects: null | number = null; 
     // target: null | number = null;
@@ -508,7 +515,7 @@ export class ZoomPatch
     return offset;
   }
 
-  static fromPatchData(data: Uint8Array, offset: number = 0) : ZoomPatch 
+  public static fromPatchData(data: Uint8Array, offset: number = 0) : ZoomPatch 
   {
     let zoomPatch = new ZoomPatch();
     if (partialArrayStringMatch(data, "PTCF"))
