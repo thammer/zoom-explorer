@@ -1,5 +1,5 @@
 import { DeviceID, DeviceInfo, MIDIProxy, IMIDIProxy, ListenerType } from "./midiproxy.js";
-import { getExceptionErrorString, toHexString } from "./tools.js";
+import { getExceptionErrorString, bytesToHexString } from "./tools.js";
 
 // See: http://midi.teragonaudio.com/tech/midispec/identity.htm
 // See: https://web.archive.org/web/20231019045329/https://midi.org/SysExIDtable
@@ -81,7 +81,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
           let isInput: boolean = true;
           let isOutput: boolean = true;
           let manufacturerID: [number] | [number, number, number] = data[5] != 0 ? [ data[5] ] : [ data[5], data[6], data[7] ];
-          let manufacturerName: string = MIDIManufacturerIDToName[toHexString(manufacturerID, " ")] ?? "unknown";
+          let manufacturerName: string = MIDIManufacturerIDToName[bytesToHexString(manufacturerID, " ")] ?? "unknown";
           let familyCode: [number, number] = [ data[6+dataOffset], data[7+dataOffset]];
           let modelNumber: [number, number] = [data[8+dataOffset], data[9+dataOffset]];
           let deviceName: string = getDeviceName(manufacturerID, familyCode, modelNumber);
@@ -103,7 +103,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
             identityResponse: identityResponse,
           });
 
-          if (logging) console.log(`      Received sysex ID reply ${toHexString(data, " ")} -> ${JSON.stringify(description)}`);
+          if (logging) console.log(`      Received sysex ID reply ${bytesToHexString(data, " ")} -> ${JSON.stringify(description)}`);
   
           midiDevices.push(description);
           if (logging) console.log(`  Clearing timeout (${timeoutId})`);
@@ -114,7 +114,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         else
         {
           if (logging) console.log(`      Received sysex unknown from input "${input.name}" for output ${currentOutput}` +
-            ` "${currentOutput?.name}": ${toHexString(data, " ")}`)
+            ` "${currentOutput?.name}": ${bytesToHexString(data, " ")}`)
         }
       };
 
@@ -305,7 +305,7 @@ function manufacturerIDsAreEqual(id1: [number] | [number, number, number], id2: 
  */
 function getDeviceName(manufacturerID: [number] | [number, number, number], familyCode: [number, number], modelNumber: [number, number]) : string
 {
-  let hexString = toHexString([...manufacturerID, ...familyCode, ...modelNumber], " ");
+  let hexString = bytesToHexString([...manufacturerID, ...familyCode, ...modelNumber], " ");
   
   return MIDIDeviceHexStringToName[hexString] ?? hexString;
 }
@@ -315,12 +315,26 @@ function getDeviceName(manufacturerID: [number] | [number, number, number], fami
  * @param data MIDI data
  * @returns true if the MIDI data is a sysex identity response message
  */
-export function isMIDIIdentityResponse(data: Uint8Array) : boolean
+export function isMIDIIdentityResponse(data: Uint8Array): boolean
 {
   return (data.length >= 15 && data[0] == 0xF0 && data[1] == 0x7E && data[3] == 0x06 && data[4] == 0x02 && 
     ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) );
 }
 
+export function isSysex(data: Uint8Array): boolean
+{
+  return data.length >= 3 && data[0] == 0xF0 && data[data.length-1] == 0xF7;
+}
+
+/**
+ * 
+ * @param data 
+ * @returns true if data is a
+ */
+export function isSysexString(data: Uint8Array): boolean
+{
+  return data.length >= 3 && data[0] == 0xF0 && data[data.length-1] == 0xF7;
+}
 
 /**
  * Map from manufacturerId, familyCode, and modelNumber to device name

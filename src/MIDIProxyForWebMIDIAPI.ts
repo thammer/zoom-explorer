@@ -1,6 +1,6 @@
 
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType } from "./midiproxy.js";
-import { toHexString } from "./tools.js";
+import { bytesToHexString } from "./tools.js";
 //import jzz from "jzz";
 
 // Copied from https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/webmidi/index.d.ts
@@ -237,7 +237,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     // FIXME: This shouldn't be necessary with the browser based Web MIDI API
     let dataArray = Array.from(data);
     if (this.loggingEnabled)
-      console.log(`Sent: ${toHexString(dataArray, " ")}`)
+      console.log(`Sent: ${bytesToHexString(dataArray, " ")}`)
     output.send(dataArray);
   }
 
