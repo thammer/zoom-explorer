@@ -5,6 +5,7 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
+import { ConfirmDialog, getChildWithIdThatStartsWith, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit } from "./htmltools.js";
 
 function getZoomVersionNumber(versionBytes: [number, number, number, number]) : number
 {
@@ -294,60 +295,7 @@ async function start()
     // }
   
   }
-  
-  function toHexString2(bytes: Iterable<number> | ArrayLike<number>, separator: string = '') : string
-  {
-    function addSentenceSpaces(lineString: string, sentenceLength: number)
-    {
-      let buildLineString = "";
-      let linePos = 0;
-      let lineStringLength = lineString.length;
-      while (linePos + sentenceLength < lineStringLength) {
-        buildLineString += lineString.substring(linePos, linePos + sentenceLength) + "&nbsp;&nbsp;&nbsp;";
-        linePos += sentenceLength;
-      }
-      buildLineString += lineString.substring(linePos);
-      return buildLineString;
-    }
-  
-    let array = Array.from(bytes, byte => ('0' + (byte & 0xFF).toString(16).toUpperCase()).slice(-2));
-    let string = array.join(" ");
-    let stringBreak = "";
-    let pos: number = 0;
-    const breakLength = 50*3-1;
-    const paragraphBreak = 4;
-    const sentenceLength = 10*3
-    
-    let paragraph  = 0;
-    while (pos + breakLength + 1 < string.length)
-    {
-      let lineString = string.substring(pos, pos + breakLength);
-      let buildLineString = addSentenceSpaces(lineString, sentenceLength);
-      stringBreak += buildLineString + "<br/>";
-      pos += breakLength + 1;
-      paragraph +=1;
-      if (paragraph % paragraphBreak == 0)
-      {
-        stringBreak += "<br/>"
-      }
-    }
-  
-    stringBreak += addSentenceSpaces(string.substring(pos), sentenceLength);
-  
-    return stringBreak;
-  }
-    
-  function getChildWithIdThatStartsWith(children: HTMLCollection, startsWidth: string) : HTMLElement | null
-  {
-    let index = 0;
-    while (index < children.length) {
-      let item = children.item(index++) as HTMLElement;
-      if (item.id.startsWith(startsWidth))
-        return item;
-    }
-    return null;
-  }
-  
+        
   function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array)
   { 
     let table: HTMLTableElement = document.getElementById("sysexMonitorTable") as HTMLTableElement;  
@@ -1235,111 +1183,6 @@ async function start()
     bodyCell.innerHTML = htmlPatchInfoString;
   }
 
-  /**
-   * Prompts the user to select a file and loads the selected file
-   * @param fileEnding 
-   * @param fileDescription 
-   * @returns [data, filename] where any of them can be undefined
-   */
-  async function loadDataFromFile(fileEnding: string, fileDescription: string): Promise<[Uint8Array | undefined, string | undefined]>
-  {
-    return new Promise<[Uint8Array | undefined, string | undefined]> ( async (resolve, reject) => {
-      let filename: string | undefined = undefined;
-      try {
-        if (window.showOpenFilePicker !== undefined) {
-            const [fileHandle] = await window.showOpenFilePicker({
-            types: [
-              { description: fileDescription,
-                accept: { "application/octet-stream" : [`.${fileEnding}`]}
-              }
-            ] 
-          });
-          filename = fileHandle.name;
-          const file = await fileHandle.getFile();
-          const buffer = await file.arrayBuffer();
-          const data = new Uint8Array(buffer);
-          resolve([data, filename]);
-        } else {
-          // Fallback to old-school file upload
-          let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
-          if (input === null) {
-            input = document.createElement("input") as HTMLInputElement;
-            input.id = "fileInput";
-            input.type = "file";
-            input.accept = `.${fileEnding}`;
-            input.style.opacity = "0";
-            let content = document.getElementById("content") as HTMLDivElement;
-            content.appendChild(input);
-          }
-
-          // Clear old event listeners
-          let clonedInput = input.cloneNode(true) as HTMLInputElement;
-          input.parentNode?.replaceChild(clonedInput, input);
-          input = clonedInput;
-          input.files = null;
-          input.value = "";
-
-          input.addEventListener("change", () => {
-            if (input.files !== null && input.files.length > 0)
-              filename = input.files[0].name;
-            console.log(`Selected filename: ${filename}`);
-            const fileReader = new FileReader();
-            fileReader.onload = (e) => {
-              console.log("File loaded");
-              if (fileReader.result != null) {
-                let buffer = fileReader.result as ArrayBuffer;
-                const data = new Uint8Array(buffer);
-                resolve([data, filename]);
-              }
-            };
-            if (input.files !== null)
-              fileReader.readAsArrayBuffer(input.files[0])
-          }, false);
-          input.click();
-        }
-      } catch (err) {
-        console.log("Exception when attempting to load file " + filename + " " + err); 
-        resolve([undefined, filename]);
-      }
-    });
-  }
-
-
-  async function saveBlobToFile(blob: Blob, suggestedName: string, fileEnding: string, fileDescription: string) {
-    try {
-      let newHandle;
-      if (window.showSaveFilePicker !== undefined) {
-        newHandle = await window.showSaveFilePicker({
-          suggestedName: suggestedName,
-          types: [
-            {
-              description: fileDescription,
-              accept: { "application/octet-stream": [`.${fileEnding}`] }
-            }
-          ]
-        });
-        const writableStream = await newHandle.createWritable();
-        await writableStream.write(blob);
-        await writableStream.close();
-      }
-      else {
-        // Fallback to old-school file download
-        let dummy = document.createElement("a");
-        dummy.href = URL.createObjectURL(blob);
-        dummy.target = "_blank";
-        dummy.download = suggestedName;
-        dummy.click();
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  }
-}
-
-function supportsPlaintextEdit () {
-  var dummy = document.createElement("div");
-  dummy.setAttribute("contentEditable", "plaintext-only");
-  return dummy.contentEditable === "plaintext-only";
 }
 
 let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
@@ -1349,68 +1192,19 @@ let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
 // let eight = seven2eight(seven);
 // console.log(`Eight: ${toHexString(eight, " ")}`);
 
-let eight = hexStringToUint8Array("81 02 83 04 85 06 07 08 09 8A");
-console.log(`Eight: ${bytesToHexString(eight, " ")}`);
+// let eight = hexStringToUint8Array("81 02 83 04 85 06 07 08 09 8A");
+// console.log(`Eight: ${bytesToHexString(eight, " ")}`);
 
-let seven = eight2seven(eight);
-console.log(`Seven: ${bytesToHexString(seven, " ")}`);
+// let seven = eight2seven(eight);
+// console.log(`Seven: ${bytesToHexString(seven, " ")}`);
 
-let eight2 = seven2eight(seven);
-console.log(`Eight: ${bytesToHexString(eight2, " ")}`);
+// let eight2 = seven2eight(seven);
+// console.log(`Eight: ${bytesToHexString(eight2, " ")}`);
 
-let crc = crc32(seven) ^ 0xFFFFFFFF;
-console.log(`CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x7F]), " ")}`);
+// let crc = crc32(seven) ^ 0xFFFFFFFF;
+// console.log(`CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x7F]), " ")}`);
 
 // toHexString(seven2eight(toUint8Array("01 02 03 04 05 06 07 08")), " ");
-
-class ConfirmDialog
-{
-  private confirmDialog: HTMLDialogElement;
-  private confirmLabel: HTMLLabelElement;
-  private confirmButton: HTMLButtonElement;
-  private confirmEvent: (result: boolean) => void;
-
-  constructor(dialogID: string, labelID: string, buttonID: string)
-  {
-    this.confirmDialog = document.getElementById(dialogID) as HTMLDialogElement;
-    this.confirmLabel = document.getElementById(labelID) as HTMLLabelElement;
-    this.confirmButton = document.getElementById(buttonID) as HTMLButtonElement;
-
-    // Clear old event listeners
-    // let clonedButton = this.confirmButton.cloneNode(true) as HTMLButtonElement;
-    // this.confirmButton.parentNode?.replaceChild(clonedButton, this.confirmButton);
-    // this.confirmButton = clonedButton;
-
-    // let clonedDialog = this.confirmDialog.cloneNode(true) as HTMLDialogElement;
-    // this.confirmDialog.parentNode?.replaceChild(clonedDialog, this.confirmDialog);
-    // this.confirmDialog = clonedDialog;
-
-    this.confirmButton.addEventListener("click", (event) => {
-      event.preventDefault(); // 
-      this.confirmDialog.close("ok");
-      this.confirmEvent(true);
-    });
-
-    this.confirmEvent = (result: boolean) => {
-      console.log("Confirm event result: " + result);
-    }
-
-    this.confirmDialog.addEventListener("close", (e) => {
-      this.confirmEvent(false);
-    });
-  }
-
-  public async getUserConfirmation(text: string): Promise<boolean>
-  {
-    return new Promise<boolean>( (resolve, reject) => {
-      this.confirmLabel.textContent = text;
-      this.confirmEvent = async (result: boolean) => {
-        resolve(result);
-      }
-      this.confirmDialog.showModal();
-    });
-  }
-}
 
 let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
 
