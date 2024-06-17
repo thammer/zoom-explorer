@@ -400,6 +400,13 @@ export class ZoomDevice
     return [patchData, program, bank];
   }
 
+  public static getZoomVersionNumber(versionBytes: [number, number, number, number]) : number
+  {
+    let versionString = String.fromCharCode(...versionBytes);
+    let versionFloat = parseFloat(versionString);
+    return versionFloat;
+  }
+
   private isCommandSupported(command: StringAndBytes): boolean
   {
     return this._supportedCommands.get(command.str) === SupportType.Supported;

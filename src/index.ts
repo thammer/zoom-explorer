@@ -7,13 +7,6 @@ import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
 import { ConfirmDialog, getChildWithIdThatStartsWith, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit } from "./htmltools.js";
 
-function getZoomVersionNumber(versionBytes: [number, number, number, number]) : number
-{
-  let versionString = String.fromCharCode(...versionBytes);
-  let versionFloat = parseFloat(versionString);
-  return versionFloat;
-}
-
 function getZoomCommandName(data: Uint8Array) : string
 {
   let name = data[4] === 0x00 ? "Identity" :
@@ -37,7 +30,7 @@ function updateZoomDevicesTable(zoomDevices: ZoomDevice[]) {
 
   for (let index = 0; index < zoomDevices.length; index++) {
     let info = zoomDevices[index].deviceInfo;
-    let version = getZoomVersionNumber(info.versionNumber);
+    let version = ZoomDevice.getZoomVersionNumber(info.versionNumber);
 
     let row = midiDevicesTable.insertRow(1);
     let c;
