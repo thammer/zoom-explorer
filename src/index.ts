@@ -626,7 +626,7 @@ async function start()
     return parseInt(text);
   }
 
-  let zoomPatches : Array<ZoomPatch>;
+  // let zoomPatches : Array<ZoomPatch>;
 
   let lastSelected : HTMLTableCellElement | null = null;
   let patchesTable = document.getElementById("patchesTable") as HTMLTableElement;
@@ -646,7 +646,9 @@ async function start()
 
     // update patch info table
 
-    let patch = zoomPatches[patchNumber];
+    let device = zoomDevices[0];
+
+    let patch = device.patchList[patchNumber];
 
     updatePatchInfoTable(patch);
 
@@ -675,9 +677,10 @@ async function start()
     //   await sleepForAWhile(100);
     // }
     
-    let maxNumPatches = 500;
-    zoomPatches = new Array<ZoomPatch>(maxNumPatches);
-    for (let i=0; i<maxNumPatches; i++) {
+    // let maxNumPatches = 500;
+    // zoomPatches = new Array<ZoomPatch>(maxNumPatches);
+    // for (let i=0; i<maxNumPatches; i++) {
+
       // let bank = Math.floor(i/10);
       // let program = i % 10;
       // // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
@@ -709,15 +712,16 @@ async function start()
 
       // let patch = ZoomPatch.fromPatchData(eightBitData);
 
-      let patch = await device.downloadPatchFromMemorySlot(i)
-      if (patch === undefined) {
-        console.log(`Got no reply for patch number ${i}`);
-        zoomPatches.splice(i);
-        break;
-      }
-      zoomPatches[i] = patch;
-    }
+    //   let patch = await device.downloadPatchFromMemorySlot(i)
+    //   if (patch === undefined) {
+    //     console.log(`Got no reply for patch number ${i}`);
+    //     zoomPatches.splice(i);
+    //     break;
+    //   }
+    //   zoomPatches[i] = patch;
+    // }
 
+    await device.updatePatchListFromPedal();
     updatePatchesTable();
 
   //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
@@ -760,7 +764,8 @@ async function start()
     let headerRow = patchesTable.rows[0];
     let numColumns = headerRow.cells.length / 2;
 
-    let numPatchesPerRow = Math.ceil(zoomPatches.length / numColumns);
+    let device = zoomDevices[0];
+    let numPatchesPerRow = Math.ceil(device.patchList.length / numColumns);
 
     for (let i = patchesTable.rows.length - 1; i < numPatchesPerRow; i++) {
       let row = patchesTable.insertRow(-1);
@@ -772,8 +777,8 @@ async function start()
 
     let row: HTMLTableRowElement;
     let bodyCell: HTMLTableCellElement;
-    for (let i = 0; i < zoomPatches.length; i++) {
-      let patch = zoomPatches[i];
+    for (let i = 0; i < device.patchList.length; i++) {
+      let patch = device.patchList[i];
       row = patchesTable.rows[1 + i % numPatchesPerRow];
       bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2];
       bodyCell.innerHTML = `${i + 1}`;
@@ -874,12 +879,18 @@ async function start()
     button.addEventListener("click", async (event) => {
         if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
           if (lastSelected === null) {
-            console.log("Cannot upload patch to memory slot since no memory slot was selected");
+            console.error("Cannot upload patch to memory slot since no memory slot was selected");
             return;
           }
           let memorySlot = getPatchNumber(lastSelected) - 1;
 
           let device = zoomDevices[0];
+
+          let nameForPatchInSlot = "";
+          if (memorySlot < device.patchList.length) {
+            nameForPatchInSlot = device.patchList[memorySlot].nameTrimmed ?? nameForPatchInSlot;
+            nameForPatchInSlot = `"${nameForPatchInSlot}"`;
+          }
           // let eightBitData = savePatch.ptcfChunk;
           // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
           // crc = crc  ^ 0xFFFFFFFF;
@@ -889,15 +900,18 @@ async function start()
           // console.log(`Patch data length: ${eightBitData.length}`);
           // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
-          let result = await confirmDialog.getUserConfirmation(`Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`);
+          let result = true;
+          if (nameForPatchInSlot !== `"Empty"`)
+            result = await confirmDialog.getUserConfirmation(`Are you sure you want to overwrite patch number ${memorySlot + 1} ${nameForPatchInSlot} ?`);
           if (result) {
             await device.uploadPatchToMemorySlot(savePatch, memorySlot, true);
-            let patch = await device.downloadPatchFromMemorySlot(memorySlot);
-            //let patch = savePatch;
-            if (patch !== undefined) {
-              zoomPatches[memorySlot] = patch;
-              updatePatchesTable();
-            }
+            // let patch = await device.downloadPatchFromMemorySlot(memorySlot);
+            // //let patch = savePatch;
+            // if (patch !== undefined) {
+            //   zoomPatches[memorySlot] = patch;
+            //   updatePatchesTable();
+            // }
+            updatePatchesTable();
           }
 
           // confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`

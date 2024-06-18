@@ -70,6 +70,8 @@ export class ZoomDevice
   private _patchDumpForMemoryLocationV1CRCBytes: number = 0;
   private _ptcfPatchFormatSupported: boolean = false;
 
+  private _patchList: Array<ZoomPatch> = new Array<ZoomPatch>();
+
   public loggingEnabled: boolean = true;
 
   constructor(midi: IMIDIProxy, midiDevice: MIDIDeviceDescription, timeoutMilliseconds: number = 200)
@@ -248,9 +250,10 @@ export class ZoomDevice
   }
 
   /**
-   * 
-   * @param data 
+   * Uploads the given patch to the specified memory slot on the pedal. The internal patch list is updated with this new patch.
+   * @param patch
    * @param memorySlot Zero-based memory location. Typically between 0-49 or 0-99 depending on pedal. 
+   * @param [waitForAcknowledge=true] 
    */
   public async uploadPatchToMemorySlot(patch: ZoomPatch, memorySlot: number, waitForAcknowledge: boolean = true) 
   {
@@ -304,6 +307,34 @@ export class ZoomDevice
     }
     else
       this.sendCommand(sevenBitData, command, crcBytes);
+
+    if (memorySlot < this._patchList.length)
+      this._patchList[memorySlot] = patch;
+  }
+
+  public async updatePatchListFromPedal()
+  {
+    if (this._numPatches === -1) {
+      console.warn("Attempting to download patches from pedal without knowing how many patches are stored on the pedal (this._numPatches = -1)");
+    }
+    let maxNumPatches = this._numPatches === -1 ? 500 : this._numPatches;  
+    if (this._patchList.length !== maxNumPatches)
+      this._patchList = new Array<ZoomPatch>(maxNumPatches);
+    for (let i=0; i<maxNumPatches; i++) {
+      let patch = await this.downloadPatchFromMemorySlot(i)
+      if (patch === undefined) {
+        console.log(`Got no reply for patch number ${i} while attempting to download patches from device ${this._midiDevice.deviceName}`);
+        this._patchList.splice(i);
+        this._numPatches = i;
+        break;
+      }
+      this._patchList[i] = patch;
+    }
+  }
+
+  public get  patchList(): Array<ZoomPatch>
+  {
+    return this._patchList;
   }
 
   public getSysexForCurrentPatch(patch: ZoomPatch): Uint8Array | undefined
