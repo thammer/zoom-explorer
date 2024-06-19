@@ -991,7 +991,6 @@ async function start()
       patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + msogString;
     }
 
-    // let patchInfoString = nameString + "<br/>" + txe1String + "<br/>" + prm2String + "<br/>" + txj1String + "<br/>" + edtbString; 
     let htmlPatchInfoString = "";
     
     if (patchInfoString.length === previousPatchInfoString.length) {
@@ -1020,25 +1019,6 @@ async function start()
 }
 
 let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
-
-// let seven=toUint8Array("01 02 03 04 05 06 07 08 09");
-// console.log(`Seven: ${toHexString(seven, " ")}`);
-// let eight = seven2eight(seven);
-// console.log(`Eight: ${toHexString(eight, " ")}`);
-
-// let eight = hexStringToUint8Array("81 02 83 04 85 06 07 08 09 8A");
-// console.log(`Eight: ${bytesToHexString(eight, " ")}`);
-
-// let seven = eight2seven(eight);
-// console.log(`Seven: ${bytesToHexString(seven, " ")}`);
-
-// let eight2 = seven2eight(seven);
-// console.log(`Eight: ${bytesToHexString(eight2, " ")}`);
-
-// let crc = crc32(seven) ^ 0xFFFFFFFF;
-// console.log(`CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x7F]), " ")}`);
-
-// toHexString(seven2eight(toUint8Array("01 02 03 04 05 06 07 08")), " ");
 
 let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
 
