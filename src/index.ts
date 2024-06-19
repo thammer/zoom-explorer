@@ -317,7 +317,10 @@ async function start()
   
     let cellCounter = 0;
   
-
+    dataset = sysexMap.get(sysexLength);
+    if (dataset === undefined)
+      return;
+    
     // for (let [length, dataset] of sysexMap) 
     // {
       let headerCell: HTMLTableCellElement;
