@@ -239,11 +239,6 @@ async function start()
   for (const device of zoomDevices)
   {
     device.addListener(handleMIDIDataFromZoom);
-
-    // midi.addListener(device.inputID, (deviceHandle, data) => {
-    //   console.log(`Received: ${toHexString(data, " ")}`);
-    //   handleMIDIDataFromZoom(device, data);
-    // });
   };  
 
   // let callAndResponse = new Map<string, string>();
@@ -283,10 +278,6 @@ async function start()
     while ((table.rows.length > 5) &&  ((table.offsetTop + table.clientHeight + 20 > window.innerHeight) || (table.rows.length > 100))) {
       table.deleteRow(table.rows.length - 1);
     }
-    // if ((table.getBoundingClientRect().top + table.clientHeight > window.innerHeight) || (table.rows.length > 100)) {
-    //   table.deleteRow(table.rows.length - 1);
-    // }
-  
   }
         
   function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array)
@@ -320,156 +311,148 @@ async function start()
     dataset = sysexMap.get(sysexLength);
     if (dataset === undefined)
       return;
+
+    let headerCell: HTMLTableCellElement;
+    let bodyCell: HTMLTableCellElement;
+
+    let dataType1 = bytesToHexString([dataset.current[4]]);
+    let dataType2 = bytesToHexString([dataset.current[5]]);
+    let dataTypeString = getZoomCommandName(dataset.current);
     
-    // for (let [length, dataset] of sysexMap) 
-    // {
-      let headerCell: HTMLTableCellElement;
-      let bodyCell: HTMLTableCellElement;
+    let updatedRow = false;
+    let rowId = `Sysex_Row_Header_${sysexLength}`;
+    row = document.getElementById(rowId) as HTMLTableRowElement;
+    if (row === null) {
+      let dataLength = data.length; // for the click handler lambdas 
+      updatedRow = true;
+      row = table.insertRow(-1);
+      row.id = rowId;
+      headerCell = row.insertCell(-1);
+
+      let headerSpan = document.createElement("span");
+      headerSpan.id = "sysexHeader_" + (cellCounter).toString();
+      headerCell.appendChild(headerSpan);
+
+      let button = document.createElement("button") as HTMLButtonElement;
+      button.textContent = "Send";
+      button.className = "sendSysexButton";
+      button.addEventListener("click", (event) => {
+        let html = bodyCell.innerHTML;
+        let sysexData = html2Uint8Array(html);
+        midi.send(dataset.device.outputID, sysexData);
+      });
+      headerCell.appendChild(button);
   
-      let dataType1 = bytesToHexString([dataset.current[4]]);
-      let dataType2 = bytesToHexString([dataset.current[5]]);
-      let dataTypeString = getZoomCommandName(dataset.current);
-      
-      let updatedRow = false;
-      let rowId = `Sysex_Row_Header_${sysexLength}`;
-      row = document.getElementById(rowId) as HTMLTableRowElement;
-      if (row === null) {
-        let dataLength = data.length; // for the click handler lambdas 
-        updatedRow = true;
-        row = table.insertRow(-1);
-        row.id = rowId;
-        headerCell = row.insertCell(-1);
+      let inputEightBitOffset = document.createElement("input") as HTMLInputElement;
+      inputEightBitOffset.type = "text";
+      inputEightBitOffset.className = "sysexEightBitOffset";
+      inputEightBitOffset.id = "eightBitOffset_" + (cellCounter).toString();
+      inputEightBitOffset.size = 4;
+      inputEightBitOffset.maxLength = 4;
+      inputEightBitOffset.addEventListener("click", (event) => {
+        let useASCII = inputASCII.checked;
+        let useEightBit = inputEightBit.checked;
+        let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
   
-        let headerSpan = document.createElement("span");
-        headerSpan.id = "sysexHeader_" + (cellCounter).toString();
-        headerCell.appendChild(headerSpan);
+        let dataset = sysexMap.get(dataLength);
+        let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
+        if (dataset !== undefined)
+          sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+        bodyCell.innerHTML = sysexString;   
+      });
+      headerCell.appendChild(inputEightBitOffset);
   
-        let button = document.createElement("button") as HTMLButtonElement;
-        button.textContent = "Send";
-        button.className = "sendSysexButton";
-        button.addEventListener("click", (event) => {
-          let html = bodyCell.innerHTML;
-          let sysexData = html2Uint8Array(html);
-          midi.send(dataset.device.outputID, sysexData);
-        });
-        headerCell.appendChild(button);
-    
-        let inputEightBitOffset = document.createElement("input") as HTMLInputElement;
-        inputEightBitOffset.type = "text";
-        inputEightBitOffset.className = "sysexEightBitOffset";
-        inputEightBitOffset.id = "eightBitOffset_" + (cellCounter).toString();
-        inputEightBitOffset.size = 4;
-        inputEightBitOffset.maxLength = 4;
-        inputEightBitOffset.addEventListener("click", (event) => {
-          let useASCII = inputASCII.checked;
-          let useEightBit = inputEightBit.checked;
-          let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
-    
-          let dataset = sysexMap.get(dataLength);
-          let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
-          if (dataset !== undefined)
-            sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
-          bodyCell.innerHTML = sysexString;   
-        });
-        headerCell.appendChild(inputEightBitOffset);
-    
-        let label = document.createElement("label") as HTMLLabelElement;
-        label.className = "sysexEightBitOffset";
-        label.textContent = "offset ";
-        label.htmlFor = "eightBitOffset_" + (cellCounter).toString();
-        headerCell.appendChild(label);
-    
-        label = document.createElement("label") as HTMLLabelElement;
-        label.className = "sysexEightBitCheckbox";
-        label.textContent = "8 bit ";
-        label.htmlFor = "EightBitCheckbox_" + (cellCounter).toString();
-        headerCell.appendChild(label);
-    
-        let inputEightBit = document.createElement("input") as HTMLInputElement;
-        inputEightBit.type = "checkbox";
-        inputEightBit.className = "sysexEightBitCheckbox";
-        inputEightBit.id = "eightBitCheckbox_" + (cellCounter).toString();
-        inputEightBit.addEventListener("click", (event) => {
-          let useASCII = inputASCII.checked;
-          let useEightBit = inputEightBit.checked;
-          let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
-    
-          let dataset = sysexMap.get(dataLength);
-          let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
-          if (dataset !== undefined)
-            sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
-          bodyCell.innerHTML = sysexString;   
-        });
-        headerCell.appendChild(inputEightBit);
-    
-        label = document.createElement("label") as HTMLLabelElement;
-        label.className = "sysexASCIICheckbox";
-        label.textContent = "ASCII ";
-        label.htmlFor = "ASCIICheckbox_" + (cellCounter).toString();
-        headerCell.appendChild(label);
-    
-        let inputASCII = document.createElement("input") as HTMLInputElement;
-        inputASCII.type = "checkbox";
-        inputASCII.className = "sysexASCIICheckbox";
-        inputASCII.id = "ASCIICheckbox_" + (cellCounter).toString();
-        inputASCII.addEventListener("click", (event) => {
-          let useASCII = inputASCII.checked;
-          let useEightBit = inputEightBit.checked;
-          let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
-    
-          let dataset = sysexMap.get(dataLength);
-          let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
-          if (dataset !== undefined)
-            sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
-          bodyCell.innerHTML = sysexString;   
-        });
-        headerCell.appendChild(inputASCII);
-    
-        cellCounter++;
+      let label = document.createElement("label") as HTMLLabelElement;
+      label.className = "sysexEightBitOffset";
+      label.textContent = "offset ";
+      label.htmlFor = "eightBitOffset_" + (cellCounter).toString();
+      headerCell.appendChild(label);
   
-      } else {
-        headerCell = row.cells[0];
-      }
+      label = document.createElement("label") as HTMLLabelElement;
+      label.className = "sysexEightBitCheckbox";
+      label.textContent = "8 bit ";
+      label.htmlFor = "EightBitCheckbox_" + (cellCounter).toString();
+      headerCell.appendChild(label);
   
-      let headerSpan = getChildWithIdThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
-      headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${bytesToHexString([dataset.device.familyCode[0]])}]` +
-      ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${sysexLength}</b> &nbsp;&nbsp;`;
+      let inputEightBit = document.createElement("input") as HTMLInputElement;
+      inputEightBit.type = "checkbox";
+      inputEightBit.className = "sysexEightBitCheckbox";
+      inputEightBit.id = "eightBitCheckbox_" + (cellCounter).toString();
+      inputEightBit.addEventListener("click", (event) => {
+        let useASCII = inputASCII.checked;
+        let useEightBit = inputEightBit.checked;
+        let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
   
-      let current = dataset.current;
-      let previous = dataset.previous;    
+        let dataset = sysexMap.get(dataLength);
+        let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
+        if (dataset !== undefined)
+          sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+        bodyCell.innerHTML = sysexString;   
+      });
+      headerCell.appendChild(inputEightBit);
   
-      let inputASCII = getChildWithIdThatStartsWith(headerCell.children, "ASCIICheckbox") as HTMLInputElement;
-      let inputEightBit = getChildWithIdThatStartsWith(headerCell.children, "eightBitCheckbox") as HTMLInputElement;
-      let inputEightBitOffset = getChildWithIdThatStartsWith(headerCell.children, "eightBitOffset") as HTMLInputElement;
-      let useASCII = inputASCII.checked;
-      let useEightBit = inputEightBit.checked;
-      let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
+      label = document.createElement("label") as HTMLLabelElement;
+      label.className = "sysexASCIICheckbox";
+      label.textContent = "ASCII ";
+      label.htmlFor = "ASCIICheckbox_" + (cellCounter).toString();
+      headerCell.appendChild(label);
   
-      if (current.length === 985 || current.length === 989) {
-        let offset = 9 + current.length - 985;
-        let eightBitCurrent = seven2eight(current, offset, current.length-2);
+      let inputASCII = document.createElement("input") as HTMLInputElement;
+      inputASCII.type = "checkbox";
+      inputASCII.className = "sysexASCIICheckbox";
+      inputASCII.id = "ASCIICheckbox_" + (cellCounter).toString();
+      inputASCII.addEventListener("click", (event) => {
+        let useASCII = inputASCII.checked;
+        let useEightBit = inputEightBit.checked;
+        let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
   
-        // F0 52 00 6E 46 00 00 01 00 01 00 F7
-        // let patch = ZoomPatch.fromPatchData(eightBitCurrent);
-        // console.log(`Patch name: ${patch.name}`);
-      }
+        let dataset = sysexMap.get(dataLength);
+        let sysexString = `ERROR: sysexMap.get(${dataLength}) returned undefined`;
+        if (dataset !== undefined)
+          sysexString = generateHTMLSysexString(dataset.current, dataset.previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+        bodyCell.innerHTML = sysexString;   
+      });
+      headerCell.appendChild(inputASCII);
   
-      let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
-  
-      rowId = `Sysex_Row_Body_${sysexLength}`;
-      row = document.getElementById(rowId) as HTMLTableRowElement;
-      if (row === null) {
-        row = table.insertRow(-1);
-        row.id = rowId;
-        bodyCell = row.insertCell(-1);
-      } else {
-        bodyCell = row.cells[0];
-      }
-  
-      bodyCell.innerHTML = sysexString; 
-      bodyCell.contentEditable = supportsContentEditablePlaintextOnly ? "plaintext-only" : "true";
-  
-    // }
+      cellCounter++;
+
+    } else {
+      headerCell = row.cells[0];
+    }
+
+    let headerSpan = getChildWithIdThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
+    headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${bytesToHexString([dataset.device.familyCode[0]])}]` +
+    ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${sysexLength}</b> &nbsp;&nbsp;`;
+
+    let current = dataset.current;
+    let previous = dataset.previous;    
+
+    let inputASCII = getChildWithIdThatStartsWith(headerCell.children, "ASCIICheckbox") as HTMLInputElement;
+    let inputEightBit = getChildWithIdThatStartsWith(headerCell.children, "eightBitCheckbox") as HTMLInputElement;
+    let inputEightBitOffset = getChildWithIdThatStartsWith(headerCell.children, "eightBitOffset") as HTMLInputElement;
+    let useASCII = inputASCII.checked;
+    let useEightBit = inputEightBit.checked;
+    let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
+
+    if (current.length === 985 || current.length === 989) {
+      let offset = 9 + current.length - 985;
+      let eightBitCurrent = seven2eight(current, offset, current.length-2);
+    }
+
+    let sysexString = generateHTMLSysexString(current, previous, paragraphHeight, lineLength, sentenceLength, useASCII, useEightBit, eightBitOffset);
+
+    rowId = `Sysex_Row_Body_${sysexLength}`;
+    row = document.getElementById(rowId) as HTMLTableRowElement;
+    if (row === null) {
+      row = table.insertRow(-1);
+      row.id = rowId;
+      bodyCell = row.insertCell(-1);
+    } else {
+      bodyCell = row.cells[0];
+    }
+
+    bodyCell.innerHTML = sysexString; 
+    bodyCell.contentEditable = supportsContentEditablePlaintextOnly ? "plaintext-only" : "true";
   }
   
   function html2Uint8Array(html: string) {
@@ -532,11 +515,7 @@ async function start()
     updateMidiMonitorTable(device, data, messageType);
   
     if (messageType === MessageType.SysEx)
-    {
-      // let sysexDataCell: HTMLTableRowElement = document.getElementById("sysexDataCell") as HTMLTableRowElement;
-      // let hexString = toHexString2(data, " ");
-      // sysexDataCell.innerHTML = hexString;
-    
+    {    
       updateSysexMonitorTable(device, data);
   
       // FIXME: Use ZoomDevice.sysexToPatchData() instead if the code below
@@ -629,8 +608,6 @@ async function start()
     return parseInt(text);
   }
 
-  // let zoomPatches : Array<ZoomPatch>;
-
   let lastSelected : HTMLTableCellElement | null = null;
   let patchesTable = document.getElementById("patchesTable") as HTMLTableElement;
   patchesTable.addEventListener("click", (event) => {
@@ -660,72 +637,11 @@ async function start()
   let downloadPatchesButton: HTMLButtonElement = document.getElementById("downloadPatchesButton") as HTMLButtonElement;
   downloadPatchesButton.addEventListener("click", async (event) => {
 
-  //await getCurrentPatch(zoomDevices[0]);
 
+  let device = zoomDevices[0];
 
-    let device = zoomDevices[0];
-  
-    // If the user has recently (in the last few seconds) changed a parameter on the pedal,
-    // the pedal will send out a patch dump automatically. This automatically sent message would 
-    // confuse the patch request process below. I think it is the pedal itself that gets confused and sends out
-    // multiple patch dumps. For the MS-50G+, the automatically sent patch message is 989 bytes long,
-    // while the length of the patch message when we request a patch is 985 bytes long, so it is possible to filter,
-    // but it would be better if we could do this in a more generic way.
-
-    // for (const device of zoomDevices)
-    // {
-    //   sendZoomCommand(device.outputID, device.familyCode[0], 0x51);
-    //   await sleepForAWhile(100);
-    //   sendZoomCommand(device.outputID, device.familyCode[0], 0x50);
-    //   await sleepForAWhile(100);
-    // }
-    
-    // let maxNumPatches = 500;
-    // zoomPatches = new Array<ZoomPatch>(maxNumPatches);
-    // for (let i=0; i<maxNumPatches; i++) {
-
-      // let bank = Math.floor(i/10);
-      // let program = i % 10;
-      // // let requestPatch = toUint8Array(`F0 52 00 6E 46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00 F7`);
-      // // let data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
-      // //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 45 00")), 1000);
-      // let requestPatch: Uint8Array;
-      // let data: Uint8Array | undefined;
-
-      // if (device.deviceInfo.familyCode[0] === 0x58) { // MS-50G
-      //   // sendZoomCommand(device.outputID, device.familyCode[0], 0x29);
-      //   requestPatch = toUint8Array(`09 00 00 ${toHexString([i])}`);
-      //   data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
-      //     (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);  
-      // }
-      // else {
-      //   requestPatch = toUint8Array(`46 00 00 ${toHexString([bank])} 00 ${toHexString([program])} 00`);
-      //   data = await sendZoomCommandAndGetReply(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], requestPatch, device.deviceInfo.inputID,
-      //     (received) => zoomCommandMatch(received, device.deviceInfo.familyCode[0], toUint8Array("45 00")), 1000);
-      // }
-      // if (data === undefined) {
-      //   console.log(`Got no reply for patch number ${i}`);
-      //   zoomPatches.splice(i);
-      //   break;
-      // }
-      // console.log(`Received data: ${data.length}`);
-
-      // let offset = 9 + data.length - 985;
-      // let eightBitData = seven2eight(data, offset, data.length-2);
-
-      // let patch = ZoomPatch.fromPatchData(eightBitData);
-
-    //   let patch = await device.downloadPatchFromMemorySlot(i)
-    //   if (patch === undefined) {
-    //     console.log(`Got no reply for patch number ${i}`);
-    //     zoomPatches.splice(i);
-    //     break;
-    //   }
-    //   zoomPatches[i] = patch;
-    // }
-
-    await device.updatePatchListFromPedal();
-    updatePatchesTable();
+  await device.updatePatchListFromPedal();
+  updatePatchesTable();
 
   //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
   //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
@@ -825,9 +741,6 @@ async function start()
       targetString = targetString.slice(0, 8) + " " + targetString.slice(8, 16) + " " + targetString.slice(16, 24) + " " + targetString.slice(24, 32);
     }
   
-    // headerCell.innerHTML = `Patch: "${patchNameString}". Version: ${patch.version}. Target: ${targetString}. Unknown: ${unknownString}. Length: ${patch.length}<br/>` +
-    //   `Effects: ${patch.numEffects}. IDs: ${idString}.`;
-  
     headerCell.innerHTML = "";
     let headerSpan = document.createElement("span");
     headerSpan.id = "patchTableHeader";
@@ -862,14 +775,6 @@ async function start()
     button.addEventListener("click", (event) => {
       if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
         let device = zoomDevices[0];
-        // let eightBitData = savePatch.ptcfChunk;
-        // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-        // crc = crc  ^ 0xFFFFFFFF;
-        // let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-        // console.log(`Patch name: ${savePatch.name}`);
-        // console.log(`Patch data length: ${eightBitData.length}`);
-        // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
-
         device.uploadCurrentPatch(savePatch);
       }
     });
@@ -894,41 +799,14 @@ async function start()
             nameForPatchInSlot = device.patchList[memorySlot].nameTrimmed ?? nameForPatchInSlot;
             nameForPatchInSlot = `"${nameForPatchInSlot}"`;
           }
-          // let eightBitData = savePatch.ptcfChunk;
-          // let crc = crc32(eightBitData, 0, eightBitData.length - 1);
-          // crc = crc  ^ 0xFFFFFFFF;
-          // let crcBytes = new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]);
-          // console.log(`Patch name: ${savePatch.name}`);
-          // console.log(`Memory slot number: ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}"`);
-          // console.log(`Patch data length: ${eightBitData.length}`);
-          // console.log(`Patch CRC (7-bit): ${toHexString(crcBytes, " ")}`);
 
           let result = true;
           if (nameForPatchInSlot !== `"Empty"`)
             result = await confirmDialog.getUserConfirmation(`Are you sure you want to overwrite patch number ${memorySlot + 1} ${nameForPatchInSlot} ?`);
           if (result) {
             await device.uploadPatchToMemorySlot(savePatch, memorySlot, true);
-            // let patch = await device.downloadPatchFromMemorySlot(memorySlot);
-            // //let patch = savePatch;
-            // if (patch !== undefined) {
-            //   zoomPatches[memorySlot] = patch;
-            //   updatePatchesTable();
-            // }
             updatePatchesTable();
           }
-
-          // confirmLabel.textContent = `Are you sure you want to overwrite patch number ${memorySlot + 1} "${zoomPatches[memorySlot].nameTrimmed}" ?`
-          // confirmEvent = async (result: boolean) => {
-          //   if (result) {
-          //     device.uploadPatchToMemorySlot(savePatch, memorySlot);
-          //     let patch = await device.downloadPatchFromMemorySlot(memorySlot);
-          //     if (patch !== undefined) {
-          //       zoomPatches[memorySlot] = patch;
-          //       updatePatchesTable();
-          //     }
-          //   }
-          // }
-          // confirmDialog.showModal();
         }
     });
     headerCell.appendChild(button);
@@ -996,60 +874,6 @@ async function start()
           updatePatchInfoTable(patch);
         }
       } 
-      // try {
-      //   if (window.showOpenFilePicker !== undefined) {
-      //       const [fileHandle] = await window.showOpenFilePicker({
-      //       types: [
-      //         { description: fileDescription,
-      //           accept: { "application/octet-stream" : [`.${fileEnding}`]}
-      //         }
-      //       ] 
-      //     });
-      //     const blob = await fileHandle.getFile();
-      //     const buffer = await blob.arrayBuffer();
-      //     const data = new Uint8Array(buffer);
-      //     let patch = ZoomPatch.fromPatchData(data);
-      //     updatePatchInfoTable(patch);
-      //   } else {
-      //     // Fallback to old-school file upload
-      //     let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
-      //     if (input === null) {
-      //       input = document.createElement("input") as HTMLInputElement;
-      //       input.id = "fileInput";
-      //       input.type = "file";
-      //       input.accept = `.${fileEnding}`;
-      //       input.style.opacity = "0";
-      //       let content = document.getElementById("content") as HTMLDivElement;
-      //       content.appendChild(input);
-      //     }
-
-      //     // Clear old event listeners
-      //     let clonedInput = input.cloneNode(true) as HTMLInputElement;
-      //     input.parentNode?.replaceChild(clonedInput, input);
-      //     input = clonedInput;
-      //     input.files = null;
-      //     input.value = "";
-
-      //     input.addEventListener("change", () => {
-      //       console.log(`Selected filename: ${input.value}`);
-      //       const fileReader = new FileReader();
-      //       fileReader.onload = (e) => {
-      //         console.log("File loaded");
-      //         if (fileReader.result != null) {
-      //           let buffer = fileReader.result as ArrayBuffer;
-      //           const data = new Uint8Array(buffer);
-      //           let patch = ZoomPatch.fromPatchData(data);
-      //           updatePatchInfoTable(patch);
-      //         }
-      //       };
-      //       if (input.files != null)
-      //         fileReader.readAsArrayBuffer(input.files[0])
-      //     }, false);
-      //     input.click();
-      //   }
-      // } catch (err) {
-      //   console.log(err); 
-      // }
     });
 
     headerCell.appendChild(button);
