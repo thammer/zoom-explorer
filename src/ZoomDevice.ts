@@ -144,7 +144,21 @@ export class ZoomDevice
 
   public setCurrentBankAndProgram(bank: number, program: number)
   {
+    this._midi.sendCC(this._midiDevice.outputID, 0, 0xB0, 0x00); // bank MSB = 0
+    this._midi.sendCC(this._midiDevice.outputID, 0, 0xB0, bank & 0x7F); // bank LSB
+    this._midi.sendPC(this._midiDevice.outputID, 0, program & 0x7F); // program
+}
 
+  public setCurrentMemorySlot(memorySlot: number)
+  {
+    if (this._patchesPerBank !== -1) {
+      let bank = Math.floor(memorySlot / this._patchesPerBank);
+      let program = memorySlot % this._patchesPerBank;
+      this.setCurrentBankAndProgram(bank, program);
+    }
+    else {
+      this._midi.sendPC(this._midiDevice.outputID, 0, memorySlot & 0x7F); // program
+    }
   }
 
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
