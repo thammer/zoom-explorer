@@ -57,7 +57,8 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 53             |      6 | *    |         | F0 52 00 6E 53 F7 | PC mode off |
 | 60 XX          |      7 | *    | *       | F0 52 00 6E 60 00 F7 | API for accessing files. Show caution! | 
 | 60 05 00       |      8 | *    |         | F0 52 00 6E 60 05 00 F7 | Flush buffer / clean data (needs more testing) |
-| 64 02          |     10 | *    |         | F0 52 00 6E 64 02 00 00 00 F7 | Get display information | 
+| 64 01          |      ? |      | *       | F0 52 00 6E 64 01 \<rest of message\> F7 | Display information. Response to message 64 02 |
+| 64 02          |     10 | *    |         | F0 52 00 6E 64 02 \<start screen\> \<end screen\> 00 F7 | Get display information | 
 | 64 0B          |      7 | *    | *       | F0 52 00 6E 64 0B F7 | Tuner on |
 | 64 0C          |      7 | *    | *       | F0 52 00 6E 64 0C F7 | Tuner off |
 | 64 12          |    985 |      | *       | F0 52 00 6E 64 12 01 \<length LSB\> \<length MSB\> \<patch data\> \<5 byte CRC\> F7 | Patch dump (curren patch), automatically sent after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
