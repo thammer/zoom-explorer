@@ -157,7 +157,7 @@ export async function saveBlobToFile(blob: Blob, suggestedName: string, fileEndi
   }
 }
 
-export function getChildWithIdThatStartsWith(children: HTMLCollection, startsWidth: string) : HTMLElement | null
+export function getChildWithIDThatStartsWith(children: HTMLCollection, startsWidth: string) : HTMLElement | null
 {
   let index = 0;
   while (index < children.length) {
@@ -166,4 +166,18 @@ export function getChildWithIdThatStartsWith(children: HTMLCollection, startsWid
       return item;
   }
   return null;
+}
+
+export function getColorFromEffectID(effectID: number): string
+{
+  let effectGroup = (effectID >> 24) & 0xFF;
+  let color:string = effectGroup === 0x01 ? "#C8B4D7" : // purple
+    effectGroup === 0x02 ? "#FFE2BF" : // orange
+    effectGroup === 0x04 ? "#F7BFB9" : // red
+    effectGroup === 0x06 ? "#ADF2F4" : // turquoise
+    effectGroup === 0x07 ? "#E8E69E" : // yellow
+    effectGroup === 0x08 ? "#A5BBE1" : // blue
+    effectGroup === 0x09 ? "#ABD3A3" : // green
+    "#FFFFFF";
+  return color;
 }

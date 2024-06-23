@@ -5,7 +5,8 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIdThatStartsWith, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit } from "./htmltools.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit } from "./htmltools.js";
+import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -420,16 +421,16 @@ async function start()
       headerCell = row.cells[0];
     }
 
-    let headerSpan = getChildWithIdThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
+    let headerSpan = getChildWithIDThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
     headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${bytesToHexString([dataset.device.familyCode[0]])}]` +
     ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${sysexLength}</b> &nbsp;&nbsp;`;
 
     let current = dataset.current;
     let previous = dataset.previous;    
 
-    let inputASCII = getChildWithIdThatStartsWith(headerCell.children, "ASCIICheckbox") as HTMLInputElement;
-    let inputEightBit = getChildWithIdThatStartsWith(headerCell.children, "eightBitCheckbox") as HTMLInputElement;
-    let inputEightBitOffset = getChildWithIdThatStartsWith(headerCell.children, "eightBitOffset") as HTMLInputElement;
+    let inputASCII = getChildWithIDThatStartsWith(headerCell.children, "ASCIICheckbox") as HTMLInputElement;
+    let inputEightBit = getChildWithIDThatStartsWith(headerCell.children, "eightBitCheckbox") as HTMLInputElement;
+    let inputEightBitOffset = getChildWithIDThatStartsWith(headerCell.children, "eightBitOffset") as HTMLInputElement;
     let useASCII = inputASCII.checked;
     let useEightBit = inputEightBit.checked;
     let eightBitOffset = inputEightBitOffset.value != null ? parseFloat(inputEightBitOffset.value) : 0;
@@ -466,6 +467,7 @@ async function start()
   function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, paragraphHeight: number, lineLength: number, sentenceLength: number, 
                                    ascii: boolean = false, eightBit: boolean = false, eightBitOffset: number = 0) 
   {
+    let mixed = true;
     if (eightBit) {
       let lastByte = current[current.length - 1];
       let sliceBeforeOffset = current.slice(0, eightBitOffset);
@@ -485,10 +487,21 @@ async function start()
     }
   
     let sysexString = "";
+    let hexString = "";
     for (let i = 0; i < current.length; i++) {
-      let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : current[i] == 0 ? 95 : 39; // printable, _ or '
-      let hexString = ascii ? `&#${printableASCIIValue};` : bytesToHexString([current[i]]);
-      //let hexString = String.fromCharCode(current[i]);
+      if (ascii) {
+        let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : current[i] == 0 ? 95 : 39; // printable, _ or '    
+        if (mixed)
+          hexString = current[i] >= 32 && current[i] <= 126 ? ` &#${printableASCIIValue};` : current[i] === 0 ? " _" : bytesToHexString([current[i]]);  
+        else
+          hexString = `&#${printableASCIIValue};`;
+      }
+      else
+        hexString = bytesToHexString([current[i]]);
+      
+      // let printableASCIIValue: number = current[i] >= 32 && current[i] <= 126 ? current[i] : current[i] == 0 ? 95 : 39; // printable, _ or '
+      // hexString = ascii ? `&#${printableASCIIValue};` : bytesToHexString([current[i]]);
+
       if (previous[i] !== current[i])
         sysexString += "<b>" + hexString + "</b>";
   
@@ -505,6 +518,124 @@ async function start()
         sysexString += "&nbsp;";
     }
     return sysexString;
+  }
+
+  let previousEditData = new Uint8Array();
+
+  function updateEditPatchTable(data: Uint8Array, patch: ZoomPatch | undefined): void
+  {
+    let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;  
+    
+    let row: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
+    let headerCell: HTMLTableCellElement = row.cells[0] as HTMLTableCellElement;
+    let effectsRow = table.rows[1] as HTMLTableRowElement;
+
+    if (patch != undefined)
+      headerCell.textContent = "Patch: " + patch.nameTrimmed;
+
+    // FIXME: Re-use the existing children if all params match
+
+    // remove all children
+    while(effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
+
+    let offset = 6;
+    let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
+    headerCell.colSpan = screenCollection.screens.length;
+
+    let maxNumParameters = 0;
+    for (let i=screenCollection.screens.length - 1; i>=0; i--)
+      maxNumParameters = Math.max(maxNumParameters, screenCollection.screens[i].parameters.length);
+
+    let numParamsPerLine = 4;
+    let numScreens = screenCollection.screens.length;
+    for (let i=numScreens - 1; i>=0; i--) {
+      let screen = screenCollection.screens[i];
+
+      if ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || (patch !== undefined && patch.effectSettings !== null && i >= patch.effectSettings.length))
+        continue;
+
+      let effectTable = document.createElement("table") as HTMLTableElement;
+      effectTable.className="editEffectTable";
+      let tr = document.createElement("tr") as HTMLTableRowElement;
+      effectTable.appendChild(tr);
+      let effectHeader = document.createElement("th") as HTMLTableCellElement;
+      tr.appendChild(effectHeader);
+
+      let paramNameRow: HTMLTableRowElement | undefined = undefined;
+      let paramValueRow: HTMLTableRowElement | undefined = undefined;
+      
+      effectHeader.colSpan = Math.max(screen.parameters.length - 2, numParamsPerLine);
+
+      if (patch !== undefined && patch.edtbEffectSettings !== null && i< patch.edtbEffectSettings.length) {
+        let effectID = patch.edtbEffectSettings[i].id;
+        let color = getColorFromEffectID(effectID);
+        effectTable.style.backgroundColor = color;
+      } 
+
+      for (let j=0; j<maxNumParameters; j++) {
+        let parameter = screen.parameters[j];
+        if (j === 0)
+          effectTable.className = parameter.valueString === "0" ? "editEffectTable editEffectOff" : "editEffectTable";          
+        if (j === 1)
+          effectHeader.textContent = parameter.name;
+        else {
+          let paramNumber = j-2;
+          if (paramNumber % numParamsPerLine === 0) {
+            paramNameRow = document.createElement("tr");
+            paramValueRow = document.createElement("tr")
+            effectTable.append(paramNameRow);
+            effectTable.append(paramValueRow);
+          }
+          let td = document.createElement("td") as HTMLTableCellElement;
+          if (j < screen.parameters.length)
+            td.textContent = parameter.name;
+          else
+            td.textContent = " ";
+          paramNameRow?.appendChild(td);
+          td = document.createElement("td") as HTMLTableCellElement;
+          if (j < screen.parameters.length) {
+            let valueString = parameter.valueString.replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
+            td.innerHTML = valueString;
+          }
+          else
+            td.textContent = " ";
+          paramValueRow?.appendChild(td);
+        }
+      }
+      let td = document.createElement("td") as HTMLTableCellElement;
+      td.appendChild(effectTable);
+      effectsRow.appendChild(td);
+    }
+
+    // const sentenceLength = 10;
+    // const lineLength = 50;
+    // const paragraphHeight = 4;
+
+    // let useASCII = true;
+    // let useEightBit = false;
+    // let eightBitOffset = 0;
+
+    // let sysexString = generateHTMLSysexString(data, previousEditData, paragraphHeight, lineLength, sentenceLength, true, useEightBit, eightBitOffset);
+    // headerCell.innerHTML = sysexString;
+
+    // // sysexString = generateHTMLSysexString(data, previousEditData, paragraphHeight, lineLength, sentenceLength, false, useEightBit, eightBitOffset);
+    // // hexCell.innerHTML = sysexString;
+
+    // previousEditData = data;
+
+    // let offset = 6;
+    // let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
+
+    // let text = "";
+    // for (let i=0; i<screenCollection.screens.length; i++) {
+    //   let screen = screenCollection.screens[i];
+    //   for (let j=0; j<screen.parameters.length; j++) {
+    //     let parameter = screen.parameters[j];
+    //     text += `Screen ${i}  Parameter ${j.toString().padStart(2, " ")}  ${parameter.name} = ${parameter.valueString} <br/>`;
+    //   }
+    // }
+
+    // bodyCell.innerHTML = text;
   }
   
   function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): void
@@ -542,7 +673,8 @@ async function start()
         let eightBitData = seven2eight(data, offset, data.length-2); // FIXME: We should ignore the last 5 bytes of CRC, use messageLengthFromSysex as limiter (extend seven2eight to support max 8 bit size)
   
         let patch = ZoomPatch.fromPatchData(eightBitData);
-  
+        latestPatch = patch;
+
         if (eightBitData !== null && eightBitData.length > 5) {
           console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
           let crc = crc32(eightBitData, 0, eightBitData.length - 1 - 5); // FIXME: note that 8 bit length is incorrect since it's 5 bytes too long, for the CRC we failed to ignore above
@@ -551,11 +683,16 @@ async function start()
           
         }
         updatePatchInfoTable(patch);
+
+        // Request screen info immediately
+        sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
       }
       else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
         // Request patch immediately
         sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 13"));
+        // Request screen info immediately
+        // sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 02 00"));
       }
       else if (data.length === 10 && (data[4] === 0x31)) {
         // Parameter was edited on device (MS series)
@@ -576,6 +713,10 @@ async function start()
         let bankSize = data[11] + (data[12] << 7);
         console.log(`Received patch info message (0x43). Number of patches: ${numPatches}, patch size: ${patchSize}, unknown: ${unknown}, bank size: ${bankSize}.`)
         console.log(`                                    Unknown: ${bytesToHexString(data.slice(13, 30-1), " ")}.`);
+      }
+      else if (data.length > 10 && data[4] === 0x64 && data[5] === 0x01) {
+        // Screen info
+        updateEditPatchTable(data, latestPatch);
       }
     }
   }
@@ -629,7 +770,6 @@ async function start()
     let device = zoomDevices[0];
 
     let patch = device.patchList[patchNumber];
-
     updatePatchInfoTable(patch);
 
   });
@@ -702,7 +842,7 @@ async function start()
       bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2];
       bodyCell.innerHTML = `${i + 1}`;
       bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2 + 1];
-      let name = patch.longName != null ? patch.longName : patch.name;
+      let name = patch.nameName != null ? patch.nameName : patch.name;
       bodyCell.innerHTML = `${name}`;
     }
   }
@@ -883,7 +1023,7 @@ async function start()
     // NAME
     if (patch.NAME !== null) {
 
-      let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.longName}"`;
+      let nameString = `${patch.NAME} Length: ${patch.nameLength?.toString().padStart(3, " ")}  Name: "${patch.nameName}"`;
       patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + nameString;
     }
 
@@ -1027,5 +1167,7 @@ let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
 
 // map from data length to previous and current data, used for comparing messages
 let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, device: MIDIDeviceDescription, messageNumber: number}>(); 
+
+let latestPatch: ZoomPatch | undefined = undefined;
 
 start();

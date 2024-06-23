@@ -164,7 +164,76 @@
         background: lightslategray;
       }
 
-      .sendSysexButton {
+      table.editPatchTable {
+          border: 1px solid black;
+          border-collapse: collapse;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 2px 4px 8px 4px;
+      } 
+      table.editPatchTable tr {
+          border: 1px solid black;
+          border-collapse: collapse;
+      } 
+      table.editPatchTable td, table.editPatchTable th {
+          border-collapse: collapse;
+          font-family: 'Roboto Mono', monospace;
+          padding: 1px 0px 1px px;
+      } 
+      table.editPatchTable th {
+          text-align: left;
+          padding-left: 0.6em;
+      }
+      table.editPatchTable td {
+          vertical-align: top;
+      }
+
+      table.editEffectTable {
+          border: 1px solid black;
+          border-radius: 6px;
+          border-spacing: 0px;
+          border-collapse: separate;
+          text-align: center;
+          vertical-align: middle;
+          table-layout: fixed;
+          margin: 2px 4px 8px 4px;
+      } 
+      table.editEffectTable tr {
+          border: 0px solid black;
+          border-collapse: collapse;
+      } 
+      table.editEffectTable td, table.editEffectTable th {
+          border: 1px solid darkgray;
+          border-collapse: collapse;
+          font-family: 'Roboto Mono', monospace;
+          white-space:pre;
+          padding: 1px 4px 1px 4px;
+      } 
+      table.editEffectTable th {
+          text-align: center;
+      }
+      table.editEffectTable td {
+          text-align: center;
+      }
+      table.editEffectOff {
+        color: darkgray;
+      }
+      /* rounded corners on effect tables */
+      table.editEffectTable th:first-of-type {
+        border-top-left-radius: 6px;
+      }
+      table.editEffectTable th:last-of-type {
+        border-top-right-radius: 6px;
+      }
+      table.editEffectTable tr:last-of-type td:first-of-type {
+        border-bottom-left-radius: 6px;
+      }
+      table.editEffectTable tr:last-of-type td:last-of-type {
+        border-bottom-right-radius: 6px;
+      }
+
+    .sendSysexButton {
         float: right;
         padding: 1px 4px 1px 4px;
       }
@@ -249,6 +318,124 @@
             </tr>
           </table>
 
+          <table id="editPatchTableID" class="editPatchTable">
+            <tr>
+                <th colspan="6">Patch: A very long patch name</th>
+            </tr>
+
+            <tr>
+              <td>
+                <table class="editEffectTable">
+                  <tr>
+                      <th colspan="4">Low-pass Filter</th>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                </table>
+              </td>
+              <td>
+                <table class="editEffectTable editEffectOff">
+                  <tr>
+                      <th colspan="4">Low-pass Filter</th>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                </table>
+              </td>
+
+              <td>
+                <table class="editEffectTable editEffectOff">
+                  <tr>
+                      <th colspan="4">Low-pass Filter</th>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                </table>
+              </td>
+
+              <td>
+                <table class="editEffectTable editEffectOff">
+                  <tr>
+                      <th colspan="4">Low-pass Filter</th>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                </table>
+              </td>
+
+              <td>
+                <table class="editEffectTable editEffectOff">
+                  <tr>
+                      <th colspan="4">Low-pass Filter</th>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                </table>
+              </td>
+
+              <td>
+                <table class="editEffectTable editEffectOff">
+                  <tr>
+                      <th colspan="4">Low-pass Filter</th>
+                  </tr>
+                  <tr>
+                    <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                  </tr>
+                  <tr>
+                    <td>74</td>
+                    <td>SLW24</td>
+                    <td>2P-4</td>
+                    <td>88</td>
+                  </tr>
+                </table>
+              </td>
+
+            </tr>
+          </table>
             
             <table id="sysexMonitorTable">
             </table>
