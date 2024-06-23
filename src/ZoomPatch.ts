@@ -18,7 +18,39 @@ export class EffectSettings
 export class ZoomPatch
 {
   // Derived properties
-  name: null | string = null;
+  get name(): null | string
+  {
+    if (this.nameName !== null)
+      return this.nameName;
+    else return this.shortName;
+  }
+
+  get shortName(): null | string
+  {
+    if (this.ptcfShortName !== null)
+      return this.ptcfShortName;
+    else if (this.nameName !== null)
+      return this.nameName;
+    else if (this.msogName !== null)
+      return this.msogName;
+    else
+      return null;
+  }
+
+  get nameTrimmed(): null | string
+  {
+    return this.name === null ? null : this.name.trim().replace(/[ ]{2,}/gi," ");
+  }
+
+  get effectSettings(): null | Array<EffectSettings>
+  {
+    if (this.edtbEffectSettings !== null)
+      return this.edtbEffectSettings;
+    else if (this.msogEffectSettings !== null)
+      return this.msogEffectSettings;
+    else
+      return null;
+  }
 
   // Toplevel chunk including header and subchunks
   PTCF: null | string = null;
@@ -27,7 +59,7 @@ export class ZoomPatch
   numEffects: null | number = null; 
   target: null | number = null;
   ptcfUnknown: null | Uint8Array = null; // 6 bytes
-  shortName: null | string = null;
+  ptcfShortName: null | string = null;
   ids: null | Uint32Array = null;
   
   ptcfChunk: null | Uint8Array = null; // Raw unparsed PTCF chunk, including the "PTCF" ID and 4 bytes for the length value
@@ -57,13 +89,14 @@ export class ZoomPatch
 
   NAME: null | string = null;
   nameLength: null | number = null; // 4 bytes
-  longName: null | string = null; // 28 bytes == nameLength bytes. The last four characters are sometimes (always?) 0x00.
+  nameName: null | string = null; // 28 bytes == nameLength bytes. The last four characters are sometimes (always?) 0x00.
 
   // Zoom MS OriGinal pedal info below
   MSOG: null | string = null; // This is not a named chunk. The original MS pedals doesn't have a chunk-based layout but rather a fixed structure.
   msogEffectSettings: null | Array<EffectSettings> = null;
   msogEffectsReversedBytes: null | Array<Uint8Array> = null; // numEffects * 18 bytes
   msogUnknown1: null | Uint8Array = null; // 2 bytes
+  msogName: null | string = null; // 10 bytes
   msogUnknown2: null | Uint8Array = null; // 1 byte
   msogTempo: null | number = null; // 8 bits based on the last 2 bytes in msogUnknown1
   msogEditEffectSlot: null | number = null; // 3 bits based on the two first bytes in msogUnknown1
@@ -77,11 +110,6 @@ export class ZoomPatch
   // shortName: null | string = null;
   // ids: null | Uint32Array = null;
   msogDataBuffer: null | Uint8Array = null; // Complete 8-bit data buffer for the patch
-
-  get nameTrimmed(): string | null
-  {
-    return this.name === null ? null : this.name.trim().replace(/[ ]{2,}/gi," ");
-  }
 
   readString(patch: Uint8Array, offset: number, length: number) : string | null
   {
@@ -205,8 +233,7 @@ export class ZoomPatch
     this.numEffects = this.readInt32(data, offset); offset += 4;
     this.target = this.readInt32(data, offset); offset += 4;
     this.ptcfUnknown = data.slice(offset, offset + 6); offset += 6;
-    this.shortName = this.readString(data, offset, 10); offset += 10;
-    this.name = this.shortName;
+    this.ptcfShortName = this.readString(data, offset, 10); offset += 10;
 
     if (this.numEffects !== null) {
       this.ids = this.readInt32Array(data, offset, this.numEffects);
@@ -291,7 +318,7 @@ export class ZoomPatch
           let bitpos = this.edtbReversedBytes[i].length * 8 - 1;
           let effectSettings = new EffectSettings();
           effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
-          effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29; // One bit more than MS-50G
+          effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29;
           effectSettings.parameters = new Array<number>();
           for (let p=0; p<5; p++) {
             let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
@@ -334,10 +361,9 @@ export class ZoomPatch
       this.NAME = chunkID;
       this.nameLength = chunkData.length;
       if (this.nameLength != null && this.nameLength > 0) {
-        this.longName = this.readString(chunkData, chunkOffset, this.nameLength); chunkOffset += this.nameLength; 
-        if (this.longName != null)
-          this.longName = this.longName.replace(/\x00/g, ""); // The last four characters could be 0x00
-        this.name = this.longName;
+        this.nameName = this.readString(chunkData, chunkOffset, this.nameLength); chunkOffset += this.nameLength; 
+        if (this.nameName != null)
+          this.nameName = this.nameName.replace(/\x00/g, ""); // The last four characters could be 0x00
       }
     }
 
@@ -352,8 +378,7 @@ export class ZoomPatch
     this.numEffects = this.readInt32(data, offset); offset += 4;
     this.target = this.readInt32(data, offset); offset += 4;
     this.ptcfUnknown = data.slice(offset, offset + 6); offset += 6;
-    this.shortName = this.readString(data, offset, 10); offset += 10;
-    this.name = this.shortName;
+    this.ptcfShortName = this.readString(data, offset, 10); offset += 10;
     if (this.numEffects !== null) {
       this.ids = this.readInt32Array(data, offset, this.numEffects);
       offset += this.numEffects * 4;
@@ -400,7 +425,7 @@ export class ZoomPatch
         let bitpos = this.edtbReversedBytes[i].length * 8 - 1;
         let effectSettings = new EffectSettings();
         effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
-        effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29; // One bit more than MS-50G
+        effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29; 
         effectSettings.parameters = new Array<number>();
         for (let p=0; p<5; p++) {
           let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
@@ -427,10 +452,9 @@ export class ZoomPatch
     this.NAME = this.readString(data, offset, 4); offset +=4;
     this.nameLength = this.readInt32(data, offset); offset += 4;
     if (this.nameLength != null && this.nameLength > 0) {
-      this.longName = this.readString(data, offset, this.nameLength); offset += this.nameLength; 
-      if (this.longName != null)
-        this.longName = this.longName.replace(/\x00/g, ""); // The last four characters could be 0x00
-      this.name = this.longName;
+      this.nameName = this.readString(data, offset, this.nameLength); offset += this.nameLength; 
+      if (this.nameName != null)
+        this.nameName = this.nameName.replace(/\x00/g, ""); // The last four characters could be 0x00
     }
 
     return offset;
@@ -496,10 +520,9 @@ export class ZoomPatch
     // FIXME: Think through the difference between num effects used in a patch and the max number of effects for a device
     // we need to read 6 effects here to get the offsets right...
 
-    this.shortName = this.readString(data, offset, 10); offset += 10; 
-    if (this.shortName != null)
-      this.shortName = this.shortName.replace(/\x00/g, ""); // Safety guard against characters being 0
-    this.name = this.shortName;
+    this.msogName = this.readString(data, offset, 10); offset += 10; 
+    if (this.msogName != null)
+      this.msogName = this.msogName.replace(/\x00/g, ""); // Safety guard against characters being 0
 
     this.msogUnknown2 = data.slice(offset, offset + 1); offset += 1;
 
