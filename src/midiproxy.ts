@@ -59,6 +59,7 @@ export interface IMIDIProxy
   getOutputInfo(id: DeviceID) : DeviceInfo;
 
   send(deviceHandle: DeviceID, data: number[] | Uint8Array) : void;
+  sendPC(deviceHandle: DeviceID, channel: number, program: number) : void;
   sendCC(deviceHandle: DeviceID, channel: number, ccNumber: number, ccValue: number) : void;
   sendAndGetReply(inputDevice: DeviceID, data: number[] | Uint8Array, outputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, timeoutMilliseconds: number) : Promise<Uint8Array | undefined>;
 
@@ -76,12 +77,14 @@ export interface IMIDIProxy
  */
 export abstract class MIDIProxy implements IMIDIProxy
 {
+  protected messageBuffer2: Uint8Array;
   protected messageBuffer3: Uint8Array;
 
   public loggingEnabled: boolean = true;
 
   constructor()
   {
+    this.messageBuffer2 = new Uint8Array([0, 0]); 
     this.messageBuffer3 = new Uint8Array([0, 0, 0]); 
   }
 
@@ -115,6 +118,13 @@ export abstract class MIDIProxy implements IMIDIProxy
   public get enabled(): boolean
   {
     return this._enabled;       
+  }
+
+  public sendPC(deviceHandle: DeviceID, channel: number, program: number) : void
+  {
+    this.messageBuffer2[0] = MessageType.CC + channel && 0b00001111;
+    this.messageBuffer2[1] = program && 0b01111111;
+    this.send(deviceHandle, this.messageBuffer2);
   }
 
   public sendCC(deviceHandle: DeviceID, channel: number, ccNumber: number, ccValue: number) : void
