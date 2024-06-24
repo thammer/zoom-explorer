@@ -116,8 +116,10 @@ F0 52 00 6e 64 18 00 00 64 00 F7 -> F0 52 00 6E 64 19 01 00 00 09 00 0A 00 00 00
 
 | Message type   | Length | Send | Receive | Message           | Description |
 |----------------|--------|------|---------|-------------------|-------------|
-| 00             |      7 |      | *       | F0 52 00 58 00 00  F7 | Acknowledge / Success |
-| 01             |      6 | *    |         | F0 52 00 58 01 00  F7 | Unknown. Reply is F0 52 00 58 00 0B F7 |
+| 00             |      7 |      | *       | F0 52 00 58 00 00 F7 | Acknowledge / Success |
+| 01             |      6 | *    |         | F0 52 00 58 01 F7 | Unknown. Reply is F0 52 00 58 00 0B F7 |
+| 04             |      6 | *    |         | F0 52 00 58 04 F7 | Unknown. Reply is F0 52 00 58 01 00 F7 |
+| 05             |      6 | *    |         | F0 52 00 58 05 F7 | Unknown. Reply is F0 52 00 58 00 00 F7 |
 | 06             |     10 |      | *       | F0 52 00 58 06 \<num patches LSB\> \<num patches MSB\> \<patch length LSB\> \<patch length MSB\> F7 | Total number of patches and patch length |
 | 07             |      6 | *    |         | F0 52 00 58 07 F7 | Get total number of patches and patch length (reply with message type 06) |
 | 08             |    156 | *    | *       | F0 52 00 58 08 00 00 \<patch number\> \<length LSB\> \<length MSB\> \<patch\> 00 \<5 byte CRC\> F7 | Patch dump, after message type 09 is sent to the pedal. Length is for unpacked 8-bit patch data. Some pedals / OS versions might not have the CRC at the end?|
