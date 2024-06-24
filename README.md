@@ -117,10 +117,15 @@ F0 52 00 6e 64 18 00 00 64 00 F7 -> F0 52 00 6E 64 19 01 00 00 09 00 0A 00 00 00
 | Message type   | Length | Send | Receive | Message           | Description |
 |----------------|--------|------|---------|-------------------|-------------|
 | 00             |      7 |      | *       | F0 52 00 58 00 00  F7 | Acknowledge / Success |
+| 01             |      6 | *    |         | F0 52 00 58 01 00  F7 | Unknown. Reply is F0 52 00 58 00 0B F7 |
 | 06             |     10 |      | *       | F0 52 00 58 06 \<num patches LSB\> \<num patches MSB\> \<patch length LSB\> \<patch length MSB\> F7 | Total number of patches and patch length |
 | 07             |      6 | *    |         | F0 52 00 58 07 F7 | Get total number of patches and patch length (reply with message type 06) |
 | 08             |    156 | *    | *       | F0 52 00 58 08 00 00 \<patch number\> \<length LSB\> \<length MSB\> \<patch\> 00 \<5 byte CRC\> F7 | Patch dump, after message type 09 is sent to the pedal. Length is for unpacked 8-bit patch data. Some pedals / OS versions might not have the CRC at the end?|
 | 09             |      9 | *    |         | F0 52 00 58 09 00 00 \<patch number\> F7 | Download patch from given patch slot (reply with message 08) |
+| 0B             |      7 |      | *       | F0 52 00 58 00 0B F7 | Unknown reply to command 0E | 
+| 0E             |      6 | *    |         | F0 52 00 58 0E F7 | Unknown. Reply is F0 52 00 58 00 0B F7 |
+| 16             |      6 | *    |         | F0 52 00 58 16 F7 | Unknown. Reply is F0 52 00 58 17 45 00 00 00 00 F7 |
+| 17             |     11 |      | *       | F0 52 00 58 17 45 00 00 00 00 F7 | Unknown. Reply to command 16 | 
 | 28             |    146 | *    | *       | F0 52 00 58 28 \<patch\> F7 | Patch dump, after message type 29 is sent to the pedal |
 | 29             |      6 | *    |         | F0 52 00 58 29 F7 | Download current patch from edit buffer (reply with message type 28) |
 | 31             |     10 | *    | *       | F0 52 00 58 31 \<effect slot\> \<param number\> \<LSB\> \<MSB\> F7 | Update (edit) parameter |
@@ -128,7 +133,7 @@ F0 52 00 6e 64 18 00 00 64 00 F7 -> F0 52 00 6E 64 19 01 00 00 09 00 0A 00 00 00
 | 33             |      6 | *    |         | F0 52 00 58 33 F7 | Get current bank and patch number |
 | 50             |      6 | *    |         | F0 52 00 58 50 F7 | Parameter edit enable |
 | 51             |      6 | *    |         | F0 52 00 58 51 F7 | Parameter edit disable |
-| 60             |      6 | *    |         | F0 52 00 58 60 F7 | Unknown. Flush data? |
+| 60             |      6 | *    |         | F0 52 00 58 60 F7 | Unknown. Flush data? Reply is F0 52 00 58 60 05 00 F7 |
 
 ## Useful links
 
