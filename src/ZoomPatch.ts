@@ -39,7 +39,7 @@ export class ZoomPatch
 
   get nameTrimmed(): null | string
   {
-    return this.name === null ? null : this.name.trim().replace(/[ ]{2,}/gi," ");
+    return this.name === null ? null : this.name.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
   get effectSettings(): null | Array<EffectSettings>
