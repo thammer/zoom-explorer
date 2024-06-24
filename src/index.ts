@@ -5,7 +5,7 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit } from "./htmltools.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot } from "./htmltools.js";
 import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 function getZoomCommandName(data: Uint8Array) : string
@@ -240,22 +240,25 @@ async function start()
   for (const device of zoomDevices)
   {
     device.addListener(handleMIDIDataFromZoom);
+    device.addMemorySlotChangedListener(handleMemorySlotChangedEvent);
   };  
 
+  // console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
-  // let commandIndex = 0x50;
+  // let commandIndex = 0x51;
   // let device = zoomDevices[0];
-  // midi.addListener(device.inputID, (deviceHandle, data) => {
-  //   let call = toHexString([commandIndex]);
-  //   let response = toHexString(data, " ");
+  // midi.addListener(device.deviceInfo.inputID, (deviceHandle, data) => {
+  //   let call = bytesToHexString([commandIndex]);
+  //   let response = bytesToHexString(data, " ");
   //   callAndResponse.set(call, response);
   //   console.log(`${call} -> ${response}`)
   // });
   // let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   // testButton.addEventListener("click", (event) => {
   //   commandIndex++;
-  //   sendZoomCommand(device.outputID, device.familyCode[0], commandIndex);
+  //   sendZoomCommand(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], commandIndex);
   // });
+  // console.log("Call and response end");
 
   function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array, messageType: MessageType) {
     let command = data[0] >> 4;
@@ -637,7 +640,24 @@ async function start()
 
     // bodyCell.innerHTML = text;
   }
-  
+
+  function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number): void
+  {
+    console.log(`Memory slot changed: ${memorySlot}`);
+    let device = zoomDevices[0];
+
+    let selected = getCellForMemorySlot(device, "patchesTable", memorySlot);
+
+    if (selected !==undefined && device.patchList.length > 0) {
+      togglePatchesTablePatch(selected);
+      if (lastSelected != null)
+        togglePatchesTablePatch(lastSelected);    
+      lastSelected = selected;
+      currentZoomPatch = device.patchList[memorySlot];
+      updatePatchInfoTable(currentZoomPatch);
+    }
+  }
+
   function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): void
   {
     let [messageType, channel, data1, data2] = midi.getChannelMessage(data); 
@@ -673,7 +693,7 @@ async function start()
         let eightBitData = seven2eight(data, offset, data.length-2); // FIXME: We should ignore the last 5 bytes of CRC, use messageLengthFromSysex as limiter (extend seven2eight to support max 8 bit size)
   
         let patch = ZoomPatch.fromPatchData(eightBitData);
-        latestPatch = patch;
+        currentZoomPatch = patch;
 
         if (eightBitData !== null && eightBitData.length > 5) {
           console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
@@ -716,37 +736,9 @@ async function start()
       }
       else if (data.length > 10 && data[4] === 0x64 && data[5] === 0x01) {
         // Screen info
-        updateEditPatchTable(data, latestPatch);
+        updateEditPatchTable(data, currentZoomPatch);
       }
     }
-  }
-
-  function togglePatchesTablePatch(cell: HTMLTableCellElement)
-  {
-    let cellNumber = parseInt(cell.id);
-    if (cellNumber === undefined)
-      return;
-    let row = cell.parentElement as HTMLTableRowElement;
-    if (row === null)
-      return;
-    let column = Math.floor(cellNumber / 2);
-    row.cells[column * 2].classList.toggle("highlight");
-    row.cells[column * 2 + 1].classList.toggle("highlight");
-  }
-
-  function getPatchNumber(cell: HTMLTableCellElement) : number
-  {
-    let cellNumber = parseInt(cell.id);
-    if (cellNumber === undefined)
-      return -1;
-    let row = cell.parentElement as HTMLTableRowElement;
-    if (row === null)
-      return -1;
-    let column = Math.floor(cellNumber / 2);
-    let text = row.cells[column * 2].textContent;
-    if (text === null)
-      return -1;
-    return parseInt(text);
   }
 
   let lastSelected : HTMLTableCellElement | null = null;
@@ -776,12 +768,27 @@ async function start()
 
   let downloadPatchesButton: HTMLButtonElement = document.getElementById("downloadPatchesButton") as HTMLButtonElement;
   downloadPatchesButton.addEventListener("click", async (event) => {
+    let device = zoomDevices[0];
+    
+    await device.updatePatchListFromPedal();
+    updatePatchesTable();
 
+    let currentMemorySlot = await device.getCurrentMemorySlotNumber();
+    if (currentMemorySlot !== undefined) {
 
-  let device = zoomDevices[0];
+      let device = zoomDevices[0];
 
-  await device.updatePatchListFromPedal();
-  updatePatchesTable();
+      let selected = getCellForMemorySlot(device, "patchesTable", currentMemorySlot);
+
+      if (selected !==undefined && device.patchList.length > 0) {
+        togglePatchesTablePatch(selected);
+        if (lastSelected != null)
+          togglePatchesTablePatch(lastSelected);    
+        lastSelected = selected;
+        currentZoomPatch = device.patchList[currentMemorySlot];
+        updatePatchInfoTable(currentZoomPatch);
+      }
+    } 
 
   //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
   //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
@@ -1168,6 +1175,6 @@ let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
 // map from data length to previous and current data, used for comparing messages
 let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, device: MIDIDeviceDescription, messageNumber: number}>(); 
 
-let latestPatch: ZoomPatch | undefined = undefined;
+let currentZoomPatch: ZoomPatch | undefined = undefined;
 
 start();

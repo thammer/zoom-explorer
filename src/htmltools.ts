@@ -2,6 +2,8 @@
  * @module A collection of useful html-related functions 
  */
 
+import { ZoomDevice } from "./ZoomDevice";
+
 export class ConfirmDialog
 {
   private confirmDialog: HTMLDialogElement;
@@ -180,4 +182,49 @@ export function getColorFromEffectID(effectID: number): string
     effectGroup === 0x09 ? "#ABD3A3" : // green
     "#FFFFFF";
   return color;
+}
+
+export function getCellForMemorySlot(device: ZoomDevice, tableName: string, currentMemorySlot: number)
+{
+  let patchesTable = document.getElementById(tableName) as HTMLTableElement;
+
+  let headerRow = patchesTable.rows[0];
+  let numColumns = headerRow.cells.length / 2;
+
+  let numPatchesPerRow = Math.ceil(device.patchList.length / numColumns);
+
+  let rowNumber = 1 + currentMemorySlot % numPatchesPerRow;
+  let row = patchesTable.rows[rowNumber];
+
+  let cellNumber = Math.floor(2 * currentMemorySlot / numPatchesPerRow);
+  let selected = row.cells[cellNumber] as HTMLTableCellElement;
+  return selected;
+}
+
+export function togglePatchesTablePatch(cell: HTMLTableCellElement)
+{
+  let cellNumber = parseInt(cell.id);
+  if (cellNumber === undefined)
+    return;
+  let row = cell.parentElement as HTMLTableRowElement;
+  if (row === null)
+    return;
+  let column = Math.floor(cellNumber / 2);
+  row.cells[column * 2].classList.toggle("highlight");
+  row.cells[column * 2 + 1].classList.toggle("highlight");
+}
+
+export function getPatchNumber(cell: HTMLTableCellElement) : number
+{
+  let cellNumber = parseInt(cell.id);
+  if (cellNumber === undefined)
+    return -1;
+  let row = cell.parentElement as HTMLTableRowElement;
+  if (row === null)
+    return -1;
+  let column = Math.floor(cellNumber / 2);
+  let text = row.cells[column * 2].textContent;
+  if (text === null)
+    return -1;
+  return parseInt(text);
 }
