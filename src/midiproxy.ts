@@ -122,16 +122,16 @@ export abstract class MIDIProxy implements IMIDIProxy
 
   public sendPC(deviceHandle: DeviceID, channel: number, program: number) : void
   {
-    this.messageBuffer2[0] = MessageType.CC + channel && 0b00001111;
-    this.messageBuffer2[1] = program && 0b01111111;
+    this.messageBuffer2[0] = MessageType.PC + (channel & 0b00001111);
+    this.messageBuffer2[1] = program & 0b01111111;
     this.send(deviceHandle, this.messageBuffer2);
   }
 
   public sendCC(deviceHandle: DeviceID, channel: number, ccNumber: number, ccValue: number) : void
   {
-    this.messageBuffer3[0] = MessageType.CC + channel && 0b00001111;
-    this.messageBuffer3[1] = ccNumber && 0b01111111;
-    this.messageBuffer3[2] = ccValue && 0b01111111;
+    this.messageBuffer3[0] = MessageType.CC + (channel & 0b00001111);
+    this.messageBuffer3[1] = ccNumber & 0b01111111;
+    this.messageBuffer3[2] = ccValue & 0b01111111;
     this.send(deviceHandle, this.messageBuffer3);
   }
 
