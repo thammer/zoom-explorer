@@ -5,8 +5,8 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot } from "./htmltools.js";
-import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, cleanupEditPatchTable, updateEditPatchTable } from "./htmltools.js";
+import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -121,92 +121,6 @@ function sendZoomCommandLong(device: DeviceID, deviceId: number, data: Uint8Arra
     let message = getExceptionErrorString(err, `for device ${output.name}`);
     console.error(message);
   }
-}
-
-async function sendZoomCommandAndGetReply(outputDevice: DeviceID,  zoomDeviceId: number, data: number[] | Uint8Array, inputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, 
-                         timeoutMilliseconds: number = 100) : Promise<Uint8Array | undefined>
-{
-  let output = midi.getOutputInfo(outputDevice);
-  if (output === undefined)
-  {
-    console.warn(`WARNING: Not sending MIDI message to device ${outputDevice} as the device is unknown"`);
-    return;
-  }
-  if (output.connection != "open")
-  {
-    console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
-    return;
-  }
-
-  let sendData = new Uint8Array(4 + data.length + 1);
-  sendData.set(hexStringToUint8Array(`F0 52 00`));
-  sendData[3] = zoomDeviceId & 0b01111111;
-  sendData.set(data, 4);
-  sendData[sendData.length - 1] = 0xF7;
-
-  try 
-  {
-    return await midi.sendAndGetReply(outputDevice, sendData, inputDevice, verifyReply, timeoutMilliseconds);
-  }
-  catch (err) 
-  {
-    let message = getExceptionErrorString(err, `for device ${output.name}`);
-    console.error(message);
-    return undefined;
-  }
-}
-
-function zoomCommandMatch(data: Uint8Array, zoomDeviceID: number, command: Uint8Array): boolean
-{
-  return data.length >= 4 + command.length && data[0] == 0xF0 && data[data.length-1] == 0xF7 && data[1] == 0x52 && data[2] == 0 && data[3] == zoomDeviceID && 
-    data.slice(4, 4 + command.length).every( (element, index) => element === command[index] );
-}
-
-function sleepForAWhile(timeoutMilliseconds: number)
-{
-  return new Promise( (resolve) => 
-  {
-    setTimeout(() =>
-    {
-      resolve("Timed out");
-    }, timeoutMilliseconds);
-  });
-}
-
-async function getCurrentPatch(zoomDevice: ZoomDevice)
-{
-  let map = new Map<string, Array<Uint8Array>>();
-  let device = zoomDevice.deviceInfo;
-
-  let data = await midi.sendAndGetReply(device.outputID, new Uint8Array([0xf0, 0x7e, 0x7f, 0x06, 0x01, 0xf7]), device.inputID, isMIDIIdentityResponse, 100);
-  console.log(`Received data: ${data?.length}`);
-  if (data == undefined)
-    return;
-  let chunks = new Array<Uint8Array>();
-  chunks.push(data);
-  map.set("SIRX", chunks);
-
-  let requestPatch = getZoomCommand(device.familyCode[0], "64 13");
-  chunks = new Array<Uint8Array>();
-  chunks.push(requestPatch);
-  map.set("SPTX", chunks);
-
-  // data = await midi.sendAndGetReply(device.outputID, requestPatch, device.inputID,
-  //   (received) => partialArrayMatch(received, toUint8Array("F0 52 00 6E 64 12")), 1000);
-  data = await sendZoomCommandAndGetReply(device.outputID, device.familyCode[0], hexStringToUint8Array("64 13"), device.inputID,
-    (received) => zoomCommandMatch(received, device.familyCode[0], hexStringToUint8Array("64 12")), 1000);
-
-  console.log(`Received data: ${data?.length}`);
-  if (data == undefined)
-    return;
-  chunks = new Array<Uint8Array>();
-  chunks.push(data);
-  map.set("SPRX", chunks);
-
-  let wfp = await encodeWFCToString(map, WFCFormatType.ASCIICompressed);
-  console.log(`WFP: "${wfp}"`);
-  let map2 = await decodeWFCFromString(wfp);
-  console.log(`Decoded WFP data length: ${map2.get("SIRX")?.length}`);
 }
 
 async function start()
@@ -523,123 +437,10 @@ async function start()
     return sysexString;
   }
 
-  let previousEditData = new Uint8Array();
-
-  function updateEditPatchTable(data: Uint8Array, patch: ZoomPatch | undefined): void
-  {
-    let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;  
-    
-    let row: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
-    let headerCell: HTMLTableCellElement = row.cells[0] as HTMLTableCellElement;
-    let effectsRow = table.rows[1] as HTMLTableRowElement;
-
-    if (patch != undefined)
-      headerCell.textContent = "Patch: " + patch.nameTrimmed;
-
-    // FIXME: Re-use the existing children if all params match
-
-    // remove all children
-    while(effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
-
-    let offset = 6;
-    let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
-    headerCell.colSpan = screenCollection.screens.length;
-
-    let maxNumParameters = 0;
-    for (let i=screenCollection.screens.length - 1; i>=0; i--)
-      maxNumParameters = Math.max(maxNumParameters, screenCollection.screens[i].parameters.length);
-
-    let numParamsPerLine = 4;
-    let numScreens = screenCollection.screens.length;
-    for (let i=numScreens - 1; i>=0; i--) {
-      let screen = screenCollection.screens[i];
-
-      if ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || (patch !== undefined && patch.effectSettings !== null && i >= patch.effectSettings.length))
-        continue;
-
-      let effectTable = document.createElement("table") as HTMLTableElement;
-      effectTable.className="editEffectTable";
-      let tr = document.createElement("tr") as HTMLTableRowElement;
-      effectTable.appendChild(tr);
-      let effectHeader = document.createElement("th") as HTMLTableCellElement;
-      tr.appendChild(effectHeader);
-
-      let paramNameRow: HTMLTableRowElement | undefined = undefined;
-      let paramValueRow: HTMLTableRowElement | undefined = undefined;
-      
-      effectHeader.colSpan = Math.max(screen.parameters.length - 2, numParamsPerLine);
-
-      if (patch !== undefined && patch.edtbEffectSettings !== null && i< patch.edtbEffectSettings.length) {
-        let effectID = patch.edtbEffectSettings[i].id;
-        let color = getColorFromEffectID(effectID);
-        effectTable.style.backgroundColor = color;
-      } 
-
-      for (let j=0; j<maxNumParameters; j++) {
-        let parameter = screen.parameters[j];
-        if (j === 0)
-          effectTable.className = parameter.valueString === "0" ? "editEffectTable editEffectOff" : "editEffectTable";          
-        if (j === 1)
-          effectHeader.textContent = parameter.name;
-        else {
-          let paramNumber = j-2;
-          if (paramNumber % numParamsPerLine === 0) {
-            paramNameRow = document.createElement("tr");
-            paramValueRow = document.createElement("tr")
-            effectTable.append(paramNameRow);
-            effectTable.append(paramValueRow);
-          }
-          let td = document.createElement("td") as HTMLTableCellElement;
-          if (j < screen.parameters.length)
-            td.textContent = parameter.name;
-          else
-            td.textContent = " ";
-          paramNameRow?.appendChild(td);
-          td = document.createElement("td") as HTMLTableCellElement;
-          if (j < screen.parameters.length) {
-            let valueString = parameter.valueString.replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
-            td.innerHTML = valueString;
-          }
-          else
-            td.textContent = " ";
-          paramValueRow?.appendChild(td);
-        }
-      }
-      let td = document.createElement("td") as HTMLTableCellElement;
-      td.appendChild(effectTable);
-      effectsRow.appendChild(td);
-    }
-
-    // const sentenceLength = 10;
-    // const lineLength = 50;
-    // const paragraphHeight = 4;
-
-    // let useASCII = true;
-    // let useEightBit = false;
-    // let eightBitOffset = 0;
-
-    // let sysexString = generateHTMLSysexString(data, previousEditData, paragraphHeight, lineLength, sentenceLength, true, useEightBit, eightBitOffset);
-    // headerCell.innerHTML = sysexString;
-
-    // // sysexString = generateHTMLSysexString(data, previousEditData, paragraphHeight, lineLength, sentenceLength, false, useEightBit, eightBitOffset);
-    // // hexCell.innerHTML = sysexString;
-
-    // previousEditData = data;
-
-    // let offset = 6;
-    // let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
-
-    // let text = "";
-    // for (let i=0; i<screenCollection.screens.length; i++) {
-    //   let screen = screenCollection.screens[i];
-    //   for (let j=0; j<screen.parameters.length; j++) {
-    //     let parameter = screen.parameters[j];
-    //     text += `Screen ${i}  Parameter ${j.toString().padStart(2, " ")}  ${parameter.name} = ${parameter.valueString} <br/>`;
-    //   }
-    // }
-
-    // bodyCell.innerHTML = text;
-  }
+  // let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
+  // let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
+  // previousEditScreenCollection = screenCollection;
+  // previousEditPatch = patch;
 
   function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number): void
   {
@@ -658,7 +459,8 @@ async function start()
     }
   }
 
-  function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): void
+  // FIXME: Look into if it's a good idea to have this function be async. 2024-06-26.
+  async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): Promise<void>
   {
     let [messageType, channel, data1, data2] = midi.getChannelMessage(data); 
   
@@ -704,8 +506,17 @@ async function start()
         }
         updatePatchInfoTable(patch);
 
+        let screenCollection = await zoomDevice.getScreensForCurrentPatch();
+        if (screenCollection === undefined) 
+          console.warn(`Got undefined screen collection from device ${zoomDevice.deviceInfo.deviceName}`);
+        else {
+          updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
+          previousEditScreenCollection = screenCollection;
+          previousEditPatch = currentZoomPatch;
+        }
+
         // Request screen info immediately
-        sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
+        // sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
       }
       else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
@@ -734,10 +545,13 @@ async function start()
         console.log(`Received patch info message (0x43). Number of patches: ${numPatches}, patch size: ${patchSize}, unknown: ${unknown}, bank size: ${bankSize}.`)
         console.log(`                                    Unknown: ${bytesToHexString(data.slice(13, 30-1), " ")}.`);
       }
-      else if (data.length > 10 && data[4] === 0x64 && data[5] === 0x01) {
-        // Screen info
-        updateEditPatchTable(data, currentZoomPatch);
-      }
+      // else if (data.length > 10 && data[4] === 0x64 && data[5] === 0x01) {
+      //   // Screen info
+      //   let offset = 6;
+      //   let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
+
+      //   updateEditPatchTable(screenCollection, currentZoomPatch);
+      // }
     }
   }
 
@@ -757,9 +571,9 @@ async function start()
     let patchNumber = getPatchNumber(cell) - 1;
     console.log(`Patch number clicked: ${patchNumber}`);
 
-    // update patch info table
-
     let device = zoomDevices[0];
+
+    device.setCurrentMemorySlot(patchNumber);
 
     let patch = device.patchList[patchNumber];
     updatePatchInfoTable(patch);
@@ -787,6 +601,17 @@ async function start()
         lastSelected = selected;
         currentZoomPatch = device.patchList[currentMemorySlot];
         updatePatchInfoTable(currentZoomPatch);
+
+        let screenCollection = await device.getScreensForCurrentPatch();
+        if (screenCollection === undefined) 
+          console.warn(`Got undefined screen collection from device ${device.deviceInfo.deviceName}`);
+        else {
+          updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
+          previousEditScreenCollection = screenCollection;
+          previousEditPatch = currentZoomPatch;
+        }
+        // Request screen info immediately
+        // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
       }
     } 
 
@@ -1165,10 +990,13 @@ async function start()
 
 }
 
+cleanupEditPatchTable();
+
+let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
+let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
+
 let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
-
 let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
-
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
 
@@ -1178,3 +1006,4 @@ let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, devic
 let currentZoomPatch: ZoomPatch | undefined = undefined;
 
 start();
+

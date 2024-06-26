@@ -1,19 +1,8 @@
 import { ZoomPatch } from "./ZoomPatch.js";
+import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription } from "./miditools.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array } from "./tools.js";
-
-// export class ZoomBankProgram
-// {
-//   public bank: number;
-//   public program: number;
-
-//   constructor(bank: number = 0, program: number = 0)
-//   {
-//     this.bank = bank; 
-//     this.program = program;
-//   }
-// }
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
@@ -49,6 +38,8 @@ class ZoomMessageTypes
   parameterEditDisable = new StringAndBytes("51");
   pcModeEnable = new StringAndBytes("52");
   pcModeDisable = new StringAndBytes("53");
+  screensForCurrentPatch = new StringAndBytes("64 01");
+  requestScreensForCurrentPatch = new StringAndBytes("64 02");
   patchDumpForCurrentPatchV2 = new StringAndBytes("64 12");
   requestCurrentPatchV2 = new StringAndBytes("64 13");
 }
@@ -161,8 +152,8 @@ export class ZoomDevice
 
   public setCurrentBankAndProgram(bank: number, program: number)
   {
-    this._midi.sendCC(this._midiDevice.outputID, 0, 0xB0, 0x00); // bank MSB = 0
-    this._midi.sendCC(this._midiDevice.outputID, 0, 0xB0, bank & 0x7F); // bank LSB
+    this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
+    this._midi.sendCC(this._midiDevice.outputID, 0, 0x20, bank & 0x7F); // bank LSB
     this._midi.sendPC(this._midiDevice.outputID, 0, program & 0x7F); // program
     this._currentBank = bank;
     this._currentProgram = program;
@@ -257,6 +248,37 @@ export class ZoomDevice
       program += bank * this._patchesPerBank;
     
     return program;
+  }
+
+  public async getScreensForCurrentPatch(): Promise<ZoomScreenCollection | undefined>
+  {
+    if (!(this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)) {
+      console.warn(`Attempting to get screens when the command is not supported by the device (${this._midiDevice.deviceName})`);
+      return undefined;
+    }
+
+    let reply: Uint8Array | undefined;
+    let screens: Uint8Array | undefined = undefined;
+
+    let screenRange = new Uint8Array(3);
+    screenRange[0] = 0;
+    screenRange[1] = 12; // anything >= 6 really
+    screenRange[2] = 0;
+    let command = new Uint8Array(ZoomDevice.messageTypes.requestScreensForCurrentPatch.bytes.length + screenRange.length);
+    command.set(ZoomDevice.messageTypes.requestScreensForCurrentPatch.bytes);
+    command.set(screenRange, ZoomDevice.messageTypes.requestScreensForCurrentPatch.bytes.length);
+      
+    reply = await this.sendCommandAndGetReply(command, 
+      received => this.zoomCommandMatch(received, ZoomDevice.messageTypes.screensForCurrentPatch.bytes));
+    if (reply === undefined) {
+      console.warn(`Didn't get a reply when asking for screens for current patch for the device (${this._midiDevice.deviceName})`);
+      return undefined;
+    }
+
+    let offset = 6;
+    let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(reply, offset);
+    
+    return screenCollection;
   }
 
   public async downloadPatchFromMemorySlot(memorySlot: number) : Promise<ZoomPatch | undefined>
@@ -605,7 +627,7 @@ export class ZoomDevice
   }
 
   /**
-   * Builds a complete sysex message from several parts, with default caching of buffers. Caching should only be used if the result of this function is used immediately, e.g. being sent in a command.
+   * Builds a complete sysex message from several parts, with default caching of buffers. Caching should only be used if the result of this function is used immediately, e.g. being sent in a command and not used afterwards.
    * @param data 
    * @param prependCommand 
    * @param appendCRC 
@@ -840,6 +862,10 @@ export class ZoomDevice
     //   partialArrayMatch(received, hexStringToUint8Array(`C0`)), null, null, probeTimeoutMilliseconds); 
     // // expected reply is 2 optional bank messages (B0 00 00, B0 20 NN) and then one program change message (C0 NN)
     // this._supportedCommands.set(command, reply !== undefined ? SupportType.Supported : SupportType.Unknown);
+
+    command = ZoomDevice.messageTypes.requestScreensForCurrentPatch.str; 
+    expectedReply = ZoomDevice.messageTypes.screensForCurrentPatch.str;
+    reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
     if (this.isCommandSupported(ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV1) && !this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1) && !this._ptcfPatchFormatSupported) {
       console.warn("Device supports requesting patch for memory location (v1) but not requesting current patch (v1).");

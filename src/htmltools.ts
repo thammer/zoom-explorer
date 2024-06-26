@@ -3,6 +3,8 @@
  */
 
 import { ZoomDevice } from "./ZoomDevice";
+import { ZoomPatch } from "./ZoomPatch";
+import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo";
 
 export class ConfirmDialog
 {
@@ -175,6 +177,7 @@ export function getColorFromEffectID(effectID: number): string
   let effectGroup = (effectID >> 24) & 0xFF;
   let color:string = effectGroup === 0x01 ? "#C8B4D7" : // purple
     effectGroup === 0x02 ? "#FFE2BF" : // orange
+    effectGroup === 0x03 ? "#F7BFB9" : // red
     effectGroup === 0x04 ? "#F7BFB9" : // red
     effectGroup === 0x06 ? "#ADF2F4" : // turquoise
     effectGroup === 0x07 ? "#E8E69E" : // yellow
@@ -227,4 +230,162 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
   if (text === null)
     return -1;
   return parseInt(text);
+}
+
+export function cleanupEditPatchTable() {
+  let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
+  let row: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
+  let headerCell: HTMLTableCellElement = row.cells[0] as HTMLTableCellElement;
+  let effectsRow = table.rows[1] as HTMLTableRowElement;
+  headerCell.colSpan = 1;
+  while (effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
+}
+
+export function updateEditPatchTable(screenCollection: ZoomScreenCollection, patch: ZoomPatch | undefined, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
+{
+  function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
+    return ! ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || 
+              (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
+  }
+
+  let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;  
+  
+  let row: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
+  let headerCell: HTMLTableCellElement = row.cells[0] as HTMLTableCellElement;
+  let effectsRow = table.rows[1] as HTMLTableRowElement;
+
+  if (patch != undefined)
+    headerCell.textContent = "Patch: " + patch.nameTrimmed;
+
+  let maxNumParamsPerLine = 4;
+
+  // let offset = 6;
+  // let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
+  let numScreens = screenCollection.screens.length;
+
+  // Number of visible screens === number of effects in the patch
+  let numVisibleScreens = 0;
+  for (let i=0; i<numScreens; i++)
+    if (screenIsVisible(screenCollection.screens[i], i, patch))
+      numVisibleScreens += 1;
+
+  headerCell.colSpan = numVisibleScreens;
+    
+  // Remove superfluous td elements (effects) so we have one td element for each effect
+  while (effectsRow.lastChild !== null && effectsRow.children.length > numVisibleScreens)
+    effectsRow.removeChild(effectsRow.lastChild);
+
+  // Add missing td elements (effects) so we have one td element (cell) for each effect. Each effect is a table within this td element.
+  while (effectsRow.children.length < numVisibleScreens) {
+    let td = document.createElement("td") as HTMLTableCellElement;
+    effectsRow.appendChild(td);
+  }
+
+  let maxNumParameters = 0;
+  for (let i=screenCollection.screens.length - 1; i>=0; i--)
+    maxNumParameters = Math.max(maxNumParameters, screenCollection.screens[i].parameters.length - 2);
+
+  let maxNumRowsPerEffect = Math.ceil(maxNumParameters/maxNumParamsPerLine); 
+
+  let effectColumn = 0;
+  for (let i=numScreens - 1; i>=0; i--) {
+    let screen = screenCollection.screens[i];
+
+    if (!screenIsVisible(screen, i, patch))
+      continue;
+
+    let cellWithEffectTable = effectsRow.children[effectColumn++] as HTMLTableRowElement;
+
+    let effectTable: HTMLTableElement;
+    let effectHeader: HTMLTableCellElement;
+
+    if (cellWithEffectTable.children.length < 1) {
+      effectTable = document.createElement("table");
+      cellWithEffectTable.appendChild(effectTable);
+      effectTable.className="editEffectTable";
+      let tr = document.createElement("tr") as HTMLTableRowElement;
+      effectTable.appendChild(tr);
+      effectHeader = document.createElement("th") as HTMLTableCellElement;
+      tr.appendChild(effectHeader);  
+    }
+    else {
+      effectTable = cellWithEffectTable.children[0] as HTMLTableElement;
+      effectHeader = effectTable.children[0].children[0] as HTMLTableCellElement;
+    }
+
+    let paramNameRow: HTMLTableRowElement | undefined = undefined;
+    let paramValueRow: HTMLTableRowElement | undefined = undefined;
+
+    let numColumns = Math.min(screen.parameters.length - 2, maxNumParamsPerLine);
+    let numRowPairs = maxNumRowsPerEffect;        
+
+    // remove superfluous rows
+    while (effectTable.lastChild !== null && effectTable.children.length > 1 + numRowPairs * 2) {
+      effectTable.removeChild(effectTable.lastChild);
+    }
+
+    // add rows if needed
+    while (effectTable.children.length < 1 + numRowPairs * 2) {
+      paramNameRow = document.createElement("tr");
+      paramValueRow = document.createElement("tr")
+      effectTable.append(paramNameRow);
+      effectTable.append(paramValueRow);
+
+      // remove superfluous cells (columns)
+      while(paramNameRow.lastChild !== null && paramValueRow.lastChild !== null && paramNameRow.children.length > numColumns) {
+        paramNameRow.removeChild(paramNameRow.lastChild);
+        paramValueRow.removeChild(paramValueRow.lastChild);
+      }
+
+      // add missing cells (columns)
+      while(paramNameRow.children.length < numColumns) {
+        let td = document.createElement("td") as HTMLTableCellElement;
+        paramNameRow.appendChild(td);
+        td = document.createElement("td") as HTMLTableCellElement;
+        paramValueRow.appendChild(td);
+      }
+    }
+
+    effectHeader.colSpan = numColumns;
+
+    if (patch !== undefined && patch.edtbEffectSettings !== null && i< patch.edtbEffectSettings.length) {
+      let effectID = patch.edtbEffectSettings[i].id;
+      let color = getColorFromEffectID(effectID);
+      effectTable.style.backgroundColor = color;
+    } 
+
+    let numCellsPairsToFill = numColumns * numRowPairs;
+    if (screen.parameters.length < 2) {
+      console.warn(`screen.parameters.length < 2`);
+      continue;
+    }
+    effectTable.className = screen.parameters[0].valueString === "0" ? "editEffectTable editEffectOff" : "editEffectTable";          
+    effectHeader.textContent = screen.parameters[1].name;
+
+    for (let cellPairNumber=0; cellPairNumber<numCellsPairsToFill; cellPairNumber++) {
+      let parameterNumber = cellPairNumber + 2;
+      let rowPairNumber = Math.floor(cellPairNumber / numColumns);
+      let columnNumber = cellPairNumber % numColumns;
+      paramNameRow = effectTable.children[1 + rowPairNumber * 2] as HTMLTableRowElement;
+      paramValueRow = effectTable.children[1 + rowPairNumber * 2 + 1] as HTMLTableRowElement;
+
+      let td = paramNameRow.children[columnNumber] as HTMLTableCellElement;
+      if (parameterNumber < screen.parameters.length) 
+        td.textContent = screen.parameters[parameterNumber].name;
+      else
+        td.textContent = " ";
+
+      td = paramValueRow.children[columnNumber] as HTMLTableCellElement;
+      if (parameterNumber < screen.parameters.length) {
+        let valueChanged = previousPatch !== undefined && patch !== undefined && previousPatch.name === patch.name && previousScreenCollection !== undefined &&
+            previousScreenCollection.screens[i].parameters[parameterNumber].valueString !== screen.parameters[parameterNumber].valueString;
+        let boldStart = valueChanged ? "<b>" : "";
+        let boldEnd = valueChanged ? "</b>" : "";
+        let valueString = screen.parameters[parameterNumber].valueString.replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
+        td.innerHTML = boldStart + valueString + boldEnd;
+      }
+      else
+        td.textContent = " ";
+    }
+  }
 }
