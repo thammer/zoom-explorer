@@ -269,7 +269,7 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
     if (screenIsVisible(screenCollection.screens[i], i, patch))
       numVisibleScreens += 1;
 
-  headerCell.colSpan = numVisibleScreens;
+  headerCell.colSpan = numVisibleScreens - row.cells.length + 1;
     
   // Remove superfluous td elements (effects) so we have one td element for each effect
   while (effectsRow.lastChild !== null && effectsRow.children.length > numVisibleScreens)
