@@ -69,13 +69,13 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer (expects a reply with message type 64 12)|
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
 
+### Screens (message type 64 01)
+
+If one of the effects is the BPM module, the screen for that module will be missing. 
+
 ## Needs investigating
 
 * What are the device IDs for other MS Plus Series pedals?
-
-* F0 52 00 6E 64 02 00 00 00 F7, Get display information, what do the different params do?
-* 
-
 
 ## Calls and response
 

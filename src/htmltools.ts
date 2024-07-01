@@ -316,7 +316,7 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
     let paramNameRow: HTMLTableRowElement | undefined = undefined;
     let paramValueRow: HTMLTableRowElement | undefined = undefined;
 
-    let numColumns = Math.min(screen.parameters.length - 2, maxNumParamsPerLine);
+    let numColumns = Math.max(Math.min(screen.parameters.length - 2, maxNumParamsPerLine), 1);
     let numRowPairs = maxNumRowsPerEffect;        
 
     // remove superfluous rows
@@ -354,11 +354,10 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
 
     let numCellsPairsToFill = numColumns * numRowPairs;
     if (screen.parameters.length < 2) {
-      console.warn(`screen.parameters.length < 2`);
-      continue;
+      console.info(`screen.parameters.length < 2`);
     }
-    effectTable.className = screen.parameters[0].valueString === "0" ? "editEffectTable editEffectOff" : "editEffectTable";          
-    effectHeader.textContent = screen.parameters[1].name;
+    effectTable.className = (screen.parameters.length > 0 && screen.parameters[0].valueString === "0") ? "editEffectTable editEffectOff" : "editEffectTable";          
+    effectHeader.textContent = screen.parameters.length > 1 ? screen.parameters[1].name : "BPM";
 
     for (let cellPairNumber=0; cellPairNumber<numCellsPairsToFill; cellPairNumber++) {
       let parameterNumber = cellPairNumber + 2;

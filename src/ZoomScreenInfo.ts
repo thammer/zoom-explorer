@@ -57,6 +57,13 @@ export class ZoomScreenCollection
         console.warn(`ZoomScreen.parseScreenData() type "${type}" is unknown for screen ${screenNumber}, parameter ${parameterNumber}, unknown byte "${unknown}"`);
     }
 
+    // If any screens are missing, insert empty screens
+    // If a BPM module is inserted in the effect chain, the corresponding screen will be missing from the data
+    for (let i = 0; i < this.screens.length; i++)
+      if (this.screens[i] === undefined) {
+        this.screens[i] = new ZoomScreen();
+      }
+
     return offset;
   } 
  
