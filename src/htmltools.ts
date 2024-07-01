@@ -326,23 +326,21 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
 
     // add rows if needed
     while (effectTable.children.length < 1 + numRowPairs * 2) {
-      paramNameRow = document.createElement("tr");
-      paramValueRow = document.createElement("tr")
-      effectTable.append(paramNameRow);
-      effectTable.append(paramValueRow);
+      let row = document.createElement("tr");
+      effectTable.append(row);
+    }
 
+    for (let rowNumber = 1; rowNumber < effectTable.children.length; rowNumber++) {
       // remove superfluous cells (columns)
-      while(paramNameRow.lastChild !== null && paramValueRow.lastChild !== null && paramNameRow.children.length > numColumns) {
-        paramNameRow.removeChild(paramNameRow.lastChild);
-        paramValueRow.removeChild(paramValueRow.lastChild);
+      let row = effectTable.children[rowNumber]; 
+      while(row.lastChild !== null && row.children.length > numColumns) {
+        row.removeChild(row.lastChild);
       }
 
       // add missing cells (columns)
-      while(paramNameRow.children.length < numColumns) {
+      while(row.children.length < numColumns) {
         let td = document.createElement("td") as HTMLTableCellElement;
-        paramNameRow.appendChild(td);
-        td = document.createElement("td") as HTMLTableCellElement;
-        paramValueRow.appendChild(td);
+        row.appendChild(td);
       }
     }
 

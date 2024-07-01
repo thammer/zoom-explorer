@@ -174,6 +174,40 @@ async function start()
   // });
   // console.log("Call and response end");
 
+  function sleepForAWhile(timeoutMilliseconds: number)
+  {
+    return new Promise( (resolve) => 
+    {
+      setTimeout(() =>
+      {
+        resolve("Timed out");
+      }, timeoutMilliseconds);
+    });
+  }
+
+
+  let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
+  testButton.addEventListener("click", async (event) => {
+    let listFilesCommand = hexStringToUint8Array("60 25 00 00 2a 2e 2a 00");
+    let getNextFileCommand = hexStringToUint8Array("60 26 00 00 2a 2e 2a 00");
+  
+    let device = zoomDevices[0];
+
+    await sleepForAWhile(50);
+    sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], listFilesCommand);
+
+    for (let i=0; i<600; i++) {
+      await sleepForAWhile(50);
+      sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], getNextFileCommand);
+    }
+
+    await sleepForAWhile(50);
+    let endFileListingCommand = hexStringToUint8Array("60 27");
+    sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], endFileListingCommand);
+  });
+
+
+
   function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array, messageType: MessageType) {
     let command = data[0] >> 4;
     let color = ["#005500", "#00BB00", "#000000", "#550000", "#000000", "#000000", "#000000", "#000000",];
@@ -409,7 +443,7 @@ async function start()
       if (ascii) {
         let printableASCIIValue = current[i] >= 32 && current[i] <= 126 ? current[i] : current[i] == 0 ? 95 : 39; // printable, _ or '    
         if (mixed)
-          hexString = current[i] >= 32 && current[i] <= 126 ? ` &#${printableASCIIValue};` : current[i] === 0 ? " _" : bytesToHexString([current[i]]);  
+          hexString = current[i] >= 32 && current[i] <= 126 ? `&nbsp;&#${printableASCIIValue};` : current[i] === 0 ? "&nbsp;_" : bytesToHexString([current[i]]);  
         else
           hexString = `&#${printableASCIIValue};`;
       }
@@ -431,7 +465,7 @@ async function start()
         sysexString += "<br/>";
       else if ((i + 1) % sentenceLength === 0)
         sysexString += "&nbsp;&nbsp;";
-      else if (!ascii)
+      else if (!(ascii && !mixed))
         sysexString += "&nbsp;";
     }
     return sysexString;
@@ -514,9 +548,6 @@ async function start()
           previousEditScreenCollection = screenCollection;
           previousEditPatch = currentZoomPatch;
         }
-
-        // Request screen info immediately
-        // sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
       }
       else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
