@@ -541,13 +541,9 @@ async function start()
         updatePatchInfoTable(patch);
 
         let screenCollection = await zoomDevice.getScreensForCurrentPatch();
-        if (screenCollection === undefined) 
-          console.warn(`Got undefined screen collection from device ${zoomDevice.deviceInfo.deviceName}`);
-        else {
-          updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
-          previousEditScreenCollection = screenCollection;
-          previousEditPatch = currentZoomPatch;
-        }
+        updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
+        previousEditScreenCollection = screenCollection;
+        previousEditPatch = currentZoomPatch;
       }
       else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
@@ -634,13 +630,9 @@ async function start()
         updatePatchInfoTable(currentZoomPatch);
 
         let screenCollection = await device.getScreensForCurrentPatch();
-        if (screenCollection === undefined) 
-          console.warn(`Got undefined screen collection from device ${device.deviceInfo.deviceName}`);
-        else {
-          updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
-          previousEditScreenCollection = screenCollection;
-          previousEditPatch = currentZoomPatch;
-        }
+        updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
+        previousEditScreenCollection = screenCollection;
+        previousEditPatch = currentZoomPatch;
         // Request screen info immediately
         // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
       }
