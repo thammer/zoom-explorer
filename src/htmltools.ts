@@ -234,17 +234,12 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
 }
 
 export function cleanupEditPatchTable() {
-  let effectsRowOffset = 2; // number of header rows, patchname + patch description
-
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
-  let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
-  let patchNameCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
-  let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
-  let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
-  let effectsRow = table.rows[effectsRowOffset] as HTMLTableRowElement;
+  let lastRow = table.rows[table.rows.length -1] as HTMLTableRowElement;
+  let lastCell = lastRow.children[0] as HTMLTableCellElement;
+  let effectsTable = lastCell.children[0] as HTMLTableElement;
+  let effectsRow = effectsTable.rows[0] as HTMLTableRowElement;
 
-  patchNameCell.colSpan = 1;
-  patchDescriptionCell.colSpan = 1;
   while (effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
 }
 
@@ -255,19 +250,21 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
               (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
   }
 
-  let effectsRowOffset = 2; // number of header rows, patchname + patch description
-
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;  
-  
+
+  let lastRow = table.rows[table.rows.length -1] as HTMLTableRowElement;
+  let lastCell = lastRow.children[0] as HTMLTableCellElement;
+  let effectsTable = lastCell.children[0] as HTMLTableElement;
+  let effectsRow = effectsTable.rows[0] as HTMLTableRowElement;
+
   let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
   let patchNameCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
   let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
   let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
-  let effectsRow = table.rows[effectsRowOffset] as HTMLTableRowElement;
 
   if (patch != undefined) {
     patchNameCell.textContent = "Patch: " + patch.nameTrimmed;
-    patchDescriptionCell.textContent = patch.txe1DescriptionEnglish ?? "&nbsp;"; 
+    patchDescriptionCell.textContent = patch.txe1DescriptionEnglish ?? " "; 
   }
 
   let maxNumParamsPerLine = 4;
@@ -281,9 +278,6 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
   for (let i=0; i<numScreens; i++)
     if (screenIsVisible(screenCollection.screens[i], i, patch))
       numVisibleScreens += 1;
-
-  patchNameCell.colSpan = numVisibleScreens - patchNameRow.cells.length + 1;
-  patchDescriptionCell.colSpan = numVisibleScreens - patchDescriptionRow.cells.length + 1;
     
   // Remove superfluous td elements (effects) so we have one td element for each effect
   while (effectsRow.lastChild !== null && effectsRow.children.length > numVisibleScreens)
@@ -389,6 +383,7 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
       td = paramValueRow.children[columnNumber] as HTMLTableCellElement;
       if (parameterNumber < screen.parameters.length) {
         let valueChanged = previousPatch !== undefined && patch !== undefined && previousPatch.name === patch.name && previousScreenCollection !== undefined &&
+        previousScreenCollection.screens.length === screenCollection.screens.length && previousScreenCollection.screens[i].parameters.length === screen.parameters.length && 
             previousScreenCollection.screens[i].parameters[parameterNumber].valueString !== screen.parameters[parameterNumber].valueString;
         let boldStart = valueChanged ? "<b>" : "";
         let boldEnd = valueChanged ? "</b>" : "";
