@@ -243,7 +243,7 @@ export function cleanupEditPatchTable() {
   while (effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
 }
 
-export function updateEditPatchTable(screenCollection: ZoomScreenCollection, patch: ZoomPatch | undefined, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
+export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
 {
   function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
     return ! ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || 
@@ -266,6 +266,9 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
     patchNameCell.textContent = "Patch: " + patch.nameTrimmed;
     patchDescriptionCell.textContent = patch.txe1DescriptionEnglish ?? " "; 
   }
+
+  if (screenCollection === undefined)
+    return;
 
   let maxNumParamsPerLine = 4;
 
