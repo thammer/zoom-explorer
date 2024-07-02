@@ -175,7 +175,8 @@ export function getChildWithIDThatStartsWith(children: HTMLCollection, startsWid
 export function getColorFromEffectID(effectID: number): string
 {
   let effectGroup = (effectID >> 24) & 0xFF;
-  let color:string = effectGroup === 0x01 ? "#C8B4D7" : // purple
+  let color:string = effectGroup === 0x00 ? "#E8E69E" : // yellow (BPM is the only known module with ID 0)
+    effectGroup === 0x01 ? "#C8B4D7" : // purple
     effectGroup === 0x02 ? "#FFE2BF" : // orange
     effectGroup === 0x03 ? "#F7BFB9" : // red
     effectGroup === 0x04 ? "#F7BFB9" : // red
@@ -233,11 +234,17 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
 }
 
 export function cleanupEditPatchTable() {
+  let effectsRowOffset = 2; // number of header rows, patchname + patch description
+
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
-  let row: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
-  let headerCell: HTMLTableCellElement = row.cells[0] as HTMLTableCellElement;
-  let effectsRow = table.rows[1] as HTMLTableRowElement;
-  headerCell.colSpan = 1;
+  let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
+  let patchNameCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
+  let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
+  let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
+  let effectsRow = table.rows[effectsRowOffset] as HTMLTableRowElement;
+
+  patchNameCell.colSpan = 1;
+  patchDescriptionCell.colSpan = 1;
   while (effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
 }
 
@@ -248,14 +255,20 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
               (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
   }
 
+  let effectsRowOffset = 2; // number of header rows, patchname + patch description
+
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;  
   
-  let row: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
-  let headerCell: HTMLTableCellElement = row.cells[0] as HTMLTableCellElement;
-  let effectsRow = table.rows[1] as HTMLTableRowElement;
+  let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
+  let patchNameCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
+  let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
+  let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
+  let effectsRow = table.rows[effectsRowOffset] as HTMLTableRowElement;
 
-  if (patch != undefined)
-    headerCell.textContent = "Patch: " + patch.nameTrimmed;
+  if (patch != undefined) {
+    patchNameCell.textContent = "Patch: " + patch.nameTrimmed;
+    patchDescriptionCell.textContent = patch.txe1DescriptionEnglish ?? "&nbsp;"; 
+  }
 
   let maxNumParamsPerLine = 4;
 
@@ -269,7 +282,8 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection, pat
     if (screenIsVisible(screenCollection.screens[i], i, patch))
       numVisibleScreens += 1;
 
-  headerCell.colSpan = numVisibleScreens - row.cells.length + 1;
+  patchNameCell.colSpan = numVisibleScreens - patchNameRow.cells.length + 1;
+  patchDescriptionCell.colSpan = numVisibleScreens - patchDescriptionRow.cells.length + 1;
     
   // Remove superfluous td elements (effects) so we have one td element for each effect
   while (effectsRow.lastChild !== null && effectsRow.children.length > numVisibleScreens)
