@@ -155,6 +155,8 @@ async function start()
   {
     device.addListener(handleMIDIDataFromZoom);
     device.addMemorySlotChangedListener(handleMemorySlotChangedEvent);
+    device.autoRequestScreens = true;
+    device.addScreenChangedListener(handleScreenChangedEvent)
   };  
 
   // console.log("Call and response start");
@@ -479,18 +481,33 @@ async function start()
   function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number): void
   {
     console.log(`Memory slot changed: ${memorySlot}`);
-    let device = zoomDevices[0];
 
-    let selected = getCellForMemorySlot(device, "patchesTable", memorySlot);
+    let selected = getCellForMemorySlot(zoomDevice, "patchesTable", memorySlot);
 
-    if (selected !==undefined && device.patchList.length > 0) {
+    if (selected !==undefined && zoomDevice.patchList.length > 0) {
       togglePatchesTablePatch(selected);
       if (lastSelected != null)
         togglePatchesTablePatch(lastSelected);    
       lastSelected = selected;
-      currentZoomPatch = device.patchList[memorySlot];
+      currentZoomPatch = zoomDevice.patchList[memorySlot];
       updatePatchInfoTable(currentZoomPatch);
     }
+  }
+
+  async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
+  {
+    console.log(`Screen changed`);
+
+    let screenCollection = zoomDevice.currentScreenCollection;
+    let compare = previousEditScreenCollection;
+    // Note: should probably take patch equality into consideration...
+    if (screenCollection !== undefined &&  screenCollection.equals(previousEditScreenCollection))
+      compare = lastChangedEditScreenCollection;
+    else
+      lastChangedEditScreenCollection = previousEditScreenCollection;
+    updateEditPatchTable(screenCollection, currentZoomPatch, compare, previousEditPatch);
+    previousEditScreenCollection = screenCollection;
+    previousEditPatch = currentZoomPatch;
   }
 
   // FIXME: Look into if it's a good idea to have this function be async. 2024-06-26.
@@ -540,17 +557,17 @@ async function start()
         }
         updatePatchInfoTable(patch);
 
-        let screenCollection = await zoomDevice.getScreensForCurrentPatch();
-        updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
-        previousEditScreenCollection = screenCollection;
-        previousEditPatch = currentZoomPatch;
+        // let screenCollection = await zoomDevice.downloadScreens();
+        // updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
+        // previousEditScreenCollection = screenCollection;
+        // previousEditPatch = currentZoomPatch;
       }
       else if (data.length === 15 && (data[4] === 0x64 && data[5] === 0x20)) {
         // Parameter was edited on device (MS Plus series)
         // Request patch immediately
         sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 13"));
         // Request screen info immediately
-        // sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 02 00"));
+        // Not necessary as patch will also request it sendZoomCommandLong(device.outputID, device.familyCode[0], hexStringToUint8Array("64 02 00 02 00"));
       }
       else if (data.length === 10 && (data[4] === 0x31)) {
         // Parameter was edited on device (MS series)
@@ -629,10 +646,12 @@ async function start()
         currentZoomPatch = device.patchList[currentMemorySlot];
         updatePatchInfoTable(currentZoomPatch);
 
-        let screenCollection = await device.getScreensForCurrentPatch();
-        updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
-        previousEditScreenCollection = screenCollection;
-        previousEditPatch = currentZoomPatch;
+        // Probably not needed, since we auto-update in device class ?
+        // let screenCollection = await device.downloadScreens();
+        // updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
+        // previousEditScreenCollection = screenCollection;
+        // previousEditPatch = currentZoomPatch;
+        
         // Request screen info immediately
         // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
       }
@@ -1016,6 +1035,7 @@ async function start()
 cleanupEditPatchTable();
 
 let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
+let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefined;
 let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
 
 let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
