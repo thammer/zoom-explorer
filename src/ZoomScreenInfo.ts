@@ -4,16 +4,30 @@ export class ZoomScreenParameter
 {
   name: string = "";
   valueString: string = "";
+  public equals(other: ZoomScreenParameter): boolean
+  {
+    return this.name === other.name && this.valueString === other.valueString;
+  }
 }
 
 export class ZoomScreen
 {
   parameters: Array<ZoomScreenParameter> = new Array<ZoomScreenParameter>();
+  public equals(other: ZoomScreen): boolean
+  {
+    return this.parameters.length === other.parameters.length && this.parameters.every( (element, index) => element.equals(other.parameters[index]) );
+  }
 }
 
 export class ZoomScreenCollection
 {
   screens: Array<ZoomScreen> = new Array<ZoomScreen>();
+
+  equals(other: ZoomScreenCollection | undefined): boolean
+  {
+    return other !== undefined && this.screens.length === other.screens.length && this.screens.every( (element, index) => element.equals(other.screens[index]) );
+  }
+  
 
   readString(data: Uint8Array, offset: number, length: number) : string | null
   {
