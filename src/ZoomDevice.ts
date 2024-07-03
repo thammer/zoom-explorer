@@ -6,6 +6,9 @@ import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, 
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
+export type EffectParameterChangedListenerType = (zoomDevice: ZoomDevice, effectSlot: number, paramNumber: number, paramVaule: number) => void;
+export type CurrentPatchChangedListenerType = (zoomDevice: ZoomDevice) => void;
+export type ScreenChangedListenerType = (zoomDevice: ZoomDevice) => void;
 
 class StringAndBytes
 {
@@ -44,6 +47,17 @@ class ZoomMessageTypes
   requestCurrentPatchV2 = new StringAndBytes("64 13");
 }
 
+/**
+ * @example Usage pattern for screens and current patch
+ * - Manual usage:
+ *   - requestScreens() will request current screen collection from pedal
+ *   - object will emitScreenChangedEvent when current screen collection is received from pedal
+ * - Automatic usage:
+ *   - set autoRequestScreens to true
+ *   - object will do its best to keep the currentScreenCollection up to date when parameters or patches changes 
+ *     - parameters changed
+ *     - current patch received
+ */
 export class ZoomDevice
 {
   private _midiDevice: MIDIDeviceDescription;
@@ -57,7 +71,10 @@ export class ZoomDevice
   private _supportedCommands: Map<string, SupportType> = new Map<string, SupportType>();
   
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
-  private _memorySlotChangedlisteners: MemorySlotChangedListenerType[] = new Array<MemorySlotChangedListenerType>();
+  private _memorySlotChangedListeners: MemorySlotChangedListenerType[] = new Array<MemorySlotChangedListenerType>();
+  private _effectParameterChangedListeners: EffectParameterChangedListenerType[] = new Array<EffectParameterChangedListenerType>();
+  private _currentPatchChangedListeners: CurrentPatchChangedListenerType[] = new Array<CurrentPatchChangedListenerType>();
+  private _screenChangedListeners: ScreenChangedListenerType[] = new Array<ScreenChangedListenerType>();
 
   private _numPatches: number = -1;
   private _patchLength: number = -1;
@@ -67,8 +84,18 @@ export class ZoomDevice
 
   private _patchList: Array<ZoomPatch> = new Array<ZoomPatch>();
 
+  private _autoRequestScreens: boolean = true;
+  private _autoRequestCurrentPatch: boolean = true; // Do we need this? We probably get the messages automatically in edit mode anyway...
+
   private _currentBank: number = -1;
   private _currentProgram: number = -1;
+  private _currentEffectSlot: number = -1;
+  private _currentEffectParameterNumber: number = -1;
+  private _currentEffectParameterValue: number = -1;
+  private _currentScreenCollectionData: Uint8Array | undefined = undefined;
+  private _currentScreenCollection: ZoomScreenCollection | undefined = undefined;
+  private _currentPatchData: Uint8Array | undefined = undefined; // if set, needs parsing, then will be undefined
+  private _currentPatch: ZoomPatch | undefined; // if undefined, need to parse _currentPatchData, then set _currentPatchData=undefined 
 
   public loggingEnabled: boolean = true;
 
@@ -111,17 +138,62 @@ export class ZoomDevice
 
   public addMemorySlotChangedListener(listener: MemorySlotChangedListenerType): void
   {
-    this._memorySlotChangedlisteners.push(listener);
+    this._memorySlotChangedListeners.push(listener);
   }
 
   public removeMemorySlotChangedListener(listener: MemorySlotChangedListenerType): void
   {
-    this._memorySlotChangedlisteners = this._memorySlotChangedlisteners.filter( (l) => l !== listener);
+    this._memorySlotChangedListeners = this._memorySlotChangedListeners.filter( (l) => l !== listener);
   }
 
   private emitMemorySlotChangedEvent() {
-    for (let listener of this._memorySlotChangedlisteners)
+    for (let listener of this._memorySlotChangedListeners)
       listener(this, this.currentMemorySlotNumber);
+  }
+
+  public addEffectParameterChangedListener(listener: EffectParameterChangedListenerType): void
+  {
+    this._effectParameterChangedListeners.push(listener);
+  }
+
+  public removeEffectParameterChangedListener(listener: EffectParameterChangedListenerType): void
+  {
+    this._effectParameterChangedListeners = this._effectParameterChangedListeners.filter( (l) => l !== listener);
+  }
+
+  private emitEffectParameterChangedEvent() {
+    for (let listener of this._effectParameterChangedListeners)
+      listener(this, this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue);
+  }
+
+  public addCurrentPatchChangedListener(listener: CurrentPatchChangedListenerType): void
+  {
+    this._currentPatchChangedListeners.push(listener);
+  }
+
+  public removeCurrentPatchChangedListener(listener: CurrentPatchChangedListenerType): void
+  {
+    this._currentPatchChangedListeners = this._currentPatchChangedListeners.filter( (l) => l !== listener);
+  }
+
+  private emitCurrentPatchChangedEvent() {
+    for (let listener of this._currentPatchChangedListeners)
+      listener(this);
+  }
+
+  public addScreenChangedListener(listener: ScreenChangedListenerType): void
+  {
+    this._screenChangedListeners.push(listener);
+  }
+
+  public removeScreenChangedListener(listener: ScreenChangedListenerType): void
+  {
+    this._screenChangedListeners = this._screenChangedListeners.filter( (l) => l !== listener);
+  }
+
+  private emitScreenChangedEvent() {
+    for (let listener of this._screenChangedListeners)
+      listener(this);
   }
 
   public parameterEditEnable() 
@@ -171,6 +243,48 @@ export class ZoomDevice
     }
   }
 
+  public get autoRequestScreens(): boolean
+  {
+    return this._autoRequestScreens;
+  }
+
+  public set autoRequestScreens(value: boolean)
+  {
+    this._autoRequestScreens = value;
+  }
+
+  public get currentPatch(): ZoomPatch | undefined
+  {
+    if (this._currentPatchData !== undefined) {
+      // parse the last current patch data received and update current patch
+
+      let offset = this.isMessageType(this._currentPatchData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) ? 5 : 9
+      let eightBitData = seven2eight(this._currentPatchData, offset, this._currentPatchData.length-2); // skip the last byte (0x7F)in the sysex message
+      if (eightBitData !== undefined) {
+        let patch = ZoomPatch.fromPatchData(eightBitData);
+        if (patch !== undefined)
+          this._currentPatch = patch;
+      }
+      this._currentPatchData = undefined;
+    }
+
+    return this._currentPatch;
+  }
+
+  public get currentScreenCollection(): ZoomScreenCollection | undefined
+  {
+    if (this._currentScreenCollectionData !== undefined) {
+      // parse the last screen data received and update current screen collection
+      let offset = 6;
+      let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(this._currentScreenCollectionData, offset);
+      if (screenCollection !== undefined)
+        this._currentScreenCollection = screenCollection;
+      this._currentScreenCollectionData = undefined;
+    }
+
+    return this._currentScreenCollection;
+  }
+
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
   {
     let reply: Uint8Array | undefined;
@@ -180,7 +294,7 @@ export class ZoomDevice
       reply = await this.sendCommandAndGetReply(ZoomDevice.messageTypes.requestCurrentPatchV2.bytes, 
         received => this.zoomCommandMatch(received, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes));
       if (reply !== undefined) {
-        let offset = 13;
+        let offset = 9;
         eightBitData = seven2eight(reply, offset, reply.length-2); // skip the last byte (0x7F)in the sysex message
       }
     }
@@ -250,7 +364,7 @@ export class ZoomDevice
     return program;
   }
 
-  public async getScreensForCurrentPatch(): Promise<ZoomScreenCollection | undefined>
+  public async downloadScreens(): Promise<ZoomScreenCollection | undefined>
   {
     if (!(this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)) {
       console.warn(`Attempting to get screens when the command is not supported by the device (${this._midiDevice.deviceName})`);
@@ -280,6 +394,25 @@ export class ZoomDevice
     
     return screenCollection;
   }
+
+  public requestScreens(): void
+  {
+    if (!(this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)) {
+      console.warn(`Attempting to get screens when the command is not supported by the device (${this._midiDevice.deviceName})`);
+      return undefined;
+    }
+
+    let screenRange = new Uint8Array(3);
+    screenRange[0] = 0;
+    screenRange[1] = 12; // anything >= 6 really
+    screenRange[2] = 0;
+    let command = new Uint8Array(ZoomDevice.messageTypes.requestScreensForCurrentPatch.bytes.length + screenRange.length);
+    command.set(ZoomDevice.messageTypes.requestScreensForCurrentPatch.bytes);
+    command.set(screenRange, ZoomDevice.messageTypes.requestScreensForCurrentPatch.bytes.length);
+      
+    this.sendCommand(command);
+  }
+
 
   public async downloadPatchFromMemorySlot(memorySlot: number) : Promise<ZoomPatch | undefined>
   {
@@ -583,6 +716,48 @@ export class ZoomDevice
     return programLength;
   }
 
+  /**
+   * Parses data as if it was a parameter update message and returns effect slot, parameter number and parameter value for the edited parameter
+   * @param data MIDI data buffer
+   * @returns [effectSlot, paramNumber, paramValue], on error [-1, -1, -1] will be returned
+   */
+  private getEffectEditParameters(data: Uint8Array): [number, number, number]
+  {
+    let effectSlot: number = -1;
+    let paramNumber: number = -1;
+    let paramValue: number = -1;
+    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {
+      // Parameter was edited on device (MS Plus series)
+      effectSlot = data[7];
+      paramNumber = data[8];
+      paramValue = data[9] + ((data[10] & 0b01111111) << 7 );
+    }
+    else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
+      // Parameter was edited on device (MS series)
+      effectSlot = data[5];
+      paramNumber = data[6];
+      paramValue = data[7] + ((data[8] & 0b01111111) << 7 );
+    }
+    else {
+      console.warn(`Expected effect parameter edit message but got something else. data.length = ${data.length}, message type ${messageType}.`)
+    }
+
+    return [effectSlot, paramNumber, paramValue];
+  }
+
+  private isMessageType(data: Uint8Array, messageType: StringAndBytes): boolean
+  {
+    if (data[0] !== MessageType.SysEx || data.length < 4 + messageType.bytes.length)
+      return false;
+
+    for (let i=0; i<messageType.bytes.length; i++)
+      if (data[4 + i] != messageType.bytes[i])
+        return false;
+
+    return true;
+  }
+
   private setDeviceType()
   {
 
@@ -770,9 +945,31 @@ export class ZoomDevice
     else if (messageType === MessageType.PC) {
       // Program change
       this._currentProgram = data1;
-
       this.emitMemorySlotChangedEvent();
-  
+    }
+    else if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {
+      // Parameter was edited on device (MS Plus series)
+      [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
+      this.emitEffectParameterChangedEvent();
+      if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
+        this.requestScreens();
+    }
+    else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
+      // Parameter was edited on device (MS series)
+      [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
+      this.emitEffectParameterChangedEvent();
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) || this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2)) {
+      this._currentPatch = undefined;
+      this._currentPatchData = data;
+      this.emitCurrentPatchChangedEvent();
+      if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
+        this.requestScreens();
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.screensForCurrentPatch)) {
+      this._currentScreenCollection = undefined;
+      this._currentScreenCollectionData = data;
+      this.emitScreenChangedEvent();
     }
   }
 
