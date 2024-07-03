@@ -63,15 +63,25 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 0C          |      7 | *    | *       | F0 52 00 6E 64 0C F7 | Tuner off |
 | 64 12          |    985 |      | *       | F0 52 00 6E 64 12 01 \<length LSB\> \<length MSB\> \<patch data\> \<5 byte CRC\> F7 | Patch dump (curren patch), automatically sent after user changes effect for a slot, or after message type 64 13 is sent to the pedal |
 | 64 13          |     7  | *    |         | F0 52 00 6E 64 13 F7 | Get current patch (replies with 64 12) |
-| 64 20          |     15 | *    | *       | F0 52 00 6E 64 20 00 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Update (edit) parameter |
+| 64 20 00       |     15 | *    | *       | F0 52 00 6E 64 20 00 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Update (edit) parameter |
+| 64 20 00 5F    |     15 | ?    | *       | F0 52 00 6E 64 20 00 5F \<character index\> \<ASCII character\>  00 00 00 00 F7 | Name edited (backspace) |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
 | 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer (expects a reply with message type 64 12)|
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
+| 64 47          |      7 | *    |         | F0 52 00 6E 64 47 F7 | Create new bank. The pedal responds with misc messages, see https://github.com/mungewell/zoom-zt2/issues/70 |
 
 ### Screens (message type 64 01)
 
 If one of the effects is the BPM module, the screen for that module will be missing. 
+
+### Parameter editing
+
+When the users edits the name of the patch, the pedal sends out parameter updates for each letter in the name, typically a burst of "64 20 00 5F" messages.
+
+Inbetween that the pedal sends a burst of "C0 00" messages (program change ???). This could be a bug in the pedal firmware.
+
+This has been observed before, here: https://github.com/mungewell/zoom-zt2/issues/70
 
 ## Needs investigating
 
