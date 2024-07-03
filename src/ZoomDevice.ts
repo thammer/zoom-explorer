@@ -2,13 +2,16 @@ import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription } from "./miditools.js";
+import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array } from "./tools.js";
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
 export type EffectParameterChangedListenerType = (zoomDevice: ZoomDevice, effectSlot: number, paramNumber: number, paramVaule: number) => void;
 export type CurrentPatchChangedListenerType = (zoomDevice: ZoomDevice) => void;
+export type PatchChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
 export type ScreenChangedListenerType = (zoomDevice: ZoomDevice) => void;
+export type TempoChangedListenerType = (zoomDevice: ZoomDevice, tempo: number) => void;
 
 class StringAndBytes
 {
@@ -45,6 +48,8 @@ class ZoomMessageTypes
   requestScreensForCurrentPatch = new StringAndBytes("64 02");
   patchDumpForCurrentPatchV2 = new StringAndBytes("64 12");
   requestCurrentPatchV2 = new StringAndBytes("64 13");
+  nameCharacterV2 = new StringAndBytes("64 20 00 5F");
+  tempoV2 = new StringAndBytes("64 20 00 64 02");
 }
 
 /**
@@ -69,23 +74,31 @@ export class ZoomDevice
   private _commandBuffers: Map<number, Uint8Array> = new Map<number, Uint8Array>();
   private static messageTypes: ZoomMessageTypes = new ZoomMessageTypes();
   private _supportedCommands: Map<string, SupportType> = new Map<string, SupportType>();
-  
+  private _throttler: Throttler = new Throttler();
+  private _throttleTimeoutMilliseconds: number = 100;
+  private _patchListDownloadInProgress: boolean = false;
+
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
   private _memorySlotChangedListeners: MemorySlotChangedListenerType[] = new Array<MemorySlotChangedListenerType>();
   private _effectParameterChangedListeners: EffectParameterChangedListenerType[] = new Array<EffectParameterChangedListenerType>();
   private _currentPatchChangedListeners: CurrentPatchChangedListenerType[] = new Array<CurrentPatchChangedListenerType>();
+  private _patchChangedListeners: PatchChangedListenerType[] = new Array<PatchChangedListenerType>();
   private _screenChangedListeners: ScreenChangedListenerType[] = new Array<ScreenChangedListenerType>();
+  private _tempoChangedListeners: TempoChangedListenerType[] = new Array<TempoChangedListenerType>();
 
   private _numPatches: number = -1;
   private _patchLength: number = -1;
   private _patchesPerBank: number = -1;
   private _patchDumpForMemoryLocationV1CRCBytes: number = 0;
   private _ptcfPatchFormatSupported: boolean = false;
+  private _usesBankBeforeProgramChange = false;  
+  private _bankMessagesReceived = false; // true after having received bank messages, reset when program change message received
 
   private _patchList: Array<ZoomPatch> = new Array<ZoomPatch>();
+  private _rawPatchList: Array<Uint8Array | undefined> = new Array<Uint8Array>();
 
-  private _autoRequestScreens: boolean = true;
-  private _autoRequestCurrentPatch: boolean = true; // Do we need this? We probably get the messages automatically in edit mode anyway...
+  private _autoRequestScreens: boolean = false;
+  private _autoRequestCurrentPatch: boolean = false; // FIXME: Do we need this for anything other than name, and that could have its own event ?
 
   private _currentBank: number = -1;
   private _currentProgram: number = -1;
@@ -95,7 +108,8 @@ export class ZoomDevice
   private _currentScreenCollectionData: Uint8Array | undefined = undefined;
   private _currentScreenCollection: ZoomScreenCollection | undefined = undefined;
   private _currentPatchData: Uint8Array | undefined = undefined; // if set, needs parsing, then will be undefined
-  private _currentPatch: ZoomPatch | undefined; // if undefined, need to parse _currentPatchData, then set _currentPatchData=undefined 
+  private _currentPatch: ZoomPatch | undefined = undefined; // if undefined, need to parse _currentPatchData, then set _currentPatchData=undefined 
+  private _currentTempo: number | undefined = undefined;
 
   public loggingEnabled: boolean = true;
 
@@ -181,6 +195,21 @@ export class ZoomDevice
       listener(this);
   }
 
+  public addPatchChangedListener(listener: PatchChangedListenerType): void
+  {
+    this._patchChangedListeners.push(listener);
+  }
+
+  public removePatchChangedListener(listener: PatchChangedListenerType): void
+  {
+    this._patchChangedListeners = this._patchChangedListeners.filter( (l) => l !== listener);
+  }
+
+  private emitPatchChangedEvent(memorySlot: number) {
+    for (let listener of this._patchChangedListeners)
+      listener(this, memorySlot);
+  }
+
   public addScreenChangedListener(listener: ScreenChangedListenerType): void
   {
     this._screenChangedListeners.push(listener);
@@ -194,6 +223,22 @@ export class ZoomDevice
   private emitScreenChangedEvent() {
     for (let listener of this._screenChangedListeners)
       listener(this);
+  }
+
+  public addTempoChangedListener(listener: TempoChangedListenerType): void
+  {
+    this._tempoChangedListeners.push(listener);
+  }
+
+  public removeTempoChangedListener(listener: TempoChangedListenerType): void
+  {
+    this._tempoChangedListeners = this._tempoChangedListeners.filter( (l) => l !== listener);
+  }
+
+  private emitTempoChangedEvent() {
+    let tempo = this._currentTempo ?? 0; 
+    for (let listener of this._tempoChangedListeners)
+      listener(this, tempo);
   }
 
   public parameterEditEnable() 
@@ -217,10 +262,11 @@ export class ZoomDevice
     this.sendCommand(ZoomDevice.messageTypes.pcModeEnable.bytes);
   }
 
-  public async getCurrentBankAndProgram() : Promise<[number, number]> 
-  {
-    return [this._currentBank, this._currentProgram];
-  }
+  // public async getCurrentBankAndProgram() : Promise<[number, number]> 
+  // {
+  //   // perhaps request it ?
+  //   return [this._currentBank, this._currentProgram];
+  // }
 
   public setCurrentBankAndProgram(bank: number, program: number)
   {
@@ -253,6 +299,16 @@ export class ZoomDevice
     this._autoRequestScreens = value;
   }
 
+  public get autoRequestCurrentPatch(): boolean
+  {
+    return this._autoRequestCurrentPatch;
+  }
+
+  public set autoRequestCurrentPatch(value: boolean)
+  {
+    this._autoRequestCurrentPatch = value;
+  }
+
   public get currentPatch(): ZoomPatch | undefined
   {
     if (this._currentPatchData !== undefined) {
@@ -283,6 +339,11 @@ export class ZoomDevice
     }
 
     return this._currentScreenCollection;
+  }
+
+  public get currentTempo(): number | undefined
+  {
+    return this._currentTempo;
   }
 
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
@@ -323,10 +384,16 @@ export class ZoomDevice
       this.sendCommand(ZoomDevice.messageTypes.requestCurrentPatchV1.bytes);
   }
 
-  public async getCurrentMemorySlotNumber(skipCommandCheck: boolean = false, timeoutMilliseconds: number = this._timeoutMilliseconds): Promise<number | undefined>
+  /**
+   * 
+   * @param skipCommandCheck send the midi command even if we don't know if it's supported
+   * @param timeoutMilliseconds 
+   * @returns [bank | undefined, program | undefined]
+   */
+  public async getCurrentBankAndProgram(skipCommandCheck: boolean = false, timeoutMilliseconds: number = this._timeoutMilliseconds): Promise<[number | undefined, number | undefined]>
   {
     if (!skipCommandCheck && this._supportedCommands.get(ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.str) !== SupportType.Supported)
-      return undefined;
+      return [undefined, undefined];
 
     let bank = -1;
     let program = -1;
@@ -352,13 +419,23 @@ export class ZoomDevice
       }, null, null, timeoutMilliseconds); 
 
     if (program === -1)
-      return undefined;
+      return [undefined, undefined];
 
     this._currentProgram = program;
     if (bank !== -1)
       this._currentBank = bank;
     
     if (this._patchesPerBank !== -1 && bank !== -1)
+      program += bank * this._patchesPerBank;
+    
+    return [bank !== -1 ? bank : undefined, program];
+  }
+
+  public async getCurrentMemorySlotNumber(): Promise<number | undefined>
+  {
+    let [bank, program] = await this.getCurrentBankAndProgram();
+    
+    if (program !== undefined && this._patchesPerBank !== -1 && bank !== undefined)
       program += bank * this._patchesPerBank;
     
     return program;
@@ -412,7 +489,6 @@ export class ZoomDevice
       
     this.sendCommand(command);
   }
-
 
   public async downloadPatchFromMemorySlot(memorySlot: number) : Promise<ZoomPatch | undefined>
   {
@@ -537,12 +613,15 @@ export class ZoomDevice
     else
       this.sendCommand(sevenBitData, command, crcBytes);
 
-    if (memorySlot < this._patchList.length)
+    if (memorySlot < this._patchList.length) {
       this._patchList[memorySlot] = patch;
+      this._rawPatchList[memorySlot] = undefined;
+    }
   }
 
   public async updatePatchListFromPedal()
   {
+    this._patchListDownloadInProgress = true;
     if (this._numPatches === -1) {
       console.warn("Attempting to download patches from pedal without knowing how many patches are stored on the pedal (this._numPatches = -1)");
     }
@@ -558,7 +637,9 @@ export class ZoomDevice
         break;
       }
       this._patchList[i] = patch;
+      this._rawPatchList[i] = undefined;
     }
+    this._patchListDownloadInProgress = false;
   }
 
   public get deviceInfo() : MIDIDeviceDescription
@@ -573,9 +654,32 @@ export class ZoomDevice
     return memorySlot;
   }
 
-  public get  patchList(): Array<ZoomPatch>
+  public get patchList(): Array<ZoomPatch>
   {
+    this.syncPatchList();
     return this._patchList;
+  }
+
+  /**
+   * Makes sure the patchList is updated with the latest unparsed patches.
+   * Received patches aren't parsed immediately, since that is a semi-expensive operation 
+   * and the MS Plus pedals will send patch messages a few seconds after parameter edit.
+   */
+  private syncPatchList(): void
+  {
+    for (let i = 0; i < this._rawPatchList.length; i++) {
+      let data = this._rawPatchList[i];
+      if (data !== undefined) {
+        this._rawPatchList[i] = undefined;
+        let [patch, memorySlot] = this.parsePatchFromMemorySlot(data);
+        if (patch === undefined || memorySlot === undefined)
+          console.warn(`Error when parsing patch from memory slot, data.length: ${data.length}, patch: ${patch}, memorySlot: ${memorySlot}`);
+        else if (memorySlot !== i)
+          console.warn(`Parsed patch is for memory slot ${memorySlot} but expected memory slot to be ${i}`);
+        else 
+          this._patchList[memorySlot] = patch;
+      }  
+    }
   }
 
   public getSysexForCurrentPatch(patch: ZoomPatch): Uint8Array | undefined
@@ -715,6 +819,38 @@ export class ZoomDevice
     programLength[2] = (length >> 7) & 0x7F;
     return programLength;
   }
+
+  private parsePatchFromMemorySlot(data: Uint8Array): [patch: ZoomPatch | undefined, memorySlot: number | undefined]
+  {
+    let offset: number = 0;
+    let crcBytes: number = 0;
+    let memorySlot: number = 0;
+    
+    if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForMemoryLocationV1)) {
+      offset = 10;
+      crcBytes = this._patchDumpForMemoryLocationV1CRCBytes;
+      memorySlot = data[7]; 
+    }
+    else {
+      offset = 13;
+      crcBytes = 0;
+      let bank = data[7] + ((data[8] & 0b0111111) >> 7); 
+      let program = data[9] + ((data[10] & 0b0111111) >> 7); 
+      if (this._patchesPerBank !== -1)
+        program += bank * this._patchesPerBank;
+      memorySlot = program;
+    }
+
+    let eightBitData = seven2eight(data, offset, data.length - 2 - crcBytes); // skip the last byte (0x7F)in the sysex message, and crc bytes if v1 message
+
+    if (eightBitData !== undefined) {
+      let patch = ZoomPatch.fromPatchData(eightBitData);
+      return [patch, memorySlot];
+    }
+
+    return [undefined, undefined];
+  }
+
 
   /**
    * Parses data as if it was a parameter update message and returns effect slot, parameter number and parameter value for the edited parameter
@@ -930,22 +1066,48 @@ export class ZoomDevice
 
   private internalMIDIDataHandler(data: Uint8Array): void
   {
+    if (this._patchListDownloadInProgress)
+      return; // mute all message handling while the patch list is being downloaded
+
     let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
 
     if (messageType === MessageType.CC && data1 === 0x00) {
       // Bank MSB
       if (this._currentBank === -1) this._currentBank = 0;
       this._currentBank = (this._currentBank & 0b0000000001111111) | (data2<<7);
+      this._bankMessagesReceived = true;
     }
     else if (messageType === MessageType.CC && data1 === 0x20) { 
       // Bank LSB
       if (this._currentBank === -1) this._currentBank = 0;
       this._currentBank = (this._currentBank & 0b0011111110000000) | data2;
+      this._bankMessagesReceived = true;
     }
     else if (messageType === MessageType.PC) {
       // Program change
-      this._currentProgram = data1;
-      this.emitMemorySlotChangedEvent();
+      if (!this._usesBankBeforeProgramChange || (this._usesBankBeforeProgramChange && this._bankMessagesReceived)) {
+        this._bankMessagesReceived = false;
+        this._currentProgram = data1;
+        this.emitMemorySlotChangedEvent();
+  
+        if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
+          this.requestScreens();
+      }
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.nameCharacterV2)) {
+      // Name was edited on device (MS Plus series)
+      // We need to get the current patch to get the name
+      // We'll get a lot of these messages just for one changed character, so we'll throttle the request for current patch
+      // FIXME: Consider just emitting a name changed event for this particular case, after receiving the throttled new current patch
+      this._throttler.doItLater(() => {
+        if (this._autoRequestCurrentPatch)
+          this.requestCurrentPatch();
+      }, this._throttleTimeoutMilliseconds);
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.tempoV2)) {
+      // Tempo changed on device (MS Plus series)
+      this._currentTempo = data[9] + ((data[10] & 0b01111111) >> 7);
+      this.emitTempoChangedEvent();
     }
     else if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {
       // Parameter was edited on device (MS Plus series)
@@ -965,6 +1127,16 @@ export class ZoomDevice
       this.emitCurrentPatchChangedEvent();
       if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
         this.requestScreens();
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForMemoryLocationV2)) {
+      let bank = data[7] + ((data[8] & 0b0111111) >> 7); 
+      let program = data[9] + ((data[10] & 0b0111111) >> 7); 
+      if (this._patchesPerBank !== -1)
+        program += bank * this._patchesPerBank;
+      let memorySlot = program;
+
+      this._rawPatchList[memorySlot] = data;
+      this.emitPatchChangedEvent(memorySlot);
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.screensForCurrentPatch)) {
       this._currentScreenCollection = undefined;
@@ -1052,8 +1224,9 @@ export class ZoomDevice
     }
 
     command = ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.str; 
-    let memorySlot = await this.getCurrentMemorySlotNumber(true, probeTimeoutMilliseconds);
-    this._supportedCommands.set(command, memorySlot !== undefined ? SupportType.Supported : SupportType.Unknown);
+    let [bank, program] = await this.getCurrentBankAndProgram(true, probeTimeoutMilliseconds);
+    this._supportedCommands.set(command, program !== undefined ? SupportType.Supported : SupportType.Unknown);
+    this._usesBankBeforeProgramChange = bank !== undefined;
 
     // reply = await this.sendCommandAndGetReply(hexStringToUint8Array(command), (received) => 
     //   partialArrayMatch(received, hexStringToUint8Array(`C0`)), null, null, probeTimeoutMilliseconds); 
