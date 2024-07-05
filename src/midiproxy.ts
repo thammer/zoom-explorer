@@ -61,7 +61,7 @@ export interface IMIDIProxy
   send(deviceHandle: DeviceID, data: number[] | Uint8Array) : void;
   sendPC(deviceHandle: DeviceID, channel: number, program: number) : void;
   sendCC(deviceHandle: DeviceID, channel: number, ccNumber: number, ccValue: number) : void;
-  sendAndGetReply(inputDevice: DeviceID, data: number[] | Uint8Array, outputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, timeoutMilliseconds: number) : Promise<Uint8Array | undefined>;
+  sendAndGetReply(outputDevice: DeviceID, data: number[] | Uint8Array, intputDevice: DeviceID, verifyReply: (data: Uint8Array) => boolean, timeoutMilliseconds: number) : Promise<Uint8Array | undefined>;
 
   addListener(deviceHandle: DeviceID, listener: ListenerType): void;
   removeListener(deviceHandle: DeviceID, listener: ListenerType): void;
