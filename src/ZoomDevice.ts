@@ -108,6 +108,7 @@ export class ZoomDevice
   private _autoRequestProgramChangeTimerStarted: boolean = false;
   private _autoRequestProgramChangeIntervalMilliseconds: number = 500;
   private _autoRequestProgramChangeTimerID: number = 0;
+  private _autoRequestProgramChangeMuteLog: boolean = false;
 
   private _currentBank: number = -1;
   private _currentProgram: number = -1;
@@ -155,6 +156,7 @@ export class ZoomDevice
     if (this._autoRequestProgramChangeTimerStarted) {
       clearInterval(this._autoRequestProgramChangeTimerID);
       this._autoRequestProgramChangeTimerStarted = false;
+      this._autoRequestProgramChangeMuteLog = false;
     }
   }
 
@@ -291,10 +293,14 @@ export class ZoomDevice
     this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
     this._midi.sendCC(this._midiDevice.outputID, 0, 0x20, bank & 0x7F); // bank LSB
     this._midi.sendPC(this._midiDevice.outputID, 0, program & 0x7F); // program
+    
     this._previousBank = this._currentBank;
     this._previousProgram = this._currentProgram;
     this._currentBank = bank;
     this._currentProgram = program;
+    
+    if (this._autoRequestProgramChangeTimerStarted)
+      this.emitMemorySlotChangedEvent();
 }
 
   public setCurrentMemorySlot(memorySlot: number)
@@ -306,6 +312,12 @@ export class ZoomDevice
     }
     else {
       this._midi.sendPC(this._midiDevice.outputID, 0, memorySlot & 0x7F); // program
+      
+      this._previousProgram = this._currentProgram;
+      this._currentProgram = memorySlot;
+      
+      if (this._autoRequestProgramChangeTimerStarted)
+        this.emitMemorySlotChangedEvent();
     }
   }
 
@@ -468,10 +480,7 @@ export class ZoomDevice
       this._previousBank = this._currentBank;
       this._currentBank = bank;
     }
-    
-    if (this._patchesPerBank !== -1 && bank !== -1)
-      program += bank * this._patchesPerBank;
-    
+        
     return [bank !== -1 ? bank : undefined, program];
   }
 
@@ -876,11 +885,14 @@ export class ZoomDevice
       // We should really determine by probing if patch changed events are sent when patches change (?). 
       //   -> then I mist see if MS+ actually does this ...
       // We assume that older pedals don't send program change messages automatically, so we have to poll instead
+      this._autoRequestProgramChangeMuteLog = false;
       let device = this;
       this._autoRequestProgramChangeTimerID = setInterval(() => {
         device.autoRequestProgramChangeTimer();
       }, this._autoRequestProgramChangeIntervalMilliseconds);
       this._autoRequestProgramChangeTimerStarted = true;
+      if (this.loggingEnabled)
+        console.log(`Started regular polling of program change (timer ID ${this._autoRequestProgramChangeTimerID}). Muting logging of program and bank requests and the bank and program change message.`);
     }
   }
 
@@ -889,7 +901,14 @@ export class ZoomDevice
     if (this._patchListDownloadInProgress)
       return; // don't send program change requests while the patch list is being downloaded
 
+    // Temporarily mute logging, so log isn't so chatty
+    let loggingEnabled = this._midi.loggingEnabled;
+    this._midi.loggingEnabled = false;
+    this._autoRequestProgramChangeMuteLog = true; // mute next bank change(s) and program change message, to make the log less chatty
+
     this.sendCommand(ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.bytes);
+    
+    this._midi.loggingEnabled = loggingEnabled;
   }
 
   private getSevenBitCRC(data: Uint8Array): Uint8Array 
@@ -1150,8 +1169,6 @@ export class ZoomDevice
   private connectMessageHandler() 
   {
     this._midi.addListener(this._midiDevice.inputID, (deviceHandle, data) => {
-      if (this.loggingEnabled) 
-        console.log(`Received: ${bytesToHexString(data, " ")}`);
       this.handleMIDIDataFromZoom(data);
     });
   }
@@ -1170,10 +1187,20 @@ export class ZoomDevice
 
   private internalMIDIDataHandler(data: Uint8Array): void
   {
+    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    
+    // Skip log for auto requests of program change, to make the log less chatty
+    const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
+    const tempSkipLog = this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
+
+    if (this.loggingEnabled && ! tempSkipLog)
+      console.log(`Received: ${bytesToHexString(data, " ")}`);
+
+    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
+      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore
+
     if (this._patchListDownloadInProgress)
       return; // mute all message handling while the patch list is being downloaded
-
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
 
     if (messageType === MessageType.CC && data1 === 0x00) {
       // Bank MSB
@@ -1199,6 +1226,7 @@ export class ZoomDevice
         if (!this._autoRequestProgramChangeTimerStarted || this._currentBank !== this._previousBank || this._currentProgram !== this._previousProgram)
           this.emitMemorySlotChangedEvent();
   
+        // FIXME: Perhaps we should only emit this message if program has changed
         if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
           this.requestScreens();
       }
@@ -1326,6 +1354,9 @@ export class ZoomDevice
     if (this.loggingEnabled)
       console.log(`Probing started for device ${this.deviceInfo.deviceName}`);
 
+    // Some of the probes will fail if parameter edit is not enabled
+    this.parameterEditEnable();
+
     command =ZoomDevice.messageTypes.sayHi.str;
     expectedReply = ZoomDevice.messageTypes.success.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
@@ -1407,7 +1438,6 @@ export class ZoomDevice
       let newProgram: number = 0;
     this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
       this._midi.sendCC(this._midiDevice.outputID, 0, 0x20, bank & 0x7F); // bank LSB = 0
-      this._midi.sendPC(this._midiDevice.outputID, 0, program & 0x7F); // program
       let pcMessage = new Uint8Array(2); pcMessage[0] = 0xC0; pcMessage[1] = program & 0b01111111;
       reply = await this._midi.sendAndGetReply(this._midiDevice.outputID, pcMessage, this._midiDevice.inputID, (data: Uint8Array) => {
         // expected reply is 2 optional bank messages (B0 00 00, B0 20 NN) and then one program change message (C0 NN)
@@ -1429,7 +1459,7 @@ export class ZoomDevice
         else
           return false;
       }, probeTimeoutMilliseconds);
-      if (reply === undefined) {
+      if (reply !== undefined) {
         if (bank === newBank && program === newProgram) {
           this._bankAndProgramSentOnUpdate = true;
         }
@@ -1492,6 +1522,8 @@ export class ZoomDevice
       console.log(`  Bank and prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
       
     }
+
+    this.parameterEditDisable();
 
     if (this.loggingEnabled)
       console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
