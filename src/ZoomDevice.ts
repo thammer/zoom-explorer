@@ -1415,19 +1415,6 @@ export class ZoomDevice
 
     command = ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.str; 
     let [bank, program] = await this.getCurrentBankAndProgram(true, probeTimeoutMilliseconds);
-    // if (program === undefined) {
-    //   console.log(`Probing for requestCurrentBankAndProgramV1 "${command}" didn't succeed. Retrying with parameter edit enabled.`);
-    //   this.parameterEditEnable();
-  
-    //   [bank, program] = await this.getCurrentBankAndProgram(true, probeTimeoutMilliseconds);
-
-    //   if (program === undefined)
-    //     console.log(`Probing for requestCurrentBankAndProgramV1 "${command}" failed again.`);
-    //   else
-    //     console.log(`Probing for requestCurrentBankAndProgramV1 "${command}" succeeded with parameter edit enabled.`);
-  
-    //   this.parameterEditDisable();            
-    // }
     this._supportedCommands.set(command, program !== undefined ? SupportType.Supported : SupportType.Unknown);
     this._usesBankBeforeProgramChange = bank !== undefined;
 
@@ -1482,31 +1469,6 @@ export class ZoomDevice
     expectedReply = ZoomDevice.messageTypes.screensForCurrentPatch.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
-    // if (this.isCommandSupported(ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV1) && !this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1) && !this._ptcfPatchFormatSupported) {
-    //   console.warn("Device supports requesting patch for memory location (v1) but not requesting current patch (v1).");
-    //   console.warn("And the device does not support the PTCF format, so it's probably a MS v1 device");
-    //   console.warn("But then it's probably incorrect that it doesn't support requesting current patch (v1), so we'll probe for requesting current patch once more.");
-    //   command =ZoomDevice.messageTypes.requestCurrentPatchV1.str;
-    //   expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.str;
-    //   reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
-    //   if (reply === undefined) {
-    //     console.warn("Probing for request patch (v1) failed the second time as well.");
-    //     console.warn("Probing one final time, with parameter edit enabled.");
-    //     this.parameterEditEnable();
-
-    //     command =ZoomDevice.messageTypes.requestCurrentPatchV1.str;
-    //     expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.str;
-    //     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
-    //     if (reply === undefined)
-    //       console.warn("Probing for request patch (v1) failed the third time as well.");
-    //     else
-    //       console.log("Probing for request patch (v1) succeeded on third attempt. Weird.")
-
-    //     this.parameterEditDisable();
-    //   }
-    //   else
-    //     console.log("Probing for request patch (v1) succeeded on second attempt. Weird.")
-    // }
 
     if (this.loggingEnabled) {
       let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replace(/ /g, "").padEnd(2, "00") > b[0].replace(/ /g, "").padEnd(2, "00") ? 1 : -1))
