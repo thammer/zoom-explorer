@@ -243,7 +243,7 @@ export function cleanupEditPatchTable() {
   while (effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
 }
 
-export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
+export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
 {
   function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
     return ! ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || 
@@ -263,8 +263,8 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection | un
   let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
 
   if (patch != undefined) {
-    patchNameCell.textContent = "Patch: " + patch.nameTrimmed;
-    patchDescriptionCell.textContent = patch.txe1DescriptionEnglish ?? " "; 
+    patchNameCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}: ${patch.nameTrimmed}`;
+    patchDescriptionCell.textContent = patch.descriptionEnglishTrimmed; 
   }
 
   if (screenCollection === undefined)

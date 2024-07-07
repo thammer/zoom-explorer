@@ -505,7 +505,7 @@ async function start()
       compare = lastChangedEditScreenCollection;
     else
       lastChangedEditScreenCollection = previousEditScreenCollection;
-    updateEditPatchTable(screenCollection, currentZoomPatch, compare, previousEditPatch);
+    updateEditPatchTable(screenCollection, currentZoomPatch, zoomDevice.currentMemorySlotNumber, compare, previousEditPatch);
     previousEditScreenCollection = screenCollection;
     previousEditPatch = currentZoomPatch;
   }
