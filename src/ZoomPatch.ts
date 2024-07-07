@@ -37,9 +37,19 @@ export class ZoomPatch
       return null;
   }
 
-  get nameTrimmed(): null | string
+  get nameTrimmed(): string
   {
-    return this.name === null ? null : this.name.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
+    return this.name === null ? "" : this.name.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
+  }
+
+  get descriptionEnglish(): string
+  {
+    return this.txe1DescriptionEnglish === null ? "" : this.txe1DescriptionEnglish.replace(/\x00/g, ""); // remove all 0x00 characters
+  }
+
+  get descriptionEnglishTrimmed(): null | string
+  {
+    return this.descriptionEnglish.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
   get effectSettings(): null | Array<EffectSettings>
@@ -362,6 +372,7 @@ export class ZoomPatch
       this.nameLength = chunkData.length;
       if (this.nameLength != null && this.nameLength > 0) {
         this.nameName = this.readString(chunkData, chunkOffset, this.nameLength); chunkOffset += this.nameLength; 
+        // FIXME: Perhaps we shouldn't remove the 0x00's here, to keep true to the original data??
         if (this.nameName != null)
           this.nameName = this.nameName.replace(/\x00/g, ""); // The last four characters could be 0x00
       }
