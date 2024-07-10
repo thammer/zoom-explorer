@@ -5,7 +5,7 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsPlaintextEdit, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, cleanupEditPatchTable, updateEditPatchTable } from "./htmltools.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, initializeEditPatchTable as initializeEditPatchTable, updateEditPatchTable } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 function getZoomCommandName(data: Uint8Array) : string
@@ -406,7 +406,7 @@ async function start()
     }
 
     bodyCell.innerHTML = sysexString; 
-    bodyCell.contentEditable = supportsContentEditablePlaintextOnly ? "plaintext-only" : "true";
+    bodyCell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
   }
   
   function html2Uint8Array(html: string) {
@@ -414,8 +414,6 @@ async function start()
     let sysexData = Uint8Array.from(sysexString.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
     return sysexData;
   }
-  
-  
   
   function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, paragraphHeight: number, lineLength: number, sentenceLength: number, 
                                    ascii: boolean = false, eightBit: boolean = false, eightBitOffset: number = 0) 
@@ -556,6 +554,30 @@ async function start()
           
         }
         updatePatchInfoTable(patch);
+
+        // patch.nameName = "Hei"; 
+
+        let originalPatch = patch;
+        patch = originalPatch.clone();        
+
+        let ptcfChunk = patch.buildPTCFChunk();
+        if (patch.ptcfChunk === null)
+          console.warn("patch.ptcfChunk == null");
+        else if (ptcfChunk === undefined)
+          console.warn("ptcfChunk == undefined");
+        else if (ptcfChunk.length !== patch.ptcfChunk.length)
+          console.warn("ptcfChunk.length !== patch.ptcfChunk.length");
+        else {
+          let allEqual = true;
+          for (let i=0; i<ptcfChunk.length; i++) {
+            if (ptcfChunk[i] !== patch.ptcfChunk[i]) {
+              console.warn(`Built patch buffer differs at buffer[${i}] = ${bytesToHexString([ptcfChunk[i]])} but expected ${bytesToHexString([patch.ptcfChunk[i]])}`)
+              allEqual = false;
+            }
+          }
+          if (allEqual)
+            console.log("Built patch buffer matched original patch buffer");
+        }
 
         // let screenCollection = await zoomDevice.downloadScreens();
         // updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
@@ -949,7 +971,7 @@ async function start()
     if (patch.EDTB !== null || patch.MSOG !== null) {
       let reversedBytes = (patch.EDTB !== null) ? patch.edtbReversedBytes : patch.msogEffectsReversedBytes;
       let effectSettingsArray = (patch.EDTB !== null) ? patch.edtbEffectSettings : patch.msogEffectSettings;
-      let unknownOffset = (patch.EDTB !== null) ? -Math.ceil(90/8 + 5) + 3 : 0 
+      let unknownOffset = (patch.EDTB !== null) ? -16 : 0; // See EDTB doc for bit layout and what is known
       let effectSettingsString = "";
       if (reversedBytes !== null && patch.ids !== null && effectSettingsArray !== null) {
         for (let i = 0; i < reversedBytes.length; i++) {
@@ -962,7 +984,6 @@ async function start()
           effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
           effectSettingsString += `                          Reversed: `;
           let effect = reversedBytes[i];
-          // for (let p = 0; p < effect.length - Math.ceil(90/8 + 5) + 3; p++) {
           for (let p = 0; p < effect.length + unknownOffset; p++) {
               effectSettingsString += `${effect[p].toString(2).padStart(8, "0")} `;
             if (((p + 1) % 12 == 0) && (p + 1 < effect.length))
@@ -1032,13 +1053,26 @@ async function start()
 
 }
 
-cleanupEditPatchTable();
+function patchEdited(event: Event)
+{
+  console.log(`Patch edited e is "${event}`);
+  if (event.target === null)
+    return;
+  let cell = event.target as HTMLTableCellElement;
+  if (cell.id === "editPatchTableNameID") {
+    console.log(`Name changed to "${cell.innerText}`);
+    // if (currentZoomPatch !== undefined) {
+    //   currentZoomPatch.
+    }
+  }
+}
+
+initializeEditPatchTable(patchEdited);
 
 let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
 let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefined;
 let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
 
-let supportsContentEditablePlaintextOnly = supportsPlaintextEdit();
 let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();

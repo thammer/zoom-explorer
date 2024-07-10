@@ -55,11 +55,16 @@ export class ConfirmDialog
   }
 }
 
-export function supportsPlaintextEdit () 
+let cachedSupportsContentEditablePlaintextOnly: boolean | undefined = undefined;
+
+export function supportsContentEditablePlaintextOnly(): boolean
 {
-  var dummy = document.createElement("div");
-  dummy.setAttribute("contentEditable", "plaintext-only");
-  return dummy.contentEditable === "plaintext-only";
+  if (cachedSupportsContentEditablePlaintextOnly === undefined) {
+    var dummy = document.createElement("div");
+    dummy.setAttribute("contentEditable", "plaintext-only");
+    cachedSupportsContentEditablePlaintextOnly = dummy.contentEditable === "plaintext-only";
+  }
+  return cachedSupportsContentEditablePlaintextOnly;
 }
 
 /**
@@ -233,14 +238,36 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
   return parseInt(text);
 }
 
-export function cleanupEditPatchTable() {
+export type editPatchTextEditedListenerType = (event: Event) => void;
+
+export function initializeEditPatchTable(textEditedCallback: editPatchTextEditedListenerType) {
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
   let lastRow = table.rows[table.rows.length -1] as HTMLTableRowElement;
   let lastCell = lastRow.children[0] as HTMLTableCellElement;
   let effectsTable = lastCell.children[0] as HTMLTableElement;
   let effectsRow = effectsTable.rows[0] as HTMLTableRowElement;
 
-  while (effectsRow.lastChild) effectsRow.removeChild(effectsRow.lastChild);
+  while (effectsRow.lastChild) 
+    effectsRow.removeChild(effectsRow.lastChild);
+
+  let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
+  let patchNumberCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
+  let patchNameCell: HTMLTableCellElement = patchNameRow.cells[1] as HTMLTableCellElement;
+  let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
+  let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
+
+  patchNameCell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
+
+  patchNameCell.addEventListener("keydown", (e) => {
+    if (e.key === "Enter")
+      e.preventDefault()
+  });
+
+  patchNameCell.addEventListener("input", (e) => {
+    textEditedCallback(e);
+  });
+
+  patchDescriptionCell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
 }
 
 export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
@@ -258,12 +285,14 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection | un
   let effectsRow = effectsTable.rows[0] as HTMLTableRowElement;
 
   let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
-  let patchNameCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
+  let patchNumberCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
+  let patchNameCell: HTMLTableCellElement = patchNameRow.cells[1] as HTMLTableCellElement;
   let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
   let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
 
-  if (patch != undefined) {
-    patchNameCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}: ${patch.nameTrimmed}`;
+  if (patch !== undefined) {
+    patchNumberCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`;
+    patchNameCell.textContent = `${patch.nameTrimmed}`;
     patchDescriptionCell.textContent = patch.descriptionEnglishTrimmed; 
   }
 

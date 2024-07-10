@@ -170,7 +170,9 @@
           text-align: center;
           vertical-align: middle;
           table-layout: fixed;
-          margin: 2px 4px 8px 4px;
+          margin-left: auto;
+          margin-right: auto;
+          margin-top: 1em;
       } 
       table.editPatchTable tr {
           border: 1px solid black;
@@ -178,12 +180,29 @@
       } 
       table.editPatchTable td, table.editPatchTable th {
           border-collapse: collapse;
-          font-family: 'Roboto Mono', monospace;
           padding: 1px 0px 1px px;
       } 
       table.editPatchTable th {
           text-align: left;
-          padding-left: 0.6em;
+      }
+      table.editPatchTable th.editPatchTableButtons {
+          padding-left: 5px;
+          text-align: right;
+      }
+      table.editPatchTable th.editPatchTableNumber {
+          padding-left: 8px;
+          font-size: 1.5em;
+          width: 1px;
+          white-space: nowrap;
+      }
+      table.editPatchTable th.editPatchTableName {
+          padding-left: 8px;
+          font-size: 1.5em;
+          width: 100%;
+          white-space: nowrap;
+      }
+      table.editPatchTable th.editPatchTableDescription {
+          padding-left: 8px;
       }
       table.editPatchTable td {
           vertical-align: top;
@@ -197,7 +216,7 @@
           text-align: center;
           vertical-align: middle;
           table-layout: fixed;
-          margin: 2px 4px 8px 4px;
+          margin: 2px 4px 4px 4px;
       } 
       table.editEffectTable tr {
           border: 0px solid black;
@@ -206,7 +225,7 @@
       table.editEffectTable td, table.editEffectTable th {
           border: 1px solid darkgray;
           border-collapse: collapse;
-          font-family: 'Roboto Mono', monospace;
+          font-size: 1em;
           white-space:pre;
           padding: 1px 4px 1px 4px;
       } 
@@ -217,20 +236,20 @@
           text-align: center;
       }
       table.editEffectOff {
-        color: darkgray;
+          color: darkgray;
       }
       /* rounded corners on effect tables */
       table.editEffectTable th:first-of-type {
-        border-top-left-radius: 6px;
+          border-top-left-radius: 6px;
       }
       table.editEffectTable th:last-of-type {
-        border-top-right-radius: 6px;
+          border-top-right-radius: 6px;
       }
       table.editEffectTable tr:last-of-type td:first-of-type {
-        border-bottom-left-radius: 6px;
+          border-bottom-left-radius: 6px;
       }
       table.editEffectTable tr:last-of-type td:last-of-type {
-        border-bottom-right-radius: 6px;
+          border-bottom-right-radius: 6px;
       }
 
     .sendSysexButton {
@@ -321,13 +340,14 @@
 
           <table id="editPatchTableID" class="editPatchTable">
             <tr>
-              <th class="editPatchTableName">Selected patch: Name</th>
+              <th class="editPatchTableNumber">Patch 00:</th>
+              <th class="editPatchTableName" id="editPatchTableNameID">Patch Name</th>
           </tr>
           <tr>
-              <th class="editPatchTableDescription">A very long description of the patch. A very long description of the patch. A very long description of the patch.</th>
+              <th colspan="2" class="editPatchTableDescription">A very long description of the patch. A very long description of the patch. A very long description of the patch.</th>
           </tr>
           <tr>
-              <td colspan="1">
+              <td colspan="2">
                   <table>
                       <tr>
 
