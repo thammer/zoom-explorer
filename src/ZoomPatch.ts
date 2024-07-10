@@ -5,6 +5,15 @@ export class EffectSettings
   enabled: boolean = false;
   id: number = 0;
   parameters: Array<number> = new Array<number>();
+
+  clone() : EffectSettings
+  {
+    let settings = new EffectSettings();
+    settings.enabled = this.enabled;
+    settings.id = this.id;
+    settings.parameters = Array.from(this.parameters);
+    return settings;
+  }
 }
 
 /**
@@ -121,6 +130,39 @@ export class ZoomPatch
   // ids: null | Uint32Array = null;
   msogDataBuffer: null | Uint8Array = null; // Complete 8-bit data buffer for the patch
 
+  clone(): ZoomPatch
+  {
+    let patch = new ZoomPatch();
+
+    Object.getOwnPropertyDescriptors
+    let properties: string[] = Object.getOwnPropertyNames(this);
+    for (let i=0; i<properties.length; i++) {
+      let propertyName: string = properties[i];
+      let property = (this as any)[propertyName];
+      console.log(`Property name: "${propertyName}", : "${property?.constructor?.name}"`);
+      if (property === null)
+        (patch as any)[propertyName] = null;
+      else if (propertyName === "chunks") {
+        let clonedMap = (patch as any)[propertyName];
+        property.forEach( (chunkBytes: Uint8Array, chunkName: string) => clonedMap.set(chunkName, new Uint8Array(chunkBytes)));        
+      } 
+      else if (property.constructor.name === "Array") {
+        if (property[0].constructor.name === "Uint8Array")
+          (patch as any)[propertyName] = Array.from(property, (e, i) => new Uint8Array(e as Uint8Array));  
+        else if (property[0].constructor.name === "EffectSettings")
+          (patch as any)[propertyName] = Array.from(property, (e, i) => (e as EffectSettings).clone());  
+      }
+      else if (property.constructor.name === "Uint32Array")
+        (patch as any)[propertyName] = new Uint32Array(property); 
+      else if (property.constructor.name === "Uint8Array")
+        (patch as any)[propertyName] = new Uint8Array(property);
+      else
+        (patch as any)[propertyName] = property; 
+    }
+
+    return patch;
+  }
+
   readString(patch: Uint8Array, offset: number, length: number) : string | null
   {
     let str = "";
@@ -133,12 +175,47 @@ export class ZoomPatch
     return str;
   }
 
+  writeString(data:Uint8Array, offset: number, str: string, enforceBufferLength: number = -1): number
+  {
+    if (enforceBufferLength == -1)
+      enforceBufferLength = str.length;
+
+    if (offset + enforceBufferLength > data.length) {
+      console.error(`Not enough space in data buffer for the given string ("${str}"). data.length = ${data.length}, offset = ${offset}, str.length = ${str.length}, enforceBufferLength = ${enforceBufferLength}`);
+      return 0;
+    }
+
+    if (str.length > enforceBufferLength) {
+      console.error(`String length > enforceBufferLength. str.length = ${str.length}, enforceBufferLength = ${enforceBufferLength}`);
+      return 0;
+    }
+
+    for (let i=0; i<enforceBufferLength; i++)
+      data[offset + i] = (i < str.length) ? (str.charCodeAt(i) & 0b01111111) : 0;
+
+    return offset + enforceBufferLength;
+  }
+
   readInt32(patch: Uint8Array, offset: number) : number | null
   {
     if (patch.length - offset < 4)
       return null;
 
     return patch[offset] + (patch[offset + 1] << 8) + (patch[offset + 2] << 16) + (patch[offset + 3] << 24); 
+  }
+
+  writeInt32(data: Uint8Array, offset: number, int: number): number
+  {
+    if (offset + 4 > data.length) {
+      console.error(`Not enough space in data buffer to store 32 bit int ("${int}"). data.length = ${data.length}, offset = ${offset}, bytes needed = 4`);
+      return 0;
+    }
+    data[offset] = int & 0x000000FF;
+    data[offset + 1] = (int & 0x0000FF00) >> 8;
+    data[offset + 2] = (int & 0x00FF0000) >> 16;
+    data[offset + 3] = (int & 0xFF000000) >> 24;
+
+    return offset + 4;
   }
 
   readInt32Array(patch: Uint8Array, offset: number, length: number) : Uint32Array | null
@@ -155,6 +232,37 @@ export class ZoomPatch
     }
  
     return array;
+  }
+
+  writeInt32Array(data: Uint8Array, offset: number, array: Uint32Array) : number
+  {
+    if (offset + array.length > data.length) {
+      console.error(`Not enough space in data buffer to store Int32 array. data.length = ${data.length}, offset = ${offset}, array.length = ${array.length}`);
+      return 0;
+    }
+
+    for (let i=0; i<array.length; i++) {
+      let result = this.writeInt32(data, offset, array[i]);
+      if (result === 0) {
+        console.error(`Storing Int32 array failed. data.length = ${data.length}, offset = ${offset}, array.length = ${array.length}`);
+        return 0;
+      }
+      offset = result;
+    }
+
+    return offset;
+  }
+
+  writeSlice(data: Uint8Array, offset: number, slice: Uint8Array) : number
+  {
+    if (offset + slice.length > data.length) {
+      console.error(`Not enough space in data buffer to store slice. data.length = ${data.length}, offset = ${offset}, slice.length = ${slice.length}`);
+      return 0;
+    }
+
+    data.set(slice, offset);
+
+    return offset + slice.length;
   }
 
   readPTCFChunks(patch: Uint8Array, offset:number, remainingPatchLength: number) : number
@@ -301,13 +409,12 @@ export class ZoomPatch
     //  90       8  Parameter 5
     //  98       8  Parameter 6
     // 106       8  Parameter 7
-    // 114       8  Parameter 8
-    // 122       8  Parameter 9
-    // 130       8  Parameter 10
-    // 138       8  Parameter 11
-    // 146       8  Parameter 12
-    // 153          Last bit of parameter 12
-    // Total 154 bits = 19 bytes. There are 5 bytes with unknown data after the parameters.
+    // 114      12  Parameter 8
+    // 126      12  Parameter 9   - 8 bits are verified, unknown if 8 or 12 bits
+    // 138      12  Parameter 10  - not verified
+    // 150      12  Parameter 11  - not verified
+    // 161          Last bit of parameter 11 - not verified
+    // Total verified 134 bits = 16 bytes and 6 bits. There are (24 - 16.6) 7 bytes and 2 bits of unknown data after the parameters.
     chunkID = "EDTB";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
@@ -330,12 +437,16 @@ export class ZoomPatch
           effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
           effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29;
           effectSettings.parameters = new Array<number>();
-          for (let p=0; p<5; p++) {
+          for (let p=0; p<5 && bitpos - 12 >= 0; p++) {
             let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
             effectSettings.parameters.push(parameter);
           }
-          for (let p=5; p<12 && bitpos - 8 >= 0; p++) {
+          for (let p=5; p<8 && bitpos - 8 >= 0; p++) {
             let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
+            effectSettings.parameters.push(parameter);
+          }
+          for (let p=8; p<12 && bitpos - 12 >= 0; p++) {
+            let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
             effectSettings.parameters.push(parameter);
           }
           this.edtbEffectSettings.push(effectSettings);
@@ -379,6 +490,253 @@ export class ZoomPatch
     }
 
     return offset;
+  }
+
+  /**
+   * Creates one PTCF chunk from the different chunks in the patch. This PTCF chunk can then be sent to the pedal as a patch.
+   */
+  buildPTCFChunk(): Uint8Array | undefined
+  {
+    // TXJ1 chunk (japanese description) is assumed to be unchanged
+
+    let txj1TotalLength = 0;
+    if (this.TXJ1 !== null) {
+      if (this.txj1Length === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXJ1 != null, txj1Length == null. `);
+        return undefined;
+      }
+      txj1TotalLength = 4 + 4 + this.txj1Length;
+    } 
+
+    // TXE1 chunk (english description) 
+
+    let txe1TotalLength = 0;
+    if (this.TXE1 !== null) {
+      if (this.txe1Length === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXE1 != null, txe1Length == null. `);
+        return undefined;
+      }
+      txe1TotalLength = 4 + 4 + this.txe1Length;
+    } 
+
+    // EDTB chunk (parameters)
+    let edtbTotalLength = 0;
+    if (this.EDTB !== null) {
+      if (this.edtbLength === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. EDTB != null, edtbLength == null. `);
+        return undefined;
+      }
+      edtbTotalLength = 4 + 4 + this.edtbLength;
+    } 
+
+    // PRM2 chunk
+
+    let prm2TotalLength = 0;
+    if (this.PRM2 !== null) {
+      if (this.prm2Length === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. PRM2 != null, prm2Length == null. `);
+        return undefined;
+      }
+      prm2TotalLength = 4 + 4 + this.prm2Length;
+    } 
+
+    // NAME chunk is built from the name
+    // On the MS Plus pedals, the name chunk is typically 32 bytes long.
+    // The first 28 bytes consists of ASCII characters, padded with spaces at the end.
+    // The last 4 bytes is 0
+    let nameTotalLength = 0;
+    if (this.NAME !== null) {
+      if (this.nameLength === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. NAME != null, nameLength == null. `);
+        return undefined;
+      }
+      nameTotalLength = 4 + 4 + this.nameLength;
+    } 
+
+    if (this.ids === null || this.numEffects === null || this.ids.length !== this.numEffects) {
+      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. ids = ${this.ids}, numEffects = ${this.numEffects}, ids.length = ${this.ids?.length}, ids.length != numEffects `);
+      return undefined;
+    }
+
+    let ptcfToplevelDataLength = 
+      4 + // version = 4 bytes
+      4 + // numEffects = 4 bytes
+      4 + // target = 4 bytes
+      6 + // ptcfUnknown = 6 bytes
+      10 + // ptcfFhortName = 10 bytes
+      4 * this.numEffects; // ids = 4 * numEffects 
+
+    let ptcfTotalLength = 4 + 4 + ptcfToplevelDataLength + txj1TotalLength + txe1TotalLength + edtbTotalLength + prm2TotalLength + nameTotalLength;
+    let ptcfChunk = new Uint8Array(ptcfTotalLength);
+
+    let offset = 0;
+    let result = 0;
+    let success: boolean = true;
+
+    // Toplevel data in the PTCF chunk
+
+    if (this.version === null || this.target === null || this.ptcfUnknown === null || this.ptcfShortName === null) {
+      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. version = ${this.version}, target = ${this.target}, ptchUnknown = ${this.ptcfUnknown}, ptchShortName = ${this.ptcfShortName}`);
+      return undefined;
+    }
+
+    if (this.ptcfUnknown.length !== 6 ) {
+      console.error(`Unable to build patch buffer. Unexpected length of unknown ptcf byte sequence for patch ${this.name}. Length is ${this.ptcfUnknown.lastIndexOf} but expected 6.`);
+      return undefined;
+    }
+
+    if (this.ptcfShortName.length !== 10 ) {
+      console.error(`Unable to build patch buffer. Unexpected length of short name for patch "${this.name}". Length is ${this.ptcfShortName.lastIndexOf} but expected 10.`);
+      return undefined;
+    }
+
+    offset = result = this.writeString(ptcfChunk, offset, "PTCF"); success &&= (result !== 0);
+    offset = result = this.writeInt32(ptcfChunk, offset, ptcfTotalLength); success &&= (result !== 0);
+    offset = result = this.writeInt32(ptcfChunk, offset, this.version); success &&= (result !== 0);
+    offset = result = this.writeInt32(ptcfChunk, offset, this.numEffects); success &&= (result !== 0);
+    offset = result = this.writeInt32(ptcfChunk, offset, this.target); success &&= (result !== 0);
+    offset = result = this.writeSlice(ptcfChunk, offset, this.ptcfUnknown); success &&= (result !== 0);
+    offset = result = this.writeString(ptcfChunk, offset, this.ptcfShortName); success &&= (result !== 0);
+    offset = result = this.writeInt32Array(ptcfChunk, offset, this.ids); success &&= (result !== 0);
+
+    if (!success) {
+      console.error(`Unable to build patch buffer for patch "${this.name}". Patch buffer size incorrect.`);
+      return undefined;
+    }
+
+    let expectedOffset = 4 + 4;
+    expectedOffset += ptcfToplevelDataLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    // TXJ1 chunk
+
+    if (this.TXJ1 === null) 
+      console.log(`Skipping empty TXJ1 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    else {
+      if (this.txj1Length === null || this.txj1DescriptionJapanese === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txj1Length = ${this.txj1Length}, txj1DescriptionJapanese = ${this.txj1DescriptionJapanese}`);
+        return undefined;
+      }
+  
+      offset = result = this.writeString(ptcfChunk, offset, this.TXJ1); success &&= (result !== 0);
+      offset = result = this.writeInt32(ptcfChunk, offset, this.txj1Length); success &&= (result !== 0);
+      offset = result = this.writeSlice(ptcfChunk, offset, this.txj1DescriptionJapanese); success &&= (result !== 0);  
+    }  
+
+    expectedOffset += txj1TotalLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    // TXE1 chunk
+
+    if (this.TXE1 === null) 
+      console.log(`Skipping empty TXE1 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    else {
+      if (this.txe1Length === null || this.txe1DescriptionEnglish === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txe1Length = ${this.txe1Length}, txe1DescriptionJapanese = ${this.txe1DescriptionEnglish}`);
+        return undefined;
+      }
+  
+      offset = result = this.writeString(ptcfChunk, offset, this.TXE1); success &&= (result !== 0);
+      offset = result = this.writeInt32(ptcfChunk, offset, this.txe1Length); success &&= (result !== 0);
+      offset = result = this.writeString(ptcfChunk, offset, this.txe1DescriptionEnglish); success &&= (result !== 0);  
+    }  
+
+    expectedOffset += txe1TotalLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    // EDTB Chunk
+
+    if (this.EDTB === null) {
+      console.error(`Unable to build patch buffer for patch "${this.name}". EDTB chunk is missing."`);
+      return undefined;
+    } 
+
+    if (this.edtbReversedBytes === null) {
+      console.error(`Unable to build patch buffer for patch "${this.name}". edtbReversedBytes = null.`);
+      return undefined;
+    }
+
+    if (this.edtbLength === null) {
+      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. edtbLength = ${this.edtbLength}`);
+      return undefined;
+    }
+ 
+    offset = result = this.writeString(ptcfChunk, offset, this.EDTB); success &&= (result !== 0);
+    offset = result = this.writeInt32(ptcfChunk, offset, this.edtbLength); success &&= (result !== 0);
+
+    for (let i=0; i<this.numEffects; i++) {
+      let reversedBytes = new Uint8Array(24);
+      if (this.edtbReversedBytes[i].length !== reversedBytes.length) {
+        console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of edtbReversedBytes[${i}]. edtbReversedBytes[${i}] = ${this.edtbReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+        return undefined;
+      }
+      reversedBytes.set(this.edtbReversedBytes[i], 0);
+      let rightOrderBytes = reversedBytes.reverse();
+      offset = result = this.writeSlice(ptcfChunk, offset, rightOrderBytes); success &&= (result !== 0);  
+    }
+
+    expectedOffset += edtbTotalLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    // PRM2 chunk
+
+    if (this.PRM2 === null) 
+      console.log(`Skipping empty PRM2 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    else {
+      if (this.prm2Length === null || this.prm2Unknown === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Unknown}`);
+        return undefined;
+      }
+  
+      offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
+      offset = result = this.writeInt32(ptcfChunk, offset, this.prm2Length); success &&= (result !== 0);
+      offset = result = this.writeSlice(ptcfChunk, offset, this.prm2Unknown); success &&= (result !== 0);  
+    }  
+    
+    expectedOffset += prm2TotalLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    // NAME chunk
+
+    if (this.NAME === null) 
+      console.log(`Skipping empty NAME chunk when attempting to build patch buffer for patch "${this.name}"`);
+    else {
+      if (this.nameLength === null || this.nameName === null) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName = ${this.nameName}`);
+        return undefined;
+      }
+  
+      // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
+      let enforceStringBufferLength = 32;
+      let spacePaddedName = this.nameName.padEnd(enforceStringBufferLength - 4, " ");
+
+      offset = result = this.writeString(ptcfChunk, offset, this.NAME); success &&= (result !== 0);
+      offset = result = this.writeInt32(ptcfChunk, offset, this.nameLength); success &&= (result !== 0);
+      offset = result = this.writeString(ptcfChunk, offset, spacePaddedName, enforceStringBufferLength); success &&= (result !== 0);  
+    }  
+
+    expectedOffset += nameTotalLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    return ptcfChunk;
   }
 
   readPTCFFixedDeprecated(data: Uint8Array, offset:number) : number
