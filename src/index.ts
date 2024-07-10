@@ -1063,7 +1063,7 @@ function patchEdited(event: Event)
     console.log(`Name changed to "${cell.innerText}`);
     // if (currentZoomPatch !== undefined) {
     //   currentZoomPatch.
-    }
+    // }
   }
 }
 
