@@ -26,24 +26,55 @@ export class EffectSettings
 
 export class ZoomPatch
 {
-  // Derived properties
-  get name(): null | string
+
+  // derived properties
+  name: null | string = null;
+  shortName: null | string = null;
+  descriptionEnglish: null | string = null;
+  
+  updateDerivedPropertiesFromPatchProperties()
   {
     if (this.nameName !== null)
-      return this.nameName;
-    else return this.shortName;
+      this.name = this.nameName;
+    else if (this.msogName !== null)
+      this.name = this.msogName;
+    else
+      this.name = null;
+  
+    if (this.ptcfShortName !== null)
+      this.shortName = this.ptcfShortName;
+    else if (this.msogName !== null)
+      this.shortName = this.msogName;
+    else
+      this.shortName = null;
+
+    this.descriptionEnglish = this.txe1DescriptionEnglish ?? "";
   }
 
-  get shortName(): null | string
+  updatePatchPropertiesFromDerivedProperties()
   {
-    if (this.ptcfShortName !== null)
-      return this.ptcfShortName;
-    else if (this.nameName !== null)
-      return this.nameName;
-    else if (this.msogName !== null)
-      return this.msogName;
-    else
-      return null;
+    if (this.name !== null) {
+      if (this.NAME !== null) {
+        // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
+        let enforceLength = 32;
+        this.nameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
+        this.nameLength = this.nameName.length;
+      }
+      else if (this.MSOG !== null)
+        this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
+    }
+
+    if (this.shortName !== null) {
+      if (this.PTCF !== null)
+        this.ptcfShortName = this.shortName.slice(0, Math.min(this.shortName.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
+      else if (this.MSOG !== null)
+        this.msogName = this.shortName.slice(0, Math.min(this.shortName.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;;
+    }
+
+    if (this.descriptionEnglish !== null && this.TXE1 !== null) {
+      this.txe1DescriptionEnglish = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
+      this.txe1Length = this.txe1DescriptionEnglish.length;
+    }
   }
 
   get nameTrimmed(): string
@@ -51,14 +82,9 @@ export class ZoomPatch
     return this.name === null ? "" : this.name.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
-  get descriptionEnglish(): string
-  {
-    return this.txe1DescriptionEnglish === null ? "" : this.txe1DescriptionEnglish.replace(/\x00/g, ""); // remove all 0x00 characters
-  }
-
   get descriptionEnglishTrimmed(): null | string
   {
-    return this.descriptionEnglish.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
+    return this.descriptionEnglish === null ? "" : this.descriptionEnglish.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
   get effectSettings(): null | Array<EffectSettings>
@@ -160,6 +186,7 @@ export class ZoomPatch
         (patch as any)[propertyName] = property; 
     }
 
+    console.log(`**** Cloned patch ${patch.name}`);
     return patch;
   }
 
@@ -497,6 +524,8 @@ export class ZoomPatch
    */
   buildPTCFChunk(): Uint8Array | undefined
   {
+    this.updatePatchPropertiesFromDerivedProperties();
+
     // TXJ1 chunk (japanese description) is assumed to be unchanged
 
     let txj1TotalLength = 0;
@@ -616,14 +645,20 @@ export class ZoomPatch
     if (this.TXJ1 === null) 
       console.log(`Skipping empty TXJ1 chunk when attempting to build patch buffer for patch "${this.name}"`);
     else {
-      if (this.txj1Length === null || this.txj1DescriptionJapanese === null) {
+      if (this.txj1Length === null || (this.txj1Length > 0 && this.txj1DescriptionJapanese === null)) {
         console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txj1Length = ${this.txj1Length}, txj1DescriptionJapanese = ${this.txj1DescriptionJapanese}`);
         return undefined;
       }
   
       offset = result = this.writeString(ptcfChunk, offset, this.TXJ1); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.txj1Length); success &&= (result !== 0);
-      offset = result = this.writeSlice(ptcfChunk, offset, this.txj1DescriptionJapanese); success &&= (result !== 0);  
+      if (this.txj1DescriptionJapanese !== null) {
+        if (this.txj1DescriptionJapanese.length !== this.txj1Length) {
+          console.error(`Inconsistent patch data. this.txj1DescriptionJapanese.length = ${this.txj1DescriptionJapanese.length}, this.txj1Length = ${this.txj1Length}`)
+          return undefined;
+        }
+        offset = result = this.writeSlice(ptcfChunk, offset, this.txj1DescriptionJapanese); success &&= (result !== 0);  
+      }
     }  
 
     expectedOffset += txj1TotalLength; 
@@ -637,14 +672,20 @@ export class ZoomPatch
     if (this.TXE1 === null) 
       console.log(`Skipping empty TXE1 chunk when attempting to build patch buffer for patch "${this.name}"`);
     else {
-      if (this.txe1Length === null || this.txe1DescriptionEnglish === null) {
+      if (this.txe1Length === null || (this.txe1Length > 0 && this.txe1DescriptionEnglish === null)) {
         console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txe1Length = ${this.txe1Length}, txe1DescriptionJapanese = ${this.txe1DescriptionEnglish}`);
         return undefined;
       }
   
       offset = result = this.writeString(ptcfChunk, offset, this.TXE1); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.txe1Length); success &&= (result !== 0);
-      offset = result = this.writeString(ptcfChunk, offset, this.txe1DescriptionEnglish); success &&= (result !== 0);  
+      if (this.txe1DescriptionEnglish !== null) {
+        if (this.txe1DescriptionEnglish.length !== this.txe1Length) {
+          console.error(`Inconsistent patch data. this.txe1DescriptionEnglish.length = ${this.txe1DescriptionEnglish.length}, this.txe1Length = ${this.txe1Length}`)
+          return undefined;
+        }
+        offset = result = this.writeString(ptcfChunk, offset, this.txe1DescriptionEnglish); success &&= (result !== 0);  
+      }
     }  
 
     expectedOffset += txe1TotalLength; 
@@ -720,14 +761,23 @@ export class ZoomPatch
         console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName = ${this.nameName}`);
         return undefined;
       }
-  
+       
       // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
-      let enforceStringBufferLength = 32;
-      let spacePaddedName = this.nameName.padEnd(enforceStringBufferLength - 4, " ");
+      let enforceLength = 32;
 
+      if (this.nameName.length !== this.nameLength) {
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName.length = ${this.nameName.length}, nameName = "${this.nameName}"`);
+        return undefined;
+      }
+
+      if (this.nameName.length !== enforceLength) {
+        console.error(`Unable to build patch buffer for patch ${this.name}. Expected nameLength to be ${enforceLength}. nameLength = ${this.nameLength}"`);
+        return undefined;
+      }
+     
       offset = result = this.writeString(ptcfChunk, offset, this.NAME); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.nameLength); success &&= (result !== 0);
-      offset = result = this.writeString(ptcfChunk, offset, spacePaddedName, enforceStringBufferLength); success &&= (result !== 0);  
+      offset = result = this.writeString(ptcfChunk, offset, this.nameName, this.nameLength); success &&= (result !== 0);  
     }  
 
     expectedOffset += nameTotalLength; 
@@ -914,6 +964,8 @@ export class ZoomPatch
       offset = zoomPatch.readPTCF(data, offset);
     else
       offset = zoomPatch.readMSPatch(data, offset);
+    zoomPatch.updateDerivedPropertiesFromPatchProperties();
+
     return zoomPatch;
   }
 }
