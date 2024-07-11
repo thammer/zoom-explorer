@@ -238,7 +238,7 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
   return parseInt(text);
 }
 
-export type editPatchTextEditedListenerType = (event: Event) => void;
+export type editPatchTextEditedListenerType = (event: Event, type: string) => void;
 
 export function initializeEditPatchTable(textEditedCallback: editPatchTextEditedListenerType) {
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
@@ -256,18 +256,41 @@ export function initializeEditPatchTable(textEditedCallback: editPatchTextEdited
   let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
   let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
 
-  patchNameCell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
+  let undoOnEscape = "";
+  let muteBlurOnEscape = false;
+  
+  for (let cell of [patchNameCell, patchDescriptionCell]) {
+    cell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
+    
+    cell.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault()
+        cell.blur();
+      }
+      else if (e.key === "Escape" || e.key === "Esc") {
+        cell.innerText = undoOnEscape;
+        textEditedCallback(e, "input"); 
+        muteBlurOnEscape = true;
+        cell.blur(); 
+        muteBlurOnEscape = false;
+      }
+    });
+  
+    cell.addEventListener("input", (e) => {
+      textEditedCallback(e, "input");
+    });
+  
+    cell.addEventListener("focus", (e) => { // get focus
+      undoOnEscape = cell.innerText;
+      textEditedCallback(e, "focus");
+    });
+  
+    cell.addEventListener("blur", (e) => { // lose focus
+      if (!muteBlurOnEscape)
+        textEditedCallback(e, "blur");
+    });
+  }
 
-  patchNameCell.addEventListener("keydown", (e) => {
-    if (e.key === "Enter")
-      e.preventDefault()
-  });
-
-  patchNameCell.addEventListener("input", (e) => {
-    textEditedCallback(e);
-  });
-
-  patchDescriptionCell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
 }
 
 export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
@@ -293,7 +316,9 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection | un
   if (patch !== undefined) {
     patchNumberCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`;
     patchNameCell.textContent = `${patch.nameTrimmed}`;
+    patchNameCell.blur();
     patchDescriptionCell.textContent = patch.descriptionEnglishTrimmed; 
+    patchDescriptionCell.blur();
   }
 
   if (screenCollection === undefined)
