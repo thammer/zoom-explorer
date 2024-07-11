@@ -204,6 +204,9 @@
       table.editPatchTable th.editPatchTableDescription {
           padding-left: 8px;
       }
+      table.editPatchTable th.editPatchTableDescription:empty::after {
+        content: "\00a0"; /* Prevent collapse of empty row. See https://stackoverflow.com/questions/42225196/prevent-collapse-of-empty-rows-in-html-table-via-css */
+      }
       table.editPatchTable td {
           vertical-align: top;
       }
@@ -344,7 +347,7 @@
               <th class="editPatchTableName" id="editPatchTableNameID">Patch Name</th>
           </tr>
           <tr>
-              <th colspan="2" class="editPatchTableDescription">A very long description of the patch. A very long description of the patch. A very long description of the patch.</th>
+              <th colspan="2" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
           </tr>
           <tr>
               <td colspan="2">
