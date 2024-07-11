@@ -370,8 +370,10 @@ export class ZoomDevice
       let eightBitData = seven2eight(this._currentPatchData, offset, this._currentPatchData.length-2); // skip the last byte (0x7F)in the sysex message
       if (eightBitData !== undefined) {
         let patch = ZoomPatch.fromPatchData(eightBitData);
-        if (patch !== undefined)
+        if (patch !== undefined) {
           this._currentPatch = patch;
+          Object.freeze(this._currentPatch);
+        }
       }
       this._currentPatchData = undefined;
     }
@@ -421,8 +423,10 @@ export class ZoomDevice
       }
     }
     if (eightBitData != undefined) {
-      let patch = ZoomPatch.fromPatchData(eightBitData);
-      return patch;
+      this._currentPatchData = undefined;
+      this._currentPatch = ZoomPatch.fromPatchData(eightBitData);
+      Object.freeze(this._currentPatch);
+      return this._currentPatch;
     }
     else
       return undefined;
@@ -616,11 +620,12 @@ export class ZoomDevice
 
   public uploadCurrentPatch(patch: ZoomPatch) 
   {
-    if (patch.ptcfChunk === null || patch.ptcfChunk.length < 11) {
-      console.error(`ZoomDevice.uploadCurrentPatch() received Invalid patch parameter`);
+    let data = patch.buildPTCFChunk();
+    //let data = patch.ptcfChunk;
+    if (data === undefined || data.length < 11) {
+      console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
       return;
     }
-    let data = patch.ptcfChunk;
     let paddedData = data;
     if (this._patchLength != -1) {
       if (data.length > paddedData.length) {
@@ -631,6 +636,9 @@ export class ZoomDevice
     }
     let sevenBitData = eight2seven(paddedData);
     this.sendCommand(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes);
+    this._currentPatchData = undefined;
+    this._currentPatch = patch.clone();
+    Object.freeze(this._currentPatch);
   }
 
   /**
@@ -646,8 +654,13 @@ export class ZoomDevice
     let command: Uint8Array;
 
     if (patch.ptcfChunk !== null) {
-      let data = patch.ptcfChunk;
-      let paddedData = data;
+      let data = patch.buildPTCFChunk();
+      //let data = patch.ptcfChunk;
+      if (data === undefined || data.length < 11) {
+        console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
+        return;
+      }
+        let paddedData = data;
       if (this._patchLength != -1) {
         if (data.length > this._patchLength) {
           console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
@@ -693,7 +706,9 @@ export class ZoomDevice
       this.sendCommand(sevenBitData, command, crcBytes);
 
     if (memorySlot < this._patchList.length) {
-      this._patchList[memorySlot] = patch;
+      let clonedPatch = patch.clone();
+      Object.freeze(clonedPatch);
+      this._patchList[memorySlot] = clonedPatch;
       this._rawPatchList[memorySlot] = undefined;
     }
   }
@@ -715,6 +730,7 @@ export class ZoomDevice
         this._numPatches = i;
         break;
       }
+      Object.freeze(patch);
       this._patchList[i] = patch;
       this._rawPatchList[i] = undefined;
     }
@@ -733,7 +749,7 @@ export class ZoomDevice
     return memorySlot;
   }
 
-  public get patchList(): Array<ZoomPatch>
+  public get patchList(): Readonly<Array<Readonly<ZoomPatch>>>
   {
     this.syncPatchList();
     return this._patchList;
@@ -755,14 +771,17 @@ export class ZoomDevice
           console.warn(`Error when parsing patch from memory slot, data.length: ${data.length}, patch: ${patch}, memorySlot: ${memorySlot}`);
         else if (memorySlot !== i)
           console.warn(`Parsed patch is for memory slot ${memorySlot} but expected memory slot to be ${i}`);
-        else 
+        else {
+          Object.freeze(patch);
           this._patchList[memorySlot] = patch;
+        }
       }  
     }
   }
 
   public getSysexForCurrentPatch(patch: ZoomPatch): Uint8Array | undefined
   {
+    // FIXME: Build PTCF data buffer
     if (patch.msogDataBuffer !== null && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
       let sevenBitData = eight2seven(patch.msogDataBuffer);
       return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
