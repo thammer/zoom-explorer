@@ -193,7 +193,7 @@ export function getColorFromEffectID(effectID: number): string
   return color;
 }
 
-export function getCellForMemorySlot(device: ZoomDevice, tableName: string, currentMemorySlot: number)
+export function getCellForMemorySlot(device: ZoomDevice, tableName: string, currentMemorySlot: number): HTMLTableCellElement | undefined
 {
   let patchesTable = document.getElementById(tableName) as HTMLTableElement;
 
@@ -203,9 +203,17 @@ export function getCellForMemorySlot(device: ZoomDevice, tableName: string, curr
   let numPatchesPerRow = Math.ceil(device.patchList.length / numColumns);
 
   let rowNumber = 1 + currentMemorySlot % numPatchesPerRow;
+
+  if (patchesTable.rows === undefined || patchesTable.rows.length <= rowNumber)
+    return undefined;
+
   let row = patchesTable.rows[rowNumber];
 
   let cellNumber = Math.floor(2 * currentMemorySlot / numPatchesPerRow);
+
+  if (row.cells === undefined || row.cells.length <= cellNumber)
+    return undefined;
+
   let selected = row.cells[cellNumber] as HTMLTableCellElement;
   return selected;
 }
