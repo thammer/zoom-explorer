@@ -321,6 +321,13 @@ export class ZoomDevice
     }
   }
 
+  public logMutedTemporarilyForPollMessages(data: Uint8Array): boolean
+  {
+    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
+    return this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
+  }
+
   public get autoRequestScreens(): boolean
   {
     return this._autoRequestScreens;
@@ -620,16 +627,26 @@ export class ZoomDevice
 
   public uploadCurrentPatch(patch: ZoomPatch) 
   {
-    let data = patch.buildPTCFChunk();
-    //let data = patch.ptcfChunk;
+    let data: Uint8Array | undefined;
+    if (patch.ptcfChunk !== null)
+      data = patch.buildPTCFChunk();
+    else
+      data = patch.buildMSDataBuffer();
+
     if (data === undefined || data.length < 11) {
-      console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
+      console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk() or ZoomPatch.buildMSDataBuffer()`);
       return;
     }
+
     let paddedData = data;
     if (this._patchLength != -1) {
       if (data.length > paddedData.length) {
         console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
+        return;
+      }
+      if (patch.MSOG !== null && this._patchLength !== data.length) {
+        console.error(`The length of the supplied patch data (${data.length} doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
+        return;
       }
       paddedData = new Uint8Array(this._patchLength);
       paddedData.set(data);
@@ -660,7 +677,8 @@ export class ZoomDevice
         console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
         return;
       }
-        let paddedData = data;
+
+      let paddedData = data;
       if (this._patchLength != -1) {
         if (data.length > this._patchLength) {
           console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
@@ -678,7 +696,13 @@ export class ZoomDevice
 
     } 
     else if (patch.msogDataBuffer !== null) {
-      let data = patch.msogDataBuffer;
+      let data = patch.buildMSDataBuffer();
+      // let data = patch.msogDataBuffer;
+      if (data === undefined || data.length < 11) {
+        console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildMSDataBuffer()`);
+        return;
+      }
+
       if (this._patchLength != -1 && data.length > this._patchLength) {
         console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
       }
@@ -1194,10 +1218,15 @@ export class ZoomDevice
 
   private handleMIDIDataFromZoom(data: Uint8Array): void
   {
+    
     this.internalMIDIDataHandler(data);
-
+    
     for (let listener of this._listeners)
       listener(this, data);
+    
+    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
+      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore
   }
 
   private disconnectMessageHandler() {
@@ -1212,11 +1241,8 @@ export class ZoomDevice
     const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
     const tempSkipLog = this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
 
-    if (this.loggingEnabled && ! tempSkipLog)
+    if (this.loggingEnabled && ! this.logMutedTemporarilyForPollMessages(data))
       console.log(`Received: ${bytesToHexString(data, " ")}`);
-
-    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
-      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore
 
     if (this._patchListDownloadInProgress)
       return; // mute all message handling while the patch list is being downloaded
