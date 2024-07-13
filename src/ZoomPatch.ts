@@ -29,25 +29,19 @@ export class ZoomPatch
 
   // derived properties
   name: null | string = null;
-  shortName: null | string = null;
   descriptionEnglish: null | string = null;
   
   updateDerivedPropertiesFromPatchProperties()
   {
     if (this.nameName !== null)
       this.name = this.nameName;
+    else if (this.ptcfShortName !== null)
+      this.name = this.ptcfShortName;
     else if (this.msogName !== null)
       this.name = this.msogName;
     else
       this.name = null;
   
-    if (this.ptcfShortName !== null)
-      this.shortName = this.ptcfShortName;
-    else if (this.msogName !== null)
-      this.shortName = this.msogName;
-    else
-      this.shortName = null;
-
     this.descriptionEnglish = this.txe1DescriptionEnglish ?? "";
   }
 
@@ -60,15 +54,10 @@ export class ZoomPatch
         this.nameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
         this.nameLength = this.nameName.length;
       }
-      else if (this.MSOG !== null)
-        this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
-    }
-
-    if (this.shortName !== null) {
       if (this.PTCF !== null)
-        this.ptcfShortName = this.shortName.slice(0, Math.min(this.shortName.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
-      else if (this.MSOG !== null)
-        this.msogName = this.shortName.slice(0, Math.min(this.shortName.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;;
+        this.ptcfShortName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
+      if (this.MSOG !== null)
+        this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
     }
 
     if (this.descriptionEnglish !== null && this.TXE1 !== null) {
@@ -102,9 +91,10 @@ export class ZoomPatch
   length: null | number = null; // NB! This length includes the 4 byte ID and the 4 byte length value, in other words it is the total patch length starting from the P in PTCF. This is different from the chunk lengths below, which does not include these 8 bytes.
   version: null | number = null;
   numEffects: null | number = null; 
+  maxNumEffects: number = 0; 
   target: null | number = null;
   ptcfUnknown: null | Uint8Array = null; // 6 bytes
-  ptcfShortName: null | string = null;
+  ptcfShortName: null | string = null; // For patches delivered with MS+ pedals, this is always the 10 first characters of nameName
   ids: null | Uint32Array = null;
   
   ptcfChunk: null | Uint8Array = null; // Raw unparsed PTCF chunk, including the "PTCF" ID and 4 bytes for the length value
@@ -140,7 +130,7 @@ export class ZoomPatch
   MSOG: null | string = null; // This is not a named chunk. The original MS pedals doesn't have a chunk-based layout but rather a fixed structure.
   msogEffectSettings: null | Array<EffectSettings> = null;
   msogEffectsReversedBytes: null | Array<Uint8Array> = null; // numEffects * 18 bytes
-  msogUnknown1: null | Uint8Array = null; // 2 bytes
+  msogUnknown1: null | Uint8Array = null; // 3 bytes
   msogName: null | string = null; // 10 bytes
   msogUnknown2: null | Uint8Array = null; // 1 byte
   msogTempo: null | number = null; // 8 bits based on the last 2 bytes in msogUnknown1
@@ -165,7 +155,7 @@ export class ZoomPatch
     for (let i=0; i<properties.length; i++) {
       let propertyName: string = properties[i];
       let property = (this as any)[propertyName];
-      console.log(`Property name: "${propertyName}", : "${property?.constructor?.name}"`);
+      // console.log(`Property name: "${propertyName}", : "${property?.constructor?.name}"`);
       if (property === null)
         (patch as any)[propertyName] = null;
       else if (propertyName === "chunks") {
@@ -526,12 +516,17 @@ export class ZoomPatch
   {
     this.updatePatchPropertiesFromDerivedProperties();
 
+    if (this.PTCF === null) {
+      console.error(`Unable to build patch buffer for patch ${this.name}. PTCF == null`);
+      return undefined;
+  }
+
     // TXJ1 chunk (japanese description) is assumed to be unchanged
 
     let txj1TotalLength = 0;
     if (this.TXJ1 !== null) {
       if (this.txj1Length === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXJ1 != null, txj1Length == null. `);
+        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXJ1 != null, txj1Length == null.`);
         return undefined;
       }
       txj1TotalLength = 4 + 4 + this.txj1Length;
@@ -619,7 +614,7 @@ export class ZoomPatch
       return undefined;
     }
 
-    offset = result = this.writeString(ptcfChunk, offset, "PTCF"); success &&= (result !== 0);
+    offset = result = this.writeString(ptcfChunk, offset, this.PTCF); success &&= (result !== 0);
     offset = result = this.writeInt32(ptcfChunk, offset, ptcfTotalLength); success &&= (result !== 0);
     offset = result = this.writeInt32(ptcfChunk, offset, this.version); success &&= (result !== 0);
     offset = result = this.writeInt32(ptcfChunk, offset, this.numEffects); success &&= (result !== 0);
@@ -789,6 +784,97 @@ export class ZoomPatch
     return ptcfChunk;
   }
 
+  buildMSDataBuffer(): Uint8Array | undefined
+  {
+    this.updatePatchPropertiesFromDerivedProperties();
+
+    if (this.MSOG === null) {
+      console.error(`Unable to build patch buffer for patch ${this.name}. MSOG == null`);
+      return undefined;
+    }
+
+    // calculate size
+
+    if (this.msogEffectsReversedBytes === null || this.msogNumEffects === null || this.msogUnknown1 === null || this.msogName === null || this.msogUnknown2 === null) {
+      console.error(`Unable to build patch buffer for patch ${this.name}. this.msogEffectsReversedBytes = ${this.msogEffectsReversedBytes}` + 
+        `, this.msogNumEffects = ${this.msogNumEffects}, this.msogUnknown1 = ${this.msogUnknown1}, this.msogName = ${this.msogName}, this.msogUnknown2 = ${this.msogUnknown2}`);
+      return undefined;
+    }
+
+    if (this.msogUnknown1.length !== 3) {
+      console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogUnknown1.length !== 3`);
+      return undefined;
+    }
+
+    if (this.msogName.length !== 10) {
+      console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogName.length !== 10`);
+      return undefined;
+    }
+
+    if (this.msogUnknown2.length !== 1) {
+      console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogUnknown2.length !== 1`);
+      return undefined;
+    }
+
+    let effectSectionLength = 18;
+
+    let msogTotalLength = this.maxNumEffects * effectSectionLength + this.msogUnknown1.length + this.msogName.length + this.msogUnknown2.length;
+
+    if (this.msogDataBuffer !== null && msogTotalLength !== this.msogDataBuffer.length) {
+      console.warn(`Mismatched buffer sizes when building patch buffer for patch ${this.name}. msogTotalLength !== this.msogDataBuffer.length. msogTotalLength = ${msogTotalLength}, this.msogDataBuffer.length = ${this.msogDataBuffer.length}`);
+    }
+
+    let msogDataBuffer = new Uint8Array(msogTotalLength);
+
+    let offset = 0;
+    let result = 0;
+    let success: boolean = true;
+
+    for (let i=0; i<this.maxNumEffects; i++) { 
+      let reversedBytes = new Uint8Array(effectSectionLength);
+      if (this.msogEffectsReversedBytes[i].length !== reversedBytes.length) {
+        console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}].length = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+        return undefined;
+      }
+      reversedBytes.set(this.msogEffectsReversedBytes[i], 0);
+      let rightOrderBytes = reversedBytes.reverse();
+      offset = result = this.writeSlice(msogDataBuffer, offset, rightOrderBytes); success &&= (result !== 0);  
+    }
+
+    let expectedOffset = 0;
+    expectedOffset += this.maxNumEffects * effectSectionLength; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    offset = result = this.writeSlice(msogDataBuffer, offset, this.msogUnknown1); success &&= (result !== 0);  
+
+    expectedOffset += this.msogUnknown1.length; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    offset = result = this.writeString(msogDataBuffer, offset, this.msogName); success &&= (result !== 0);
+
+    expectedOffset += this.msogName.length; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    offset = result = this.writeSlice(msogDataBuffer, offset, this.msogUnknown2); success &&= (result !== 0);  
+
+    expectedOffset += this.msogUnknown2.length; 
+    if (offset !== expectedOffset) {
+      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      return undefined;
+    }
+
+    return msogDataBuffer;
+  }
+
   readPTCFFixedDeprecated(data: Uint8Array, offset:number) : number
   {
     this.PTCF = this.readString(data, offset, 4); offset +=4;
@@ -889,11 +975,11 @@ export class ZoomPatch
     this.MSOG = "MSOG";
     this.msogDataBuffer = data.slice(offset, data.length);
     this.length = data.length - offset;
-    this.numEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects
-    this.msogEffectsReversedBytes = new Array<Uint8Array>(this.numEffects);
+    this.maxNumEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects. See FIXME below on msogNumEffects.
+    this.msogEffectsReversedBytes = new Array<Uint8Array>(this.maxNumEffects);
     this.msogEffectSettings = new Array<EffectSettings>();
-    this.ids = new Uint32Array(this.numEffects);
-    for (let i=0; i<this.numEffects; i++) { // Each effect section is 18 bytes
+    this.ids = new Uint32Array(this.maxNumEffects);
+    for (let i=0; i<this.maxNumEffects; i++) { // Each effect section is 18 bytes
       // P0 = 13 bits. P1 = 13 bits. P2 = 13 bits. P3-P8 = 8 bits
       this.msogEffectsReversedBytes[i] = data.slice(offset, offset + 18).reverse(); offset += 18;
       let bitpos = this.msogEffectsReversedBytes[i].length * 8 - 1;
@@ -936,8 +1022,16 @@ export class ZoomPatch
     this.msogDSPFullBits = (this.msogUnknown1[0] & 0b00111111);
 
     this.msogNumEffects = (this.msogUnknown1[1] & 0b00011100) >> 2;
+    this.numEffects = this.msogNumEffects;
     // FIXME: Think through the difference between num effects used in a patch and the max number of effects for a device
     // we need to read 6 effects here to get the offsets right...
+
+    // FIXME: We should probably read msogNumEffects first, with a fixed offset from the end, then use that as the loop for reading parameters
+    // No, because msogNumEffects is the actual number of effects in the chain, not the max number of effects
+
+    // this.ids.slice(0, this.msogNumEffects);
+    // this.msogEffectsReversedBytes.slice(0, this.msogNumEffects);
+    // this.msogEffectSettings.slice(0, this.msogNumEffects);
 
     this.msogName = this.readString(data, offset, 10); offset += 10; 
     if (this.msogName != null)
