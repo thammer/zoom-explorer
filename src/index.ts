@@ -145,19 +145,20 @@ async function start()
 
   updateZoomDevicesTable(zoomDevices);
   
-  for (const device of zoomDevices)
-    await device.open();
-
-  for (const device of zoomDevices)
-    device.parameterEditEnable();
   
   for (const device of zoomDevices)
-  {
+    {
+    await device.open();
+    device.parameterEditEnable();
     device.addListener(handleMIDIDataFromZoom);
     device.addMemorySlotChangedListener(handleMemorySlotChangedEvent);
     device.autoRequestScreens = true;
     device.addScreenChangedListener(handleScreenChangedEvent)
-  };  
+    device.autoRequestPatch = true;
+    device.addCurrentPatchChangedListener(handleCurrentPatchChanged);
+    device.addPatchChangedListener(handlePatchChanged);
+    device.autoRequestProgramChange = true;
+    };  
 
   // console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
@@ -210,13 +211,17 @@ testButton.addEventListener("click", async (event) => {
   sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], endFileListingCommand);
 });
 
-function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array, messageType: MessageType) {
+type MidiMuteFunction = (data: Uint8Array) => boolean;
+
+function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array, messageType: MessageType, mute: MidiMuteFunction | undefined = undefined) {
+  messageCounter++;
+  if (mute !== undefined && mute(data))
+    return; 
   let command = data[0] >> 4;
   let color = ["#005500", "#00BB00", "#000000", "#550000", "#000000", "#000000", "#000000", "#000000",];
   let table: HTMLTableElement = document.getElementById("midiMonitorTable") as HTMLTableElement;
   let row = table.insertRow(1);
   let c;
-  messageCounter++;
   c = row.insertCell(-1); c.innerHTML = messageCounter.toString();
   c = row.insertCell(-1); c.innerHTML = device.deviceName;
   c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[0]]); c.style.color = color[command - 8];
@@ -489,13 +494,18 @@ function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number
     lastSelected = selected;
     currentZoomPatch = zoomDevice.patchList[memorySlot].clone();
     updatePatchInfoTable(currentZoomPatch);
+    getScreenCollectionAndUpdateEditPatchTable(zoomDevice); // Added for MSOG 2024-07-13
   }
 }
 
 async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 {
   console.log(`Screen changed`);
+  getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
+}
 
+function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
+{
   let screenCollection = zoomDevice.currentScreenCollection;
   let compare = previousEditScreenCollection;
   // Note: should probably take patch equality into consideration...
@@ -508,13 +518,32 @@ async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
   previousEditPatch = currentZoomPatch;
 }
 
+
+function handleCurrentPatchChanged(zoomDevice: ZoomDevice): void 
+{
+  // Handle updates to name. 
+  // Don't know if we really need this for anything else.
+  console.log(`Current patch changed`);
+  currentZoomPatch = zoomDevice.currentPatch; // a bit unsure if it's correct to use currentZoomPatch for this.... See other uses in this file.
+  previousEditPatch = currentZoomPatch;
+  getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
+}
+
+function handlePatchChanged(zoomDevice: ZoomDevice, memorySlot: number): void 
+{
+  console.log(`Patch changed for memory slot ${memorySlot}`);
+  updatePatchesTable(zoomDevice);
+}
+
+
 // FIXME: Look into if it's a good idea to have this function be async. 2024-06-26.
 async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): Promise<void>
 {
   let [messageType, channel, data1, data2] = midi.getChannelMessage(data); 
 
   let device = zoomDevice.deviceInfo;
-  updateMidiMonitorTable(device, data, messageType);
+  updateMidiMonitorTable(device, data, messageType, (data: Uint8Array) => zoomDevice.logMutedTemporarilyForPollMessages(data)
+  );
 
   if (messageType === MessageType.SysEx)
   {    
@@ -556,6 +585,28 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       updatePatchInfoTable(patch);
 
       // patch.nameName = "Hei"; 
+
+      let originalPatch = patch;
+      patch = originalPatch.clone();        
+
+      let patchBuffer = patch.buildMSDataBuffer();
+      if (patch.msogDataBuffer === null)
+        console.warn("patch.msogDataBuffer == null");
+      else if (patchBuffer === undefined)
+        console.warn("patchBuffer == undefined");
+      else if (patchBuffer.length !== patch.msogDataBuffer.length)
+        console.warn("msogDataBuffer.length !== patch.msogDataBuffer.length");
+      else {
+        let allEqual = true;
+        for (let i=0; i<patchBuffer.length; i++) {
+          if (patchBuffer[i] !== patch.msogDataBuffer[i]) {
+            console.warn(`Built patch buffer differs at buffer[${i}] = ${bytesToHexString([patchBuffer[i]])} but expected ${bytesToHexString([patch.msogDataBuffer[i]])}`)
+            allEqual = false;
+          }
+        }
+        if (allEqual)
+          console.log("Built patch buffer matched original patch buffer");
+      }
 
       // let originalPatch = patch;
       // patch = originalPatch.clone();        
@@ -651,7 +702,7 @@ downloadPatchesButton.addEventListener("click", async (event) => {
   let device = zoomDevices[0];
   
   await device.updatePatchListFromPedal();
-  updatePatchesTable();
+  updatePatchesTable(device);
 
   let currentMemorySlot = await device.getCurrentMemorySlotNumber();
   if (currentMemorySlot !== undefined) {
@@ -667,7 +718,7 @@ downloadPatchesButton.addEventListener("click", async (event) => {
       lastSelected = selected;
       currentZoomPatch = device.patchList[currentMemorySlot].clone();
       updatePatchInfoTable(currentZoomPatch);
-
+      getScreenCollectionAndUpdateEditPatchTable(device); // Added for MSOG 2024-07-13
       // Probably not needed, since we auto-update in device class ?
       // let screenCollection = await device.downloadScreens();
       // updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
@@ -715,12 +766,11 @@ downloadPatchesButton.addEventListener("click", async (event) => {
 
 let previousPatchInfoString = ""; 
 
-function updatePatchesTable() 
+function updatePatchesTable(device: ZoomDevice) 
 {
   let headerRow = patchesTable.rows[0];
   let numColumns = headerRow.cells.length / 2;
 
-  let device = zoomDevices[0];
   let numPatchesPerRow = Math.ceil(device.patchList.length / numColumns);
 
   for (let i = patchesTable.rows.length - 1; i < numPatchesPerRow; i++) {
@@ -844,7 +894,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
           result = await confirmDialog.getUserConfirmation(`Are you sure you want to overwrite patch number ${memorySlot + 1} ${nameForPatchInSlot} ?`);
         if (result) {
           await device.uploadPatchToMemorySlot(savePatch, memorySlot, true);
-          updatePatchesTable();
+          updatePatchesTable(device);
         }
       }
   });
