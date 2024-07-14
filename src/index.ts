@@ -801,8 +801,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   let bodyCell = patchTable.rows[1].cells[0];
 
   let patchNameString = "";
-  if (patch.name !== null)
-    patchNameString = patch.name.trim();
+  patchNameString = patch.name.trim();
 
   let idString = "";
   if (patch.ids !== null) {
@@ -906,7 +905,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   button.addEventListener("click", async (event) => {
     let device = zoomDevices[0];
     let [fileEnding, shortFileEnding, fileDescription] = device.getSuggestedFileEndingForPatch();
-    let suggestedName = savePatch.name !== null ? savePatch.name.trim().replace(/[ ]{2,}/gi," ") + "." + fileEnding : `patch.${fileEnding}`;
+    let suggestedName = savePatch.name.trim().replace(/[ ]{2,}/gi," ") + "." + fileEnding;
     if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 0) {
       const blob = new Blob([savePatch.ptcfChunk]);
       await saveBlobToFile(blob, suggestedName, shortFileEnding, fileDescription);
@@ -1118,7 +1117,7 @@ function patchEdited(event: Event, type: string)
   if (cell.id === "editPatchTableNameID") {
     if (type === "focus") {
       console.log("focus");
-      cell.innerText = currentZoomPatch.name !== null ? currentZoomPatch.name.replace(/ +$/, "") : ""; // use the full name, but remove spaces at the end
+      cell.innerText = currentZoomPatch.name.replace(/ +$/, ""); // use the full name, but remove spaces at the end
     }
     else if (type === "blur") {
       cell.innerText = currentZoomPatch.nameTrimmed;
