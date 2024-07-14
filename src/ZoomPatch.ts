@@ -31,6 +31,7 @@ export class ZoomPatch
   _name: string = "";
   maxNameLength: number = 0;
   descriptionEnglish: string = "";
+  tempo: number = 0;
   
   updateDerivedPropertiesFromPatchProperties()
   {
@@ -44,6 +45,8 @@ export class ZoomPatch
       this.name = "";
   
     this.descriptionEnglish = this.txe1DescriptionEnglish !== null ? this.txe1DescriptionEnglish.replace(/\x00/g, "") : "";
+
+    this.tempo = this.prm2Tempo !== null ? this.prm2Tempo : this.msogTempo !== null ? this.msogTempo : 0;
   }
 
   updatePatchPropertiesFromDerivedProperties()
@@ -69,6 +72,11 @@ export class ZoomPatch
       this.txe1DescriptionEnglish = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
       this.txe1Length = this.txe1DescriptionEnglish.length;
     }
+
+    if (this.PRM2 !== null)
+      this.prm2Tempo = this.tempo;
+    else if (this.msogTempo !== null)
+      this.msogTempo = this.tempo;
   }
 
   get name(): string
@@ -753,7 +761,20 @@ export class ZoomPatch
         console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Unknown}`);
         return undefined;
       }
-  
+
+      let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
+      let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+      tempo1 &=  0b00001111; // blank the 4 upper bits
+      tempo1 |= (this.tempo & 0b00001111) << 4; // move the 4 lower bits in this.tempo into the 4 upper bits in tempo1
+      tempo2 &=  0b11110000; // blank the 4 lower bits
+      tempo2 |= (this.tempo & 0b11110000) >> 4; // move the 4 upper bits in this.tempo into the 4 lower bits in tempo2
+      
+      this.prm2Unknown[this.prm2Unknown.length -2] = tempo1;
+      this.prm2Unknown[this.prm2Unknown.length -1] = tempo2;
+      // let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
+      // let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+      // this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
+
       offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.prm2Length); success &&= (result !== 0);
       offset = result = this.writeSlice(ptcfChunk, offset, this.prm2Unknown); success &&= (result !== 0);  
@@ -866,6 +887,17 @@ export class ZoomPatch
       console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
+
+    let tempo1 = this.msogUnknown1[1];
+    let tempo2 = this.msogUnknown1[2];
+    tempo1 &=  0b00011111; // blank the 3 upper bits
+    tempo1 |= (this.tempo & 0b00000111) << 5; // move the 3 lower bits in this.tempo into the 3 upper bits in tempo1
+    tempo2 &=  0b11100000; // blank the 5 lower bits
+    tempo2 |= (this.tempo & 0b11111000) >> 3; // move the 5 upper bits in this.tempo into the 5 lower bits in tempo2
+
+    this.msogUnknown1[1] = tempo1;
+    this.msogUnknown1[2] = tempo2;
+  // this.msogTempo = ((this.msogUnknown1[1] & 0b11100000) >> 5) + ((this.msogUnknown1[2] & 0b00011111) << 3);
 
     offset = result = this.writeSlice(msogDataBuffer, offset, this.msogUnknown1); success &&= (result !== 0);  
 
