@@ -1229,22 +1229,21 @@ export class ZoomDevice
     });
   }
 
-  private handleMIDIDataFromZoom(data: Uint8Array): void
-  {
-    
-    this.internalMIDIDataHandler(data);
-    
-    for (let listener of this._listeners)
-      listener(this, data);
-    
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
-    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
-      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore
-  }
-
   private disconnectMessageHandler() {
     throw new Error("Method not implemented.");
   }
+
+  private handleMIDIDataFromZoom(data: Uint8Array): void
+  {
+    this.internalMIDIDataHandler(data);
+    
+    for (let listener of this._listeners)
+      listener(this, data);  
+    
+    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
+      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore  
+  }  
 
   private internalMIDIDataHandler(data: Uint8Array): void
   {
@@ -1301,7 +1300,7 @@ export class ZoomDevice
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.tempoV2)) {
       // Tempo changed on device (MS Plus series)
-      this._currentTempo = data[9] + ((data[10] & 0b01111111) >> 7);
+      this._currentTempo = data[9] + ((data[10] & 0b01111111) << 7);
       this.emitTempoChangedEvent();
     }
     else if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {
