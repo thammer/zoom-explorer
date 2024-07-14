@@ -805,11 +805,24 @@ export class ZoomDevice
 
   public getSysexForCurrentPatch(patch: ZoomPatch): Uint8Array | undefined
   {
-    // FIXME: Build PTCF data buffer
-    if (patch.msogDataBuffer !== null && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
-      let sevenBitData = eight2seven(patch.msogDataBuffer);
+    let data: Uint8Array | undefined;
+    if (patch.PTCF !== null) {
+      data = patch.buildPTCFChunk();
+      // FIXME: Untested code
+    }
+    else {
+      data = patch.buildMSDataBuffer();
+      // if (patch.msogDataBuffer !== null && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+      //   let sevenBitData = eight2seven(patch.msogDataBuffer);
+      //   return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
+      // }
+    }
+
+    if (data !== undefined && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+      let sevenBitData = eight2seven(data);
       return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
     }
+      
     return undefined;
   }
 
@@ -1242,7 +1255,7 @@ export class ZoomDevice
     const tempSkipLog = this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
 
     if (this.loggingEnabled && ! this.logMutedTemporarilyForPollMessages(data))
-      console.log(`Received: ${bytesToHexString(data, " ")}`);
+      console.log(`${performance.now().toFixed(1)} Received: ${bytesToHexString(data, " ")}`);
 
     if (this._patchListDownloadInProgress)
       return; // mute all message handling while the patch list is being downloaded
