@@ -524,7 +524,7 @@ function handleCurrentPatchChanged(zoomDevice: ZoomDevice): void
   // Handle updates to name. 
   // Don't know if we really need this for anything else.
   console.log(`Current patch changed`);
-  currentZoomPatch = zoomDevice.currentPatch; // a bit unsure if it's correct to use currentZoomPatch for this.... See other uses in this file.
+  currentZoomPatch = zoomDevice.currentPatch !== undefined ? zoomDevice.currentPatch.clone() : undefined; // a bit unsure if it's correct to use currentZoomPatch for this.... See other uses in this file.
   previousEditPatch = currentZoomPatch;
   getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
 }
@@ -573,7 +573,8 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       let eightBitData = seven2eight(data, offset, data.length-2); // FIXME: We should ignore the last 5 bytes of CRC, use messageLengthFromSysex as limiter (extend seven2eight to support max 8 bit size)
 
       let patch = ZoomPatch.fromPatchData(eightBitData);
-      currentZoomPatch = patch;
+      // FIXME: Do we need this line below? This is handled in the handlePatchUpdate() function now...
+      // currentZoomPatch = patch;
 
       if (eightBitData !== null && eightBitData.length > 5) {
         console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
