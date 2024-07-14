@@ -237,7 +237,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     // FIXME: This shouldn't be necessary with the browser based Web MIDI API
     let dataArray = Array.from(data);
     if (this.loggingEnabled)
-      console.log(`Sent: ${bytesToHexString(dataArray, " ")}`)
+      console.log(`${performance.now().toFixed(1)} Sent: ${bytesToHexString(dataArray, " ")}`)
     output.send(dataArray);
   }
 
