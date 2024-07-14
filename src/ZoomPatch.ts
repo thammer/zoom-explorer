@@ -28,8 +28,10 @@ export class ZoomPatch
 {
 
   // derived properties
-  name: null | string = null;
-  descriptionEnglish: null | string = null;
+  _name: string = "";
+  maxNameLength: number = 0;
+  descriptionEnglish: string = "";
+  tempo: number = 0;
   
   updateDerivedPropertiesFromPatchProperties()
   {
@@ -40,40 +42,61 @@ export class ZoomPatch
     else if (this.msogName !== null)
       this.name = this.msogName;
     else
-      this.name = null;
+      this.name = "";
   
-    this.descriptionEnglish = this.txe1DescriptionEnglish ?? "";
+    this.descriptionEnglish = this.txe1DescriptionEnglish !== null ? this.txe1DescriptionEnglish.replace(/\x00/g, "") : "";
+
+    this.tempo = this.prm2Tempo !== null ? this.prm2Tempo : this.msogTempo !== null ? this.msogTempo : 0;
   }
 
   updatePatchPropertiesFromDerivedProperties()
   {
-    if (this.name !== null) {
-      if (this.NAME !== null) {
-        // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
-        let enforceLength = 32;
+    if (this.NAME !== null) {
+      // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
+      if (this.maxNameLength == 28) {
+        let enforceLength = this.maxNameLength + 4;
         this.nameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
         this.nameLength = this.nameName.length;
       }
-      if (this.PTCF !== null)
-        this.ptcfShortName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
-      if (this.MSOG !== null)
-        this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
+      else {
+        // this.name.length is enforced in this.name setter
+        this.nameName = this.name;
+      }
     }
+    if (this.PTCF !== null)
+      this.ptcfShortName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
+    if (this.MSOG !== null)
+      this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
 
-    if (this.descriptionEnglish !== null && this.TXE1 !== null) {
+    if (this.TXE1 !== null) {
       this.txe1DescriptionEnglish = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
       this.txe1Length = this.txe1DescriptionEnglish.length;
     }
+
+    if (this.PRM2 !== null)
+      this.prm2Tempo = this.tempo;
+    else if (this.msogTempo !== null)
+      this.msogTempo = this.tempo;
+  }
+
+  get name(): string
+  {
+    return this._name;
+  }
+
+  set name(name: string)
+  {
+    this._name = name.slice(0, Math.min(name.length, this.maxNameLength));
   }
 
   get nameTrimmed(): string
   {
-    return this.name === null ? "" : this.name.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
+    return this.name.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
   get descriptionEnglishTrimmed(): null | string
   {
-    return this.descriptionEnglish === null ? "" : this.descriptionEnglish.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
+    return this.descriptionEnglish.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
   get effectSettings(): null | Array<EffectSettings>
@@ -369,6 +392,7 @@ export class ZoomPatch
     this.target = this.readInt32(data, offset); offset += 4;
     this.ptcfUnknown = data.slice(offset, offset + 6); offset += 6;
     this.ptcfShortName = this.readString(data, offset, 10); offset += 10;
+    this.maxNameLength = 10; // if NAME chunk is found, this will be changed below
 
     if (this.numEffects !== null) {
       this.ids = this.readInt32Array(data, offset, this.numEffects);
@@ -503,6 +527,8 @@ export class ZoomPatch
         // FIXME: Perhaps we shouldn't remove the 0x00's here, to keep true to the original data??
         if (this.nameName != null)
           this.nameName = this.nameName.replace(/\x00/g, ""); // The last four characters could be 0x00
+        // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
+        this.maxNameLength = this.nameLength == 32 ? this.nameLength - 4 : this.nameLength; // this.maxNameLength was set above, for ptcfShortName, but we update it here since a NAME chunk was found
       }
     }
 
@@ -735,7 +761,20 @@ export class ZoomPatch
         console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Unknown}`);
         return undefined;
       }
-  
+
+      let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
+      let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+      tempo1 &=  0b00001111; // blank the 4 upper bits
+      tempo1 |= (this.tempo & 0b00001111) << 4; // move the 4 lower bits in this.tempo into the 4 upper bits in tempo1
+      tempo2 &=  0b11110000; // blank the 4 lower bits
+      tempo2 |= (this.tempo & 0b11110000) >> 4; // move the 4 upper bits in this.tempo into the 4 lower bits in tempo2
+      
+      this.prm2Unknown[this.prm2Unknown.length -2] = tempo1;
+      this.prm2Unknown[this.prm2Unknown.length -1] = tempo2;
+      // let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
+      // let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+      // this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
+
       offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.prm2Length); success &&= (result !== 0);
       offset = result = this.writeSlice(ptcfChunk, offset, this.prm2Unknown); success &&= (result !== 0);  
@@ -781,7 +820,8 @@ export class ZoomPatch
       return undefined;
     }
 
-    return ptcfChunk;
+    this.ptcfChunk = ptcfChunk;
+    return this.ptcfChunk;
   }
 
   buildMSDataBuffer(): Uint8Array | undefined
@@ -848,6 +888,17 @@ export class ZoomPatch
       return undefined;
     }
 
+    let tempo1 = this.msogUnknown1[1];
+    let tempo2 = this.msogUnknown1[2];
+    tempo1 &=  0b00011111; // blank the 3 upper bits
+    tempo1 |= (this.tempo & 0b00000111) << 5; // move the 3 lower bits in this.tempo into the 3 upper bits in tempo1
+    tempo2 &=  0b11100000; // blank the 5 lower bits
+    tempo2 |= (this.tempo & 0b11111000) >> 3; // move the 5 upper bits in this.tempo into the 5 lower bits in tempo2
+
+    this.msogUnknown1[1] = tempo1;
+    this.msogUnknown1[2] = tempo2;
+  // this.msogTempo = ((this.msogUnknown1[1] & 0b11100000) >> 5) + ((this.msogUnknown1[2] & 0b00011111) << 3);
+
     offset = result = this.writeSlice(msogDataBuffer, offset, this.msogUnknown1); success &&= (result !== 0);  
 
     expectedOffset += this.msogUnknown1.length; 
@@ -872,97 +923,8 @@ export class ZoomPatch
       return undefined;
     }
 
-    return msogDataBuffer;
-  }
-
-  readPTCFFixedDeprecated(data: Uint8Array, offset:number) : number
-  {
-    this.PTCF = this.readString(data, offset, 4); offset +=4;
-    this.length = this.readInt32(data, offset); offset += 4;
-    this.version = this.readInt32(data, offset); offset += 4;
-    this.numEffects = this.readInt32(data, offset); offset += 4;
-    this.target = this.readInt32(data, offset); offset += 4;
-    this.ptcfUnknown = data.slice(offset, offset + 6); offset += 6;
-    this.ptcfShortName = this.readString(data, offset, 10); offset += 10;
-    if (this.numEffects !== null) {
-      this.ids = this.readInt32Array(data, offset, this.numEffects);
-      offset += this.numEffects * 4;
-    }
-
-    this.TXJ1 = this.readString(data, offset, 4); offset +=4;
-    this.txj1Length = this.readInt32(data, offset); offset += 4;
-    if (this.txj1Length != null && this.txj1Length > 0) {
-      this.txj1DescriptionJapanese = data.slice(offset, offset + this.txj1Length); offset += this.txj1Length;
-    }
-
-    this.TXE1 = this.readString(data, offset, 4); offset +=4;
-    this.txe1Length = this.readInt32(data, offset); offset += 4;
-    if (this.txe1Length != null && this.txe1Length > 0) {
-      this.txe1DescriptionEnglish = this.readString(data, offset, this.txe1Length); offset += this.txe1Length;
-    }
-
-    // EDTB chunk
-    // Bit  # bits  Meanining
-    //   0       1  Effect on/off
-    //   1      29  Effect ID
-    //  30      12  Parameter 0
-    //  42      12  Parameter 1
-    //  54      12  Parameter 2
-    //  66      12  Parameter 3
-    //  78      12  Parameter 4
-    //  90       8  Parameter 5
-    //  98       8  Parameter 6
-    // 106       8  Parameter 7
-    // 114       8  Parameter 8
-    // 122       8  Parameter 9
-    // 130       8  Parameter 10
-    // 138       8  Parameter 11
-    // 146       8  Parameter 12
-    // 153          Last bit of parameter 12
-    // Total 154 bits = 19 bytes. There are 5 bytes with unknown data after the parameters.
-    if (this.numEffects !== null) {
-      this.EDTB = this.readString(data, offset, 4); offset +=4;
-      this.edtbLength = this.readInt32(data, offset); offset += 4;
-      this.edtbReversedBytes = new Array<Uint8Array>(this.numEffects);
-      this.edtbEffectSettings = new Array<EffectSettings>();
-      for (let i=0; i<this.numEffects; i++) {
-        this.edtbReversedBytes[i] = data.slice(offset, offset + 24).reverse(); offset += 24;
-        let bitpos = this.edtbReversedBytes[i].length * 8 - 1;
-        let effectSettings = new EffectSettings();
-        effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
-        effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29; 
-        effectSettings.parameters = new Array<number>();
-        for (let p=0; p<5; p++) {
-          let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
-          effectSettings.parameters.push(parameter);
-        }
-        for (let p=5; p<12 && bitpos - 8 >= 0; p++) {
-          let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
-          effectSettings.parameters.push(parameter);
-        }
-        this.edtbEffectSettings.push(effectSettings);
-      }
-    }
-
-    this.PRM2 = this.readString(data, offset, 4); offset +=4;
-    this.prm2Length = this.readInt32(data, offset); offset += 4;
-    if (this.prm2Length != null && this.prm2Length > 0) {
-      this.prm2Unknown = data.slice(offset, offset + this.prm2Length); offset += this.prm2Length;
-      let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
-      let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
-      this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
-      // FIXME: Read prm2EditEffectSlot, see description above
-    }
-
-    this.NAME = this.readString(data, offset, 4); offset +=4;
-    this.nameLength = this.readInt32(data, offset); offset += 4;
-    if (this.nameLength != null && this.nameLength > 0) {
-      this.nameName = this.readString(data, offset, this.nameLength); offset += this.nameLength; 
-      if (this.nameName != null)
-        this.nameName = this.nameName.replace(/\x00/g, ""); // The last four characters could be 0x00
-    }
-
-    return offset;
+    this.msogDataBuffer = msogDataBuffer;
+    return this.msogDataBuffer;
   }
 
   // Byte  #bytes  Meaning
@@ -1033,6 +995,7 @@ export class ZoomPatch
     // this.msogEffectsReversedBytes.slice(0, this.msogNumEffects);
     // this.msogEffectSettings.slice(0, this.msogNumEffects);
 
+    this.maxNameLength = 10;
     this.msogName = this.readString(data, offset, 10); offset += 10; 
     if (this.msogName != null)
       this.msogName = this.msogName.replace(/\x00/g, ""); // Safety guard against characters being 0

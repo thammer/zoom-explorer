@@ -805,11 +805,24 @@ export class ZoomDevice
 
   public getSysexForCurrentPatch(patch: ZoomPatch): Uint8Array | undefined
   {
-    // FIXME: Build PTCF data buffer
-    if (patch.msogDataBuffer !== null && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
-      let sevenBitData = eight2seven(patch.msogDataBuffer);
+    let data: Uint8Array | undefined;
+    if (patch.PTCF !== null) {
+      data = patch.buildPTCFChunk();
+      // FIXME: Untested code
+    }
+    else {
+      data = patch.buildMSDataBuffer();
+      // if (patch.msogDataBuffer !== null && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+      //   let sevenBitData = eight2seven(patch.msogDataBuffer);
+      //   return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
+      // }
+    }
+
+    if (data !== undefined && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+      let sevenBitData = eight2seven(data);
       return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
     }
+      
     return undefined;
   }
 
@@ -1216,22 +1229,21 @@ export class ZoomDevice
     });
   }
 
-  private handleMIDIDataFromZoom(data: Uint8Array): void
-  {
-    
-    this.internalMIDIDataHandler(data);
-    
-    for (let listener of this._listeners)
-      listener(this, data);
-    
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
-    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
-      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore
-  }
-
   private disconnectMessageHandler() {
     throw new Error("Method not implemented.");
   }
+
+  private handleMIDIDataFromZoom(data: Uint8Array): void
+  {
+    this.internalMIDIDataHandler(data);
+    
+    for (let listener of this._listeners)
+      listener(this, data);  
+    
+    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
+      this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore  
+  }  
 
   private internalMIDIDataHandler(data: Uint8Array): void
   {
@@ -1242,7 +1254,7 @@ export class ZoomDevice
     const tempSkipLog = this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
 
     if (this.loggingEnabled && ! this.logMutedTemporarilyForPollMessages(data))
-      console.log(`Received: ${bytesToHexString(data, " ")}`);
+      console.log(`${performance.now().toFixed(1)} Received: ${bytesToHexString(data, " ")}`);
 
     if (this._patchListDownloadInProgress)
       return; // mute all message handling while the patch list is being downloaded
@@ -1288,7 +1300,7 @@ export class ZoomDevice
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.tempoV2)) {
       // Tempo changed on device (MS Plus series)
-      this._currentTempo = data[9] + ((data[10] & 0b01111111) >> 7);
+      this._currentTempo = data[9] + ((data[10] & 0b01111111) << 7);
       this.emitTempoChangedEvent();
     }
     else if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {

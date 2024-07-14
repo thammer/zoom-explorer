@@ -246,7 +246,7 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
   return parseInt(text);
 }
 
-export type editPatchTextEditedListenerType = (event: Event, type: string) => void;
+export type editPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => void;
 
 export function initializeEditPatchTable(textEditedCallback: editPatchTextEditedListenerType) {
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
@@ -261,44 +261,46 @@ export function initializeEditPatchTable(textEditedCallback: editPatchTextEdited
   let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
   let patchNumberCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
   let patchNameCell: HTMLTableCellElement = patchNameRow.cells[1] as HTMLTableCellElement;
+  let patchTempoCell: HTMLTableCellElement = patchNameRow.cells[2] as HTMLTableCellElement;
   let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
   let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
 
   let undoOnEscape = "";
   let muteBlurOnEscape = false;
   
-  for (let cell of [patchNameCell, patchDescriptionCell]) {
-    cell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
+  for (let cell of [patchNameCell, patchTempoCell, patchDescriptionCell]) {
+    if (cell !== undefined) {      
+      cell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
+      
+      cell.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault()
+          cell.blur();
+        }
+        else if (e.key === "Escape" || e.key === "Esc") {
+          cell.innerText = undoOnEscape;
+          textEditedCallback(e, "input", cell.innerText !== undoOnEscape); 
+          muteBlurOnEscape = true;
+          cell.blur(); 
+          muteBlurOnEscape = false;
+        }
+      });
     
-    cell.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault()
-        cell.blur();
-      }
-      else if (e.key === "Escape" || e.key === "Esc") {
-        cell.innerText = undoOnEscape;
-        textEditedCallback(e, "input"); 
-        muteBlurOnEscape = true;
-        cell.blur(); 
-        muteBlurOnEscape = false;
-      }
-    });
-  
-    cell.addEventListener("input", (e) => {
-      textEditedCallback(e, "input");
-    });
-  
-    cell.addEventListener("focus", (e) => { // get focus
-      undoOnEscape = cell.innerText;
-      textEditedCallback(e, "focus");
-    });
-  
-    cell.addEventListener("blur", (e) => { // lose focus
-      if (!muteBlurOnEscape)
-        textEditedCallback(e, "blur");
-    });
+      cell.addEventListener("input", (e) => {
+        textEditedCallback(e, "input", cell.innerText !== undoOnEscape);
+      });
+    
+      cell.addEventListener("focus", (e) => { // get focus
+        undoOnEscape = cell.innerText;
+        textEditedCallback(e, "focus", cell.innerText !== undoOnEscape);
+      });
+    
+      cell.addEventListener("blur", (e) => { // lose focus
+        if (!muteBlurOnEscape)
+          textEditedCallback(e, "blur", cell.innerText !== undoOnEscape);
+      });
+    }
   }
-
 }
 
 export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
@@ -318,6 +320,7 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection | un
   let patchNameRow: HTMLTableRowElement = table.rows[0] as HTMLTableRowElement;
   let patchNumberCell: HTMLTableCellElement = patchNameRow.cells[0] as HTMLTableCellElement;
   let patchNameCell: HTMLTableCellElement = patchNameRow.cells[1] as HTMLTableCellElement;
+  let patchTempoCell: HTMLTableCellElement = patchNameRow.cells[2] as HTMLTableCellElement;
   let patchDescriptionRow: HTMLTableRowElement = table.rows[1] as HTMLTableRowElement;
   let patchDescriptionCell: HTMLTableCellElement = patchDescriptionRow.cells[0] as HTMLTableCellElement;
 
@@ -325,6 +328,8 @@ export function updateEditPatchTable(screenCollection: ZoomScreenCollection | un
     patchNumberCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`;
     patchNameCell.textContent = `${patch.nameTrimmed}`;
     patchNameCell.blur();
+    patchTempoCell.textContent = `${patch.tempo.toString().padStart(3, "0")}`;
+    patchTempoCell.blur();
     patchDescriptionCell.textContent = patch.descriptionEnglishTrimmed; 
     patchDescriptionCell.blur();
   }
