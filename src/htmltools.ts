@@ -246,7 +246,7 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
   return parseInt(text);
 }
 
-export type editPatchTextEditedListenerType = (event: Event, type: string) => void;
+export type editPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => void;
 
 export function initializeEditPatchTable(textEditedCallback: editPatchTextEditedListenerType) {
   let table: HTMLTableElement = document.getElementById("editPatchTableID") as HTMLTableElement;
@@ -277,7 +277,7 @@ export function initializeEditPatchTable(textEditedCallback: editPatchTextEdited
       }
       else if (e.key === "Escape" || e.key === "Esc") {
         cell.innerText = undoOnEscape;
-        textEditedCallback(e, "input"); 
+        textEditedCallback(e, "input", cell.innerText !== undoOnEscape); 
         muteBlurOnEscape = true;
         cell.blur(); 
         muteBlurOnEscape = false;
@@ -285,20 +285,19 @@ export function initializeEditPatchTable(textEditedCallback: editPatchTextEdited
     });
   
     cell.addEventListener("input", (e) => {
-      textEditedCallback(e, "input");
+      textEditedCallback(e, "input", cell.innerText !== undoOnEscape);
     });
   
     cell.addEventListener("focus", (e) => { // get focus
       undoOnEscape = cell.innerText;
-      textEditedCallback(e, "focus");
+      textEditedCallback(e, "focus", cell.innerText !== undoOnEscape);
     });
   
     cell.addEventListener("blur", (e) => { // lose focus
       if (!muteBlurOnEscape)
-        textEditedCallback(e, "blur");
+        textEditedCallback(e, "blur", cell.innerText !== undoOnEscape);
     });
   }
-
 }
 
 export function updateEditPatchTable(screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
