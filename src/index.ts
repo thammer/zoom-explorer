@@ -1,7 +1,7 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
-import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString } from "./tools.js";
+import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomDevice } from "./ZoomDevice.js";
@@ -147,7 +147,7 @@ async function start()
   
   
   for (const device of zoomDevices)
-    {
+  {
     await device.open();
     device.parameterEditEnable();
     device.addListener(handleMIDIDataFromZoom);
@@ -158,8 +158,14 @@ async function start()
     device.addCurrentPatchChangedListener(handleCurrentPatchChanged);
     device.addPatchChangedListener(handlePatchChanged);
     device.autoRequestProgramChange = true;
-    };  
+    device.addTempoChangedListener(handleTempoChanged);
+  };  
 
+  let zoomDevice = zoomDevices[0];
+  initializeEditPatchTable( (event: Event, type: string, dirty: boolean) => {
+    patchEdited(event, type, dirty, zoomDevice);
+  });
+  
   // console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
   // let commandIndex = 0x51;
@@ -193,22 +199,25 @@ function sleepForAWhile(timeoutMilliseconds: number)
 
 let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
 testButton.addEventListener("click", async (event) => {
-  let listFilesCommand = hexStringToUint8Array("60 25 00 00 2a 2e 2a 00");
-  let getNextFileCommand = hexStringToUint8Array("60 26 00 00 2a 2e 2a 00");
 
-  let device = zoomDevices[0];
+  let zoomDevice = zoomDevices[0];
+  await zoomDevice.mapParameters();
+  // let listFilesCommand = hexStringToUint8Array("60 25 00 00 2A 2E 2A 00");
+  // let getNextFileCommand = hexStringToUint8Array("60 26 00 00 2A 2E 2A 00");
 
-  await sleepForAWhile(50);
-  sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], listFilesCommand);
+  // let device = zoomDevices[0];
 
-  for (let i=0; i<600; i++) {
-    await sleepForAWhile(50);
-    sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], getNextFileCommand);
-  }
+  // await sleepForAWhile(50);
+  // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], listFilesCommand);
 
-  await sleepForAWhile(50);
-  let endFileListingCommand = hexStringToUint8Array("60 27");
-  sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], endFileListingCommand);
+  // for (let i=0; i<600; i++) {
+  //   await sleepForAWhile(50);
+  //   sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], getNextFileCommand);
+  // }
+
+  // await sleepForAWhile(50);
+  // let endFileListingCommand = hexStringToUint8Array("60 27");
+  // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], endFileListingCommand);
 });
 
 type MidiMuteFunction = (data: Uint8Array) => boolean;
@@ -535,6 +544,15 @@ function handlePatchChanged(zoomDevice: ZoomDevice, memorySlot: number): void
   updatePatchesTable(zoomDevice);
 }
 
+function handleTempoChanged(zoomDevice: ZoomDevice, tempo: number): void {
+  if (currentZoomPatch !== undefined && zoomDevice.currentPatch !== undefined) {
+    updatePatchInfoTable(currentZoomPatch);
+    setPatchParameter(zoomDevice, currentZoomPatch, "tempo", tempo, "tempo", false);
+    getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
+  }
+}
+
+
 
 // FIXME: Look into if it's a good idea to have this function be async. 2024-06-26.
 async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): Promise<void>
@@ -590,46 +608,9 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       let originalPatch = patch;
       patch = originalPatch.clone();        
 
-      let patchBuffer = patch.buildMSDataBuffer();
-      if (patch.msogDataBuffer === null)
-        console.warn("patch.msogDataBuffer == null");
-      else if (patchBuffer === undefined)
-        console.warn("patchBuffer == undefined");
-      else if (patchBuffer.length !== patch.msogDataBuffer.length)
-        console.warn("msogDataBuffer.length !== patch.msogDataBuffer.length");
-      else {
-        let allEqual = true;
-        for (let i=0; i<patchBuffer.length; i++) {
-          if (patchBuffer[i] !== patch.msogDataBuffer[i]) {
-            console.warn(`Built patch buffer differs at buffer[${i}] = ${bytesToHexString([patchBuffer[i]])} but expected ${bytesToHexString([patch.msogDataBuffer[i]])}`)
-            allEqual = false;
-          }
-        }
-        if (allEqual)
-          console.log("Built patch buffer matched original patch buffer");
-      }
-
-      // let originalPatch = patch;
-      // patch = originalPatch.clone();        
-
-      // let ptcfChunk = patch.buildPTCFChunk();
-      // if (patch.ptcfChunk === null)
-      //   console.warn("patch.ptcfChunk == null");
-      // else if (ptcfChunk === undefined)
-      //   console.warn("ptcfChunk == undefined");
-      // else if (ptcfChunk.length !== patch.ptcfChunk.length)
-      //   console.warn("ptcfChunk.length !== patch.ptcfChunk.length");
-      // else {
-      //   let allEqual = true;
-      //   for (let i=0; i<ptcfChunk.length; i++) {
-      //     if (ptcfChunk[i] !== patch.ptcfChunk[i]) {
-      //       console.warn(`Built patch buffer differs at buffer[${i}] = ${bytesToHexString([ptcfChunk[i]])} but expected ${bytesToHexString([patch.ptcfChunk[i]])}`)
-      //       allEqual = false;
-      //     }
-      //   }
-      //   if (allEqual)
-      //     console.log("Built patch buffer matched original patch buffer");
-      // }
+      let originalPatchBuffer = patch.PTCF !== null ? patch.ptcfChunk : patch.msogDataBuffer;
+      let patchBuffer = patch.PTCF !== null ? patch.buildPTCFChunk() : patch.buildMSDataBuffer();
+      compareBuffers(patchBuffer, originalPatchBuffer);
 
       // let screenCollection = await zoomDevice.downloadScreens();
       // updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
@@ -1105,7 +1086,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 }
 
 
-function patchEdited(event: Event, type: string)
+function patchEdited(event: Event, type: string, dirty: boolean, zoomDevice: ZoomDevice)
 {
   console.log(`Patch edited e is "${event}`);
   if (event.target === null)
@@ -1114,17 +1095,20 @@ function patchEdited(event: Event, type: string)
     console.error("Attempting to edit patch when currentZoomPatch is undefined")
     return;
   }
+
   let cell = event.target as HTMLTableCellElement;
   if (cell.id === "editPatchTableNameID") {
     if (type === "focus") {
       console.log("focus");
-      cell.innerText = currentZoomPatch.name.replace(/ +$/, ""); // use the full name, but remove spaces at the end
+      cell.innerText = currentZoomPatch.name !== null ? currentZoomPatch.name.replace(/ +$/, "") : ""; // use the full name, but remove spaces at the end
     }
     else if (type === "blur") {
-      cell.innerText = currentZoomPatch.nameTrimmed;
       console.log(`blur - cell.innerText = ${cell.innerText}`);
-    }
-    else {
+      if (currentZoomPatch !== undefined) { 
+        setPatchParameter(zoomDevice, currentZoomPatch, "name", cell.innerText, "name");
+        cell.innerText = currentZoomPatch.nameTrimmed;
+      }
+    } else if (type === "input") {
       console.log(`Name changed to "${cell.innerText}`);
       if (currentZoomPatch !== undefined) {
         currentZoomPatch.name = cell.innerText;
@@ -1133,17 +1117,32 @@ function patchEdited(event: Event, type: string)
       }
     }
   }
-  else if (cell.id === "editPatchTableDescriptionID" && type === "input") {
-    console.log(`Description changed to "${cell.innerText}`);
-    if (currentZoomPatch !== undefined) {
-      currentZoomPatch.descriptionEnglish = cell.innerText;
-      currentZoomPatch.updatePatchPropertiesFromDerivedProperties();
-      updatePatchInfoTable(currentZoomPatch);
-    }
+  else if (cell.id === "editPatchTableDescriptionID" && type === "blur") {
+    setPatchParameter(zoomDevice, currentZoomPatch, "descriptionEnglish", cell.innerText, "description");
+  }
+  else if (cell.id === "editPatchTableTempoValueID" && type === "focus") {
+    // cell.innerText = currentZoomPatch.tempo.toString().padStart(3, "0");
+  }
+  else if (cell.id === "editPatchTableTempoValueID" && type === "blur") {
+    setPatchParameter(zoomDevice, currentZoomPatch, "tempo", cell.innerText, "tempo");
+    // cell.innerText = currentZoomPatch.tempo.toString().padStart(3, "0") + " bpm";
   }
 }
 
-initializeEditPatchTable(patchEdited);
+function setPatchParameter<T, K extends keyof ZoomPatch>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
+  syncToCurrentPatchOnPedalImmediately = true)
+{
+  if (keyFriendlyName.length === 0)
+    keyFriendlyName = key.toString();
+
+  (zoomPatch[key] as T) = value; 
+
+  zoomPatch.updatePatchPropertiesFromDerivedProperties();
+  if (syncToCurrentPatchOnPedalImmediately)
+    zoomDevice.uploadCurrentPatch(zoomPatch)
+
+  updatePatchInfoTable(zoomPatch);
+}
 
 let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
 let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefined;
@@ -1160,5 +1159,30 @@ let currentZoomPatch: ZoomPatch | undefined = undefined;
 
 let zoomDevices: Array<ZoomDevice> = new Array<ZoomDevice>();
 
+let value = 511;
+
+let data = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 64, 1, 128, 0, 12, 130, 0, 0, 65]);
+//let data: Uint8Array = new Uint8Array(20);
+let bitpos = data.length * 8 - 1;
+testBitMangling(data, bitpos, bitpos, 1);
+
 start();
+
+
+function testBitMangling(data:Uint8Array, startBit: number, endBit: number, value: number) {
+  printBits(data);
+  setBitsFromNumber(data, startBit, endBit, value);
+  printBits(data);
+
+  let value2 = getNumberFromBits(data, startBit, endBit);
+  console.log(`value = ${value}, value2 = ${value2}`);
+}
+
+function printBits(data: Uint8Array) {
+  let str = "";
+  for (let i = 0; i < data.length; i++) {
+    str += data[i].toString(2).padStart(8, "0") + " ";
+  }
+  console.log(`Bits: ${str}`);
+}
 

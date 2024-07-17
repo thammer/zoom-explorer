@@ -170,8 +170,6 @@
           text-align: center;
           vertical-align: middle;
           table-layout: fixed;
-          margin-left: auto;
-          margin-right: auto;
           margin-top: 1em;
       } 
       table.editPatchTable tr {
@@ -196,16 +194,31 @@
           white-space: nowrap;
       }
       table.editPatchTable th.editPatchTableName {
-          padding-left: 8px;
+          padding-left: 4px;
+          padding-right: 10px;
           font-size: 1.5em;
-          width: 100%;
+      }
+      table.editPatchTable th.editPatchTableTempoLabel {
+          padding-left: 1px;
+          padding-right: 4px;
+          font-size: 1.0em;
+          padding-top: 6px;
+          vertical-align: middle;
+          width: 1px;
+          white-space: nowrap;
+      }
+      table.editPatchTable th.editPatchTableTempoValue {
+          padding-left: 8px;
+          padding-right: 2px;
+          font-size: 1.5em;
+          width: 1px;
           white-space: nowrap;
       }
       table.editPatchTable th.editPatchTableDescription {
           padding-left: 8px;
       }
       table.editPatchTable th.editPatchTableDescription:empty::after {
-        content: "\00a0"; /* Prevent collapse of empty row. See https://stackoverflow.com/questions/42225196/prevent-collapse-of-empty-rows-in-html-table-via-css */
+          content: "\00a0"; /* Prevent collapse of empty row. See https://stackoverflow.com/questions/42225196/prevent-collapse-of-empty-rows-in-html-table-via-css */
       }
       table.editPatchTable td {
           vertical-align: top;
@@ -345,12 +358,14 @@
             <tr>
               <th class="editPatchTableNumber">Patch 00:</th>
               <th class="editPatchTableName" id="editPatchTableNameID">Patch Name</th>
+              <th class="editPatchTableTempoValue" id="editPatchTableTempoValueID">42</th>
+              <th class="editPatchTableTempoLabel">BPM</th>
+            </tr>
+          <tr>
+              <th colspan="4" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
           </tr>
           <tr>
-              <th colspan="2" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
-          </tr>
-          <tr>
-              <td colspan="2">
+              <td colspan="4">
                   <table>
                       <tr>
 
