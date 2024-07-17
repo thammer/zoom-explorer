@@ -1,4 +1,4 @@
-import { getNumberFromBits, partialArrayMatch, partialArrayStringMatch } from "./tools.js";
+import { compareBuffers, getNumberFromBits, partialArrayMatch, partialArrayStringMatch, setBitsFromNumber } from "./tools.js";
 
 export class EffectSettings
 {
@@ -731,7 +731,12 @@ export class ZoomPatch
       console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. edtbLength = ${this.edtbLength}`);
       return undefined;
     }
- 
+
+    if (this.effectSettings === null) {
+      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. effectSettings = ${this.effectSettings}`);
+      return undefined;
+    }
+
     offset = result = this.writeString(ptcfChunk, offset, this.EDTB); success &&= (result !== 0);
     offset = result = this.writeInt32(ptcfChunk, offset, this.edtbLength); success &&= (result !== 0);
 
@@ -742,6 +747,26 @@ export class ZoomPatch
         return undefined;
       }
       reversedBytes.set(this.edtbReversedBytes[i], 0);
+
+      let effectSettings = this.effectSettings[i];
+
+      let bitpos = reversedBytes.length * 8 - 1;
+      setBitsFromNumber(reversedBytes, bitpos, bitpos, effectSettings.enabled ? 1 : 0); bitpos -= 1;
+      setBitsFromNumber(reversedBytes, bitpos - 28, bitpos, effectSettings.id); bitpos -= 29;
+      let parameterIndex = 0;
+      for (let p=0; p<5 && bitpos - 12 >= 0; p++) {
+        let parameter = effectSettings.parameters[parameterIndex++];
+        setBitsFromNumber(reversedBytes, bitpos - 11, bitpos, parameter); bitpos -= 12;
+      }
+      for (let p=5; p<8 && bitpos - 8 >= 0; p++) {
+        let parameter = effectSettings.parameters[parameterIndex++];
+        setBitsFromNumber(reversedBytes, bitpos - 7, bitpos, parameter); bitpos -= 8;
+      }
+      for (let p=8; p<12 && bitpos - 12 >= 0; p++) {
+        let parameter = effectSettings.parameters[parameterIndex++];
+        setBitsFromNumber(reversedBytes, bitpos - 11, bitpos, parameter); bitpos -= 12;
+      }
+
       let rightOrderBytes = reversedBytes.reverse();
       offset = result = this.writeSlice(ptcfChunk, offset, rightOrderBytes); success &&= (result !== 0);  
     }
@@ -819,6 +844,8 @@ export class ZoomPatch
       console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
+
+    compareBuffers(ptcfChunk, this.ptcfChunk);
 
     this.ptcfChunk = ptcfChunk;
     return this.ptcfChunk;
@@ -922,6 +949,8 @@ export class ZoomPatch
       console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
+
+    compareBuffers(msogDataBuffer, this.msogDataBuffer);
 
     this.msogDataBuffer = msogDataBuffer;
     return this.msogDataBuffer;
