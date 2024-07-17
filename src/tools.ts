@@ -90,6 +90,52 @@ export function getNumberFromBits(data: Uint8Array, startBit: number, endBit: nu
   return value;
 }
 
+/**
+ * 
+ * @param data array with 8-bit data
+ * @param startBit first bit to include, counting from the start of the array
+ * @param endBit last bit to include, counting from the start of the array
+ * @param value a number to decompose into bits and insert into array, starting from startBit, making sure that endBit contains the rightmost (lowest) bit in value
+ */
+export function setBitsFromNumber(data: Uint8Array, startBit: number, endBit: number, value: number): void
+{
+  let startByte = Math.floor(startBit / 8);
+  let endByte = Math.floor(endBit / 8);
+  let startBitOffset = startBit % 8;
+  let endBitOffset = endBit % 8;
+  
+  let valueStartMask = (0b0000000011111111 >> startBitOffset) & 0b11111111; 
+  let startMask =      (0b1111111100000000 >> startBitOffset) & 0b11111111; // keep bits before startBit, clear bits after startBit
+  let valueEndMask =  (0b1111111100000000 >> (endBitOffset + 1)) & 0b11111111; 
+  let endMask =        (0b0000000011111111 >> (endBitOffset + 1)) & 0b11111111; // clear bits before endBit, keep bits after endBit
+
+  if (startByte === endByte) {
+    startMask |= endMask; // ex 0b11000111, zeros from startBitOffset to endBitOffset, clear those bits, keep the surrounding bits
+    endMask = startMask;
+  }
+
+  value = value << (7-endBitOffset);
+
+  let byte: number = 0;
+  
+  for (let i = endByte; i>= startByte; i--) {
+    byte = data[i];
+    let valueByte = (value >> ((endByte - i) * 8)) & 0b11111111;
+    if (i == startByte) {
+      byte = byte & startMask;
+      valueByte = valueByte & valueStartMask;
+    }
+    if (i == endByte) {
+      byte = byte & endMask;
+      valueByte = valueByte & valueEndMask;
+    }
+
+    byte = byte | valueByte;
+
+    data[i] = byte;
+  }
+}
+
 function buildCRCTable() : number[]
 {
   let c;
@@ -246,3 +292,23 @@ export function eight2seven(eightBitBytes: Uint8Array, start: number = 0, end: n
   return sevenBitBytes;
 }
 
+export function compareBuffers(newBuffer: Uint8Array | undefined | null, oldBuffer: Uint8Array | undefined | null): void
+{
+    if (newBuffer === null || newBuffer  == undefined)
+      console.warn(`newBuffer = ${newBuffer}`);
+    else if (oldBuffer === null || oldBuffer  == undefined)
+      console.warn(`oldBuffer = ${oldBuffer}`);
+    else if (newBuffer.length !== oldBuffer.length)
+      console.warn("newBuffer.length (${buffer1}) !== oldBuffer.length (${buffer1})");
+    else {
+      let allEqual = true;
+      for (let i=0; i<newBuffer.length; i++) {
+        if (newBuffer[i] !== oldBuffer[i]) {
+          console.warn(`Buffers differs at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])}, oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])}`)
+          allEqual = false;
+        }
+      }
+      if (allEqual)
+        console.log("Buffers are identical");
+    }
+}
