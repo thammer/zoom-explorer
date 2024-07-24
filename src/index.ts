@@ -3,10 +3,11 @@ import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
-import { ZoomPatch } from "./ZoomPatch.js";
-import { ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, initializeEditPatchTable as initializeEditPatchTable, updateEditPatchTable } from "./htmltools.js";
+import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
+import { EffectMapping, ZoomDevice } from "./ZoomDevice.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
+import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -162,9 +163,43 @@ async function start()
   };  
 
   let zoomDevice = zoomDevices[0];
-  initializeEditPatchTable( (event: Event, type: string, dirty: boolean) => {
-    patchEdited(event, type, dirty, zoomDevice);
+
+  let startTime = performance.now();
+  let timeSpent = performance.now() - startTime;
+
+  let obj = await downloadJSONResource("zoom-effect-mappings-ms50gp.json");
+
+  console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
+  startTime = performance.now();
+
+  let mapForMS50GPlus: Map<number, EffectMapping> = 
+    new Map<number, EffectMapping>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectMapping]));
+
+  console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
+
+  obj = await downloadJSONResource("zoom-effect-mappings-ms70cdrp.json");
+
+  console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
+  startTime = performance.now();
+
+  let mapForMS70CDRPlus: Map<number, EffectMapping> = 
+    new Map<number, EffectMapping>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectMapping]));
+
+  console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
+
+    // merge maps
+  let parameterMap = mapForMS50GPlus;
+  mapForMS70CDRPlus.forEach( (value, key) => {
+    parameterMap.set(key, value);
+  })
+
+  console.log(`parameterMap.size = ${parameterMap.size}`);
+
+  patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean) => {
+    handlePatchEdited(zoomDevice, event, type, dirty);
   });
+
+  patchEditor.setEffectMaps([parameterMap]);
   
   // console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
@@ -196,12 +231,34 @@ function sleepForAWhile(timeoutMilliseconds: number)
   });
 }
 
+let mappings: { [key: string]: EffectMapping; } | undefined;
 
 let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
 testButton.addEventListener("click", async (event) => {
 
   let zoomDevice = zoomDevices[0];
-  await zoomDevice.mapParameters();
+
+  if (testButton.innerText == "Cancel") {
+    testButton.innerText = "...";
+    zoomDevice.cancelMapping();
+    return;
+  }
+
+  if (mappings === undefined) {
+    testButton.innerText = "Cancel";
+    sleepForAWhile(300);
+    mappings = await zoomDevice.mapParameters();
+    testButton.innerText = "Save";
+  }
+  else {
+    let json = JSON.stringify(mappings, null, 2);
+    const blob = new Blob([json]);
+    await saveBlobToFile(blob, "mappings.json", ".json", "Mappings json");
+    testButton.innerText = "Test";
+    mappings = undefined;
+  }
+
+
   // let listFilesCommand = hexStringToUint8Array("60 25 00 00 2A 2E 2A 00");
   // let getNextFileCommand = hexStringToUint8Array("60 26 00 00 2A 2E 2A 00");
 
@@ -522,7 +579,7 @@ function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
     compare = lastChangedEditScreenCollection;
   else
     lastChangedEditScreenCollection = previousEditScreenCollection;
-  updateEditPatchTable(screenCollection, currentZoomPatch, zoomDevice.currentMemorySlotNumber, compare, previousEditPatch);
+  patchEditor.update(screenCollection, currentZoomPatch, zoomDevice.currentMemorySlotNumber, compare, previousEditPatch);
   previousEditScreenCollection = screenCollection;
   previousEditPatch = currentZoomPatch;
 }
@@ -1086,7 +1143,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 }
 
 
-function patchEdited(event: Event, type: string, dirty: boolean, zoomDevice: ZoomDevice)
+function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, dirty: boolean)
 {
   console.log(`Patch edited e is "${event}`);
   if (event.target === null)
@@ -1097,6 +1154,8 @@ function patchEdited(event: Event, type: string, dirty: boolean, zoomDevice: Zoo
   }
 
   let cell = event.target as HTMLTableCellElement;
+  let [effectSlot, parameterNumber] = patchEditor.getEffectAndParameterNumber(cell.id);
+
   if (cell.id === "editPatchTableNameID") {
     if (type === "focus") {
       console.log("focus");
@@ -1127,15 +1186,91 @@ function patchEdited(event: Event, type: string, dirty: boolean, zoomDevice: Zoo
     setPatchParameter(zoomDevice, currentZoomPatch, "tempo", cell.innerText, "tempo");
     // cell.innerText = currentZoomPatch.tempo.toString().padStart(3, "0") + " bpm";
   }
+  else if (cell.id === "editPatchTableTempoValueID" && type === "key") {
+    if (event instanceof KeyboardEvent && event.key === "ArrowUp") {
+      cell.innerText = (Number.parseInt(cell.innerText) + 1).toString().padStart(3, "0");
+      setPatchParameter(zoomDevice, currentZoomPatch, "tempo", cell.innerText, "tempo");
+    }
+    else if (event instanceof KeyboardEvent && event.key === "ArrowDown") {
+      cell.innerText = (Number.parseInt(cell.innerText) - 1).toString().padStart(3, "0");
+      setPatchParameter(zoomDevice, currentZoomPatch, "tempo", cell.innerText, "tempo");
+    } 
+  }
+  else if (effectSlot !== undefined && parameterNumber !== undefined) {
+    if (currentZoomPatch !== undefined && currentZoomPatch.edtbEffectSettings !== null && effectSlot< currentZoomPatch.edtbEffectSettings.length) {
+      let effectID: number = -1;
+      effectID = currentZoomPatch.edtbEffectSettings[effectSlot].id;
+      let valueString = cell.innerText;
+      let [rawValue, maxValue] = patchEditor.getRawValueFromString(effectID, parameterNumber, valueString);
+
+      if (maxValue !== -1 && rawValue >= 0 && rawValue <= maxValue) {
+        let updateParameter;
+        if (type === "blur") {
+          updateParameter = true;
+        }
+        else if (type === "key" && event instanceof KeyboardEvent) {
+          updateParameter = false;
+          if (event.key === "ArrowUp") {
+            rawValue = Math.min(maxValue, rawValue + 1);
+            updateParameter = true;
+          }
+          else if (event.key === "ArrowDown") {
+            rawValue = Math.max(0, rawValue - 1);
+            updateParameter = true;
+          }
+          else if (event.key === "PageUp") {
+            rawValue = Math.min(maxValue, rawValue + 10);
+            updateParameter = true;
+          }
+          else if (event.key === "PageDown") {
+            rawValue = Math.max(0, rawValue - 10);
+            updateParameter = true;
+          }
+          else if (event.key === "Tab") {
+            let newParameterNumber = Math.min(currentZoomPatch.edtbEffectSettings[effectSlot].parameters.length - 1, 
+              Math.max(0, parameterNumber + (event.shiftKey ? -1 : 1)));
+            let cell = patchEditor.getCell(effectSlot, newParameterNumber);
+            if (cell !== undefined) {
+              cell.focus();
+            }
+          }
+        }        
+        if (updateParameter) {
+          cell.innerText = patchEditor.getStringFromRawValue(effectID, parameterNumber, rawValue);
+          setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, rawValue], "effectSettings");
+        }
+    }
+      // else reject the edit and fall back to a safe value
+    } 
+  }
 }
 
-function setPatchParameter<T, K extends keyof ZoomPatch>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
+function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectSettings>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
   syncToCurrentPatchOnPedalImmediately = true)
 {
   if (keyFriendlyName.length === 0)
     keyFriendlyName = key.toString();
 
-  (zoomPatch[key] as T) = value; 
+  // [effectSlot, "enabled", value]
+  // [effectSlot, "id", value]
+  // [effectSlot, "parameters", parameterNumber, value]
+  if (key === "effectSettings" && value instanceof Array && value.length >= 3 && zoomPatch.effectSettings !== null) {
+    let effectSlot = value[0];
+    let effectSettingsKey = value[1];
+    if (effectSettingsKey === "enabled") {
+      zoomPatch.effectSettings[effectSlot].enabled = value[2] as boolean;
+    } else if (effectSettingsKey === "id") {
+      zoomPatch.effectSettings[effectSlot].id = value[2] as number;
+    } else if (effectSettingsKey === "parameters") {
+      let parameterNumber = value[2];
+      let parameterIndex = parameterNumber - 2;
+      zoomPatch.effectSettings[effectSlot].parameters[parameterIndex] = value[3] as number;
+    }
+  } 
+  else {
+    // Set basic parameter
+    (zoomPatch[key] as T) = value; 
+  }
 
   zoomPatch.updatePatchPropertiesFromDerivedProperties();
   if (syncToCurrentPatchOnPedalImmediately)
@@ -1144,30 +1279,15 @@ function setPatchParameter<T, K extends keyof ZoomPatch>(zoomDevice: ZoomDevice,
   updatePatchInfoTable(zoomPatch);
 }
 
-let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
-let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefined;
-let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
-
-let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
-let messageCounter: number = 0;
-let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
-
-// map from data length to previous and current data, used for comparing messages
-let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, device: MIDIDeviceDescription, messageNumber: number}>(); 
-
-let currentZoomPatch: ZoomPatch | undefined = undefined;
-
-let zoomDevices: Array<ZoomDevice> = new Array<ZoomDevice>();
-
-let value = 511;
-
-let data = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 64, 1, 128, 0, 12, 130, 0, 0, 65]);
-//let data: Uint8Array = new Uint8Array(20);
-let bitpos = data.length * 8 - 1;
-testBitMangling(data, bitpos, bitpos, 1);
-
-start();
-
+async function downloadJSONResource(filename: string): Promise<any>
+{
+  let response = await fetch(`./${filename}`);
+  if (!response.ok) {
+    console.error(`Fetching file ${filename} failed with HTTP error ${response.status}`);
+    return undefined;
+  }
+  return await response.json();
+}
 
 function testBitMangling(data:Uint8Array, startBit: number, endBit: number, value: number) {
   printBits(data);
@@ -1186,3 +1306,29 @@ function printBits(data: Uint8Array) {
   console.log(`Bits: ${str}`);
 }
 
+let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
+let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefined;
+let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
+
+let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
+let messageCounter: number = 0;
+let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
+
+// map from data length to previous and current data, used for comparing messages
+let sysexMap = new Map<number, {previous: Uint8Array, current: Uint8Array, device: MIDIDeviceDescription, messageNumber: number}>(); 
+
+let currentZoomPatch: ZoomPatch | undefined = undefined;
+
+let zoomDevices: Array<ZoomDevice> = new Array<ZoomDevice>();
+
+let patchEditor = new ZoomPatchEditor();
+
+let value = 511;
+
+let data = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 64, 1, 128, 0, 12, 130, 0, 0, 65]);
+//let data: Uint8Array = new Uint8Array(20);
+let bitpos = data.length * 8 - 1;
+testBitMangling(data, bitpos, bitpos, 1);
+
+
+start();
