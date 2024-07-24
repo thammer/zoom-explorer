@@ -140,7 +140,8 @@ export abstract class MIDIProxy implements IMIDIProxy
   {
     return new Promise<Uint8Array | undefined> ( (resolve, reject) => {
       let timeoutId = setTimeout( () => {
-        console.log(`sendAndGetReply() Timed out (${timeoutId}) for output device "${outputDevice}", input device "${inputDevice}"`);
+        if (this.loggingEnabled)
+          console.log(`sendAndGetReply() Timed out (${timeoutId}) for output device "${outputDevice}", input device "${inputDevice}"`);
         this.removeListener(inputDevice, handleReply);
         resolve(undefined);
       }, timeoutMilliseconds);
@@ -150,7 +151,7 @@ export abstract class MIDIProxy implements IMIDIProxy
           this.removeListener(deviceHandle, handleReply);
           resolve(data);
         }
-        else
+        else if (this.loggingEnabled)
           console.log(`sendAndGetReply received MIDI data of length ${data.length} that failed verifyReply`);
       };
       this.addListener(inputDevice, handleReply);
