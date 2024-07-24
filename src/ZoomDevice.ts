@@ -3,8 +3,9 @@ import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { IMIDIProxy, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription } from "./miditools.js";
 import { Throttler } from "./throttler.js";
-import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array } from "./tools.js";
+import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
+import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
@@ -56,6 +57,18 @@ class ZoomMessageTypes
   tempoV2 = new StringAndBytes("64 20 00 64 02");
 }
 
+export type ParameterMapping = { 
+  name: string, 
+  values: Array<string>,
+  max: number
+};
+
+export type EffectMapping = {
+  name: string,
+  parameters: Array<ParameterMapping>
+};
+
+
 /**
  * @example Usage pattern for screens and current patch
  * - Manual usage:
@@ -84,6 +97,7 @@ export class ZoomDevice
   private _autoRequestPatchForMemorySlotInProgress: boolean = false;
   private _autoRequestPatchMemorySlotNumber: number = -1; 
   private _disableMidiHandlers: boolean = false;;
+  private _cancelMapping: boolean = false;
 
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
   private _memorySlotChangedListeners: MemorySlotChangedListenerType[] = new Array<MemorySlotChangedListenerType>();
@@ -1561,7 +1575,12 @@ export class ZoomDevice
       console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
   }
 
-  public async mapParameters()
+  public cancelMapping()
+  {
+    this._cancelMapping = true;
+  }
+
+  public async mapParameters(): Promise<{ [key: string]: EffectMapping; } | undefined>
   {
     this._disableMidiHandlers = true;
     
@@ -1574,38 +1593,27 @@ export class ZoomDevice
 
     if (this.currentPatch === undefined || this.currentPatch.effectSettings === null) {
       console.error("Cannot map parameters when currentPatch == undefined or currentPatch.effectSettings == null");
-      return;
+      return undefined;
     }
 
     let patch = this.currentPatch.clone();
 
     if (patch.effectSettings === null) {
       console.error("patch.effectSettings == null. This is a bug.");
-      return;
+      return undefined;
     }
 
     if (patch.effectSettings.length < 1) {
       console.error("patch.effectSettings.length < 1. Aborting mapping.");
-      return;
+      return undefined;
     }
 
-    console.log(`*** Mapping started, using current patch ${patch.name} ***`);
+    console.log(`*** Mapping started at ${performance.now().toFixed(1)}, using current patch ${patch.name} ***`);
+    let startTime = performance.now();
+
     this._midi.loggingEnabled = false;
 
-    class ParameterMapping
-    {
-      parameterName: string = "";
-      parameterValues: Array<string> = new Array<string>();
-
-      constructor(parameterName: string = "")
-      {
-        this.parameterName = parameterName;
-        this.parameterValues = new Array<string>();
-      }
-    }
-
-    // Map<ID, Array<ParameterMapping>>
-    let mappings: Map<number, Array<ParameterMapping>> = new Map<number, Array<ParameterMapping>>();
+    let mappings: { [key: string]: EffectMapping } = {};
 
     let paramBuffer = new Uint8Array(7);
     let command = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + paramBuffer.length);
@@ -1614,74 +1622,151 @@ export class ZoomDevice
     let maxParamValue = 1<<13;
 
     let effectSlot: number = 0;
-    let paramNumber: number;
     let error = false;
     
-    let counter = 0;
+    let counter = 1;
+    let effectList: Map<number, string> = zoomEffectIDsMS50GPlus;
+    let numEffects = effectList.size;
     
-    for (let id of zoomEffectIDsMS70CDRPlus.keys()) {
-      
-      if (counter++ > 10)
+    for (let id of effectList.keys()) {
+
+      // if (counter < 4) {
+      //    counter++;
+      //    continue;
+      // }
+
+    //   if (counter > 22 && counter < 33) {
+    //     counter++;
+    //     continue;
+    //  }
+
+      // if (counter > 1)
+      //   break;
+
+      if (this._cancelMapping)
         break;
-      
+
       patch.effectSettings[0].id = id;
       this.uploadCurrentPatch(patch, false);
 
+      // let verifyPatch = await this.downloadCurrentPatch();
+
+      // if (verifyPatch === undefined || verifyPatch.effectSettings === null || verifyPatch.effectSettings.length < 1) {
+      //   console.error(`Failed to download and verify current patch for effect ${counter.toString().padStart(3, "0")}, ID ${id.toString(16).toUpperCase().padStart(8, "0")}`);
+      //   console.error(`verifyPatch: ${verifyPatch}, effectSettings: ${verifyPatch?.effectSettings}, effectSettings.length: ${verifyPatch?.effectSettings?.length}`);
+      //   return undefined;
+      // }
+
+      // let verifyID = verifyPatch.effectSettings[0].id;
+      // if (verifyID !== id) {
+      //   console.warn(`Unable to set current patch to effect ${counter.toString().padStart(3, "0")}, ID ${id.toString(16).toUpperCase().padStart(8, "0")}`);
+      //   console.warn(`patch.effectSettings[0].id: ${verifyID}, expected id: ${id}`);
+      //   counter++;
+      //   continue;
+      // }
+
+      let screenCollection = await this.downloadScreens(effectSlot, effectSlot);
+      if (screenCollection === undefined) {
+        console.error("*** Failed to download screens while verifying patch, aborting mapping ***");
+        return undefined;
+      }
+
+      if (screenCollection.screens.length != 1) {
+        console.error(`*** screenCollection.screens.length ${screenCollection.screens.length} is out of range while verifying patch, aborting mapping ***`);
+        return undefined;
+      }
+
+      let screen = screenCollection.screens[0].parameters;
+
+      if (screen[1].name.toUpperCase() !== effectList.get(id)?.toUpperCase()) {
+        console.warn(`*** screen[1].name "${screen[1].name}" does not match zoomEffectIDsMS70CDRPlus.get(id) "${effectList.get(id)}" while verifying patch, skipping effect ***`);
+        console.warn(`Screen: ${JSON.stringify(screen)}`);
+        counter++;
+        continue;
+      }
+
       let effectSettings: EffectSettings = patch.effectSettings[0];
 
-      console.log(`Starting mapping for effect ${zoomEffectIDsMS70CDRPlus.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length - 1} parameters`);
+      console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length} parameters`);
 
-      let mappingsForEffect = new Array<ParameterMapping>(); 
+      let mappingsForEffect: EffectMapping = {
+        name: effectList.get(id)!,
+        parameters: new Array<ParameterMapping>()
+      }; 
     
-      for (let paramIndex = 0; paramIndex < effectSettings.parameters.length; paramIndex++) {
+      for (let paramNumber = 2; paramNumber - 2 < effectSettings.parameters.length; paramNumber++) {
 
-        console.log(`Maping parameters for effect ${zoomEffectIDsMS70CDRPlus.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}), parameter ${(paramIndex).toString().padStart(2, " ")} of ${effectSettings.parameters.length - 1}`);
-        paramNumber = paramIndex + 2;
+        console.log(`Mapping parameters for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}), paramNumber ${(paramNumber).toString().padStart(2, " ")} of ${effectSettings.parameters.length + 2 - 1}`);
+        // paramNumber = paramIndex + 2;
 
         let mappingsForParameterValue: ParameterMapping | undefined;
         [mappingsForParameterValue, error] = await mapParameter(this, effectSlot, paramNumber);
 
         if (error) {
-          console.error(`Error mapping parameter ${paramNumber} for effect ${zoomEffectIDsMS70CDRPlus.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")})`);
+          console.error(`Error mapping parameter ${paramNumber} for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")})`);
           break;
         }
 
         if (mappingsForParameterValue === undefined) {
-          console.log(`Got no reply for parameter ${paramNumber}. Number of parameters for effect ${zoomEffectIDsMS70CDRPlus.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}) is ${mappingsForEffect.length}`);
+          console.log(`Got no reply for parameter ${paramNumber}. Number of parameters for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}) is ${mappingsForEffect.parameters.length}`);
           break;
         }
 
-        mappingsForEffect.push(mappingsForParameterValue);
+        mappingsForEffect.parameters.push(mappingsForParameterValue);
       }
      
       if (error) {
         break;
       }
 
-      console.log(`Mapping done for effect ${zoomEffectIDsMS70CDRPlus.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}), mapped ${mappingsForEffect.length} of ${effectSettings.parameters.length - 1} parameters`);
-      mappings.set(id, mappingsForEffect);
+      console.log(`Mapping done for effect ${counter.toString().padStart(3, "0")} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}), mapped ${mappingsForEffect.parameters.length} of ${effectSettings.parameters.length - 1} parameters`);
+      mappings[id.toString(16).padStart(8, "0")] =  mappingsForEffect;
+
+      counter++;
+
+      sleepForAWhile(100); // let the chrome console catch up ???
     }
 
-    if (error)
-      console.error("*** Mapping ended with errors ***");
-    else
-      console.log("*** Mapping successful ***");    
+    let timeSpent = performance.now() - startTime;
+    let minutes = Math.floor(timeSpent / (1000 * 60));
+    let seconds = Math.floor((timeSpent % (1000 * 60)) / 1000);
 
-    console.log(JSON.stringify(mappings));
+    if (error)
+      console.error(`*** Mapping ended with errors after ${timeSpent/1000} seconds ******`);
+    else if (this._cancelMapping) {
+      this._cancelMapping = false;
+      console.log(`*** Mapping cancelled at ${performance.now().toFixed(1)} after ${minutes} minutes ${seconds} seconds ***`);
+    }
+    else
+      console.log(`*** Mapping successful at ${performance.now().toFixed(1)} after ${minutes} minutes ${seconds} seconds ***`);    
+
+    //console.log(JSON.stringify(mappings, null, 2));
 
     //this.uploadCurrentPatch(originalCurrentPatch);
 
     this._disableMidiHandlers = false;
 
+    return mappings;
+
     async function mapParameter(device: ZoomDevice, effectSlot: number, paramNumber: number): Promise<[ParameterMapping | undefined, boolean]>
     {
       let mappingsForParameterValue: ParameterMapping | undefined = undefined;
       let error = false;
-      for (let paramValue = 0; paramValue < maxParamValue; paramValue++) {
+      let log = false;
+      // If the param value on the pedal is already 0, we won't get a reply when we start probing (at value 0).
+      // So before we start probing, we set param value to 1, that way we should always get a reply for value 0,
+      // if the paramNumber is valid.
+
+      setParamBuffer(paramBuffer, effectSlot, paramNumber, 1);
+      command.set(paramBuffer, ZoomDevice.messageTypes.parameterValueV2.bytes.length);
+      let reply = await device.sendCommandAndGetReply(command, received => true);
+
+      let paramValue: number;
+      for (paramValue = 0; paramValue < maxParamValue; paramValue++) {
         setParamBuffer(paramBuffer, effectSlot, paramNumber, paramValue);
         command.set(paramBuffer, ZoomDevice.messageTypes.parameterValueV2.bytes.length);
 
-        console.log(`Sending effect slot: ${effectSlot}, param number: ${paramNumber}, param value: ${paramValue}`);
+        if (log) console.log(`Sending effect slot: ${effectSlot}, param number: ${paramNumber}, param value: ${paramValue}`);
 
         let reply = await device.sendCommandAndGetReply(command, received => {
           let commandMatch = device.zoomCommandMatch(received, ZoomDevice.messageTypes.parameterValueAcceptedV2.bytes);
@@ -1697,19 +1782,19 @@ export class ZoomDevice
           let receivedParamNumber = received[offset + 1] & 0b01111111;
           let receivedParamValue = (received[offset + 2] & 0b01111111) + ((received[offset + 3] & 0b01111111) << 7);
           if (receivedEffectSlot !== effectSlot || receivedParamNumber !== paramNumber || receivedParamValue !== paramValue) {
-            console.log(`Sent     effect slot: ${effectSlot}, param number: ${paramNumber}, param value: ${paramValue}`);
-            console.log(`Received effect slot: ${receivedEffectSlot}, param number: ${receivedParamNumber}, param value: ${receivedParamValue}`);
-            console.log(`Reply mismatch: ${receivedEffectSlot}, ${receivedParamNumber}, ${receivedParamValue} != ${effectSlot}, ${paramNumber}, ${paramValue}`);
-            console.log("Reply mismatch usually means that the parameter number is out of range (no more parameters)")
+            if (log) console.log(`Sent     effect slot: ${effectSlot}, param number: ${paramNumber}, param value: ${paramValue}`);
+            if (log) console.log(`Received effect slot: ${receivedEffectSlot}, param number: ${receivedParamNumber}, param value: ${receivedParamValue}`);
+            if (log) console.log(`Reply mismatch: ${receivedEffectSlot}, ${receivedParamNumber}, ${receivedParamValue} != ${effectSlot}, ${paramNumber}, ${paramValue}`);
+            if (log) console.log("Reply mismatch usually means that the parameter number is out of range (no more parameters)")
             return false;
           }
 
           return true;
         });
         if (reply === undefined) {
-          console.log(`Sent     effect slot: ${effectSlot}, param number: ${paramNumber}, param value: ${paramValue}`);
-          console.log("Timeout... Which usually means that the parameter value is out of range (no more values)");
-          console.log(`Max param value for parameter ${paramNumber} is ${paramValue - 1}`);
+          if (log) console.log(`Sent     effect slot: ${effectSlot}, param number: ${paramNumber}, param value: ${paramValue}`);
+          if (log) console.log("Timeout... Which usually means that the parameter value is out of range (no more values)");
+          if (log) console.log(`Max param value for parameter ${paramNumber} is ${paramValue - 1}`);
           if (paramValue === 0)
             mappingsForParameterValue = undefined;
           break;
@@ -1733,20 +1818,28 @@ export class ZoomDevice
 
           let screen = screenCollection.screens[0];
           if (paramNumber >= screen.parameters.length) {
-            console.error(`*** paramNumber (${paramNumber}) >= screen.parameters.length (${screen.parameters.length}), aborting mapping ***`);
-            error = true;
-            mappingsForParameterValue = undefined;
-            break;
+            console.warn(`Warning: paramNumber (${paramNumber}) >= screen.parameters.length (${screen.parameters.length}), using (patch) paramValue as textValue. Investigate.`);
+            console.warn(`           Unknown = ${paramValue} -> "${paramValue.toString()}"`);
+            if (mappingsForParameterValue === undefined)
+              mappingsForParameterValue = { name: "Unknown", values: new Array<string>(), max: 0 };
+            mappingsForParameterValue.values.push(paramValue.toString());
+            continue;
           }
 
           let parameter = screen.parameters[paramNumber];
-          console.log(`           ${parameter.name} = ${paramValue} -> "${parameter.valueString}"`);
+          // Map Zoom's byte codes to HTML/unicode characters. This is also done in htmltools.ts
+          // let valueString = parameter.valueString.replace(/\x16/g, "&#119138;").replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
+          let valueString = ZoomPatch.noteByteCodeToHtml(parameter.valueString);
+
+          if (log) console.log(`           ${parameter.name} = ${paramValue} -> "${valueString}"`);
           if (mappingsForParameterValue === undefined)
-            mappingsForParameterValue = new ParameterMapping(parameter.name);
-          mappingsForParameterValue.parameterValues.push(parameter.valueString);
-          console.log(`  Control: ${mappingsForParameterValue.parameterName} = ${paramValue} -> "${mappingsForParameterValue.parameterValues[paramValue]}"`);
+            mappingsForParameterValue = { name: parameter.name, values: new Array<string>(), max: 0 };
+          mappingsForParameterValue.values.push(valueString);
+          if (log) console.log(`  Control: ${mappingsForParameterValue.name} = ${paramValue} -> "${mappingsForParameterValue.values[paramValue]}"`);
         }
       }
+      if (mappingsForParameterValue !== undefined) 
+        mappingsForParameterValue.max = paramValue - 1
       return [mappingsForParameterValue, error];
     }
 
