@@ -1,5 +1,8 @@
 import { compareBuffers, getNumberFromBits, partialArrayMatch, partialArrayStringMatch, setBitsFromNumber } from "./tools.js";
 
+/**
+ * Settings for one effect slot in a Zoom patch.
+ */
 export class EffectSettings
 {
   enabled: boolean = false;
@@ -99,6 +102,11 @@ export class ZoomPatch
     return this.descriptionEnglish.trim().replace(/[ ]{2,}/gi," ");  // trim spaces at start and end, as well as double spaces
   }
 
+  /**
+   * Get the effect settings for each effect slot.
+   *
+   * @return {null | Array<EffectSettings>} The effect settings array or null if no settings are available.
+   */
   get effectSettings(): null | Array<EffectSettings>
   {
     if (this.edtbEffectSettings !== null)
@@ -845,7 +853,7 @@ export class ZoomPatch
       return undefined;
     }
 
-    compareBuffers(ptcfChunk, this.ptcfChunk);
+    // compareBuffers(ptcfChunk, this.ptcfChunk);
 
     this.ptcfChunk = ptcfChunk;
     return this.ptcfChunk;
@@ -1053,5 +1061,26 @@ export class ZoomPatch
     zoomPatch.updateDerivedPropertiesFromPatchProperties();
 
     return zoomPatch;
+  }
+
+  public static noteByteCodeToHtml(valueString: string): string
+  {
+    // https://www.alt-codes.net/music_note_alt_codes.php
+    // https://www.fileformat.info/info/unicode/char/1D15E/index.htm
+    return valueString.replace(/\x16/g, "&#119138;").replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
+  }
+
+  public static noteHtmlToByteCode(valueString: string): string
+  { // 0x16: 32nd note
+    // 0x17: 16th note
+    // 0x18: 8th note
+    // 0x19: quarter note
+    // 0x1A: half note
+    return valueString.replace(/&#119138;/g, "\x16").replace(/&#119137;/g, "\x17").replace(/&#119136;/g, "\x18").replace(/&#119135;/g, "\x19").replace(/&#119134;/g, "\x1A");
+  }
+
+  public static noteUTF16ToHtml(valueString: string): string
+  {
+    return valueString.replace(/\uD834\uDD62/g, "&#119138;").replace(/\uD834\uDD61/g, "&#119137;").replace(/\uD834\uDD60/g, "&#119136;").replace(/\uD834\uDD5F/g, "&#119135;").replace(/\uD834\uDD5E/g, "&#119134;");
   }
 }
