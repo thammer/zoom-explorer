@@ -312,3 +312,14 @@ export function compareBuffers(newBuffer: Uint8Array | undefined | null, oldBuff
         console.log("Buffers are identical");
     }
 }
+
+export function sleepForAWhile(timeoutMilliseconds: number)
+{
+  return new Promise( (resolve) => 
+  {
+    setTimeout(() =>
+    {
+      resolve("Timed out");
+    }, timeoutMilliseconds);
+  });
+}
