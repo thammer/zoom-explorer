@@ -1,3 +1,5 @@
+import { EffectParameterMap } from "./ZoomDevice";
+import { ZoomPatch } from "./ZoomPatch";
 
 
 export class ZoomScreenParameter
@@ -106,12 +108,68 @@ export class ZoomScreenCollection
       }
 
     return offset;
-  } 
+  }
+  
+  setFromPatchAndMap(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>) : ZoomScreenCollection | undefined
+  {
+    if (patch.effectSettings === null) {
+      console.error(`patch.effectSettings == null for patch ${patch.name}`);
+      return undefined;
+    }
+
+    let numEffects = patch.numEffects ?? patch.effectSettings.length;
+    for (let effectSlot = 0; effectSlot< numEffects; effectSlot++) {
+      let effectSettings = patch.effectSettings[effectSlot];
+      let effectMap = effectsMap.get(effectSettings.id);
+      if (effectMap === undefined) {
+        console.error(`Unable to find mapping for effect id ${effectSettings.id} in effectSlot ${effectSlot} in patch ${patch.name}`);
+        return undefined;
+      }
+
+      let screen = new ZoomScreen();
+
+      let parameter = new ZoomScreenParameter()
+      parameter.name = "OnOff";
+      parameter.valueString = effectSettings.enabled ? "1" : "0";
+      screen.parameters.push(parameter);
+
+      parameter = new ZoomScreenParameter()
+      parameter.name = effectMap.name;
+      parameter.valueString = effectMap.name;
+      screen.parameters.push(parameter);
+
+      for (let paramIndex = 0; paramIndex < effectSettings.parameters.length; paramIndex++) {
+        let value = effectSettings.parameters[paramIndex];
+        let parameter = new ZoomScreenParameter()
+        if (paramIndex >= effectMap.parameters.length) {
+          console.info(`Info: paramIndex ${paramIndex} >= effectMap.parameters.length ${effectMap.parameters.length} for effect ${effectMap.name}`);
+          // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
+          break;
+        }
+        if (value >= effectMap.parameters[paramIndex].values.length) {
+          console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
+          break;
+        }
+        parameter.name = effectMap.parameters[paramIndex].name;
+        parameter.valueString = effectMap.parameters[paramIndex].values[value];
+        screen.parameters.push(parameter);
+      }
+
+      this.screens.push(screen);
+    }
+    return this;
+  }
  
   static fromScreenData(data: Uint8Array, offset: number = 0) : ZoomScreenCollection 
   {
     let zoomScreenCollection = new ZoomScreenCollection();
     offset = zoomScreenCollection.parseScreenData(data, offset);
     return zoomScreenCollection;
+  }
+
+  static fromPatchAndMappings(patch: ZoomPatch, effectMap: Map<number, EffectParameterMap>) : ZoomScreenCollection | undefined
+  {
+    let zoomScreenCollection = new ZoomScreenCollection();
+    return zoomScreenCollection.setFromPatchAndMap(patch, effectMap);
   }
 }
