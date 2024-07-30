@@ -121,13 +121,16 @@ export function setBitsFromNumber(data: Uint8Array, startBit: number, endBit: nu
   for (let i = endByte; i>= startByte; i--) {
     byte = data[i];
     let valueByte = (value >> ((endByte - i) * 8)) & 0b11111111;
-    if (i == startByte) {
+    if (i === startByte) {
       byte = byte & startMask;
       valueByte = valueByte & valueStartMask;
     }
-    if (i == endByte) {
+    if (i === endByte) {
       byte = byte & endMask;
       valueByte = valueByte & valueEndMask;
+    }
+    if (i !== startByte && i !== endByte) {
+      byte = 0; // Clear all bits for bytes that are inbetween the startByte and the endByte (the mask is 0x00000000)
     }
 
     byte = byte | valueByte;
