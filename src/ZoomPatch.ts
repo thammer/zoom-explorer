@@ -899,6 +899,11 @@ export class ZoomPatch
       console.warn(`Mismatched buffer sizes when building patch buffer for patch ${this.name}. msogTotalLength !== this.msogDataBuffer.length. msogTotalLength = ${msogTotalLength}, this.msogDataBuffer.length = ${this.msogDataBuffer.length}`);
     }
 
+    if (this.effectSettings === null) {
+      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. effectSettings = ${this.effectSettings}`);
+      return undefined;
+    }
+
     let msogDataBuffer = new Uint8Array(msogTotalLength);
 
     let offset = 0;
@@ -908,12 +913,44 @@ export class ZoomPatch
     for (let i=0; i<this.maxNumEffects; i++) { 
       let reversedBytes = new Uint8Array(effectSectionLength);
       if (this.msogEffectsReversedBytes[i].length !== reversedBytes.length) {
-        console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}].length = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+        console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}] = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
         return undefined;
       }
       reversedBytes.set(this.msogEffectsReversedBytes[i], 0);
+      let effectSettings = this.effectSettings[i];
+
+      let bitpos = reversedBytes.length * 8 - 1;
+      setBitsFromNumber(reversedBytes, bitpos, bitpos, effectSettings.enabled ? 1 : 0); bitpos -= 1;
+      setBitsFromNumber(reversedBytes, bitpos - 27, bitpos, effectSettings.id); bitpos -= 28;
+      let parameterIndex = 0;
+      for (let p=0; p<3 && bitpos - 13 >= 0; p++) {
+        let parameter = effectSettings.parameters[parameterIndex++];
+        setBitsFromNumber(reversedBytes, bitpos - 12, bitpos, parameter); bitpos -= 13;
+      }
+      for (let p=3; p<8 && bitpos - 8 >= 0; p++) {
+        let parameter = effectSettings.parameters[parameterIndex++];
+        setBitsFromNumber(reversedBytes, bitpos - 7, bitpos, parameter); bitpos -= 8;
+      }
+
+      // P8 = 8 bits. It is oddly placed, and we don't know what the surrounding bits are (20 unknown bits before, 8 unknown bits after)
+      // One byte is probably cab-related
+      bitpos -= 20;
+      let parameter = effectSettings.parameters[parameterIndex++];
+      setBitsFromNumber(reversedBytes, bitpos - 7, bitpos, parameter); bitpos -= 8;
+
+      this.msogEffectsReversedBytes[i].set(reversedBytes, 0);
+
       let rightOrderBytes = reversedBytes.reverse();
       offset = result = this.writeSlice(msogDataBuffer, offset, rightOrderBytes); success &&= (result !== 0);  
+      
+      // let reversedBytes = new Uint8Array(effectSectionLength);
+      // if (this.msogEffectsReversedBytes[i].length !== reversedBytes.length) {
+      //   console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}].length = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+      //   return undefined;
+      // }
+      // reversedBytes.set(this.msogEffectsReversedBytes[i], 0);
+      // let rightOrderBytes = reversedBytes.reverse();
+      // offset = result = this.writeSlice(msogDataBuffer, offset, rightOrderBytes); success &&= (result !== 0);  
     }
 
     let expectedOffset = 0;
