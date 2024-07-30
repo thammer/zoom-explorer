@@ -4,7 +4,7 @@ import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse, isSys
 import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
-import { EffectMapping, ZoomDevice } from "./ZoomDevice.js";
+import { EffectParameterMap, ZoomDevice } from "./ZoomDevice.js";
 import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
@@ -172,8 +172,8 @@ async function start()
   console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
   startTime = performance.now();
 
-  let mapForMS50GPlus: Map<number, EffectMapping> = 
-    new Map<number, EffectMapping>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectMapping]));
+  let mapForMS50GPlus: Map<number, EffectParameterMap> = 
+    new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
 
   console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
 
@@ -182,24 +182,44 @@ async function start()
   console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
   startTime = performance.now();
 
-  let mapForMS70CDRPlus: Map<number, EffectMapping> = 
-    new Map<number, EffectMapping>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectMapping]));
+  let mapForMS70CDRPlus: Map<number, EffectParameterMap> = 
+    new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
 
   console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
 
-    // merge maps
-  let parameterMap = mapForMS50GPlus;
+  obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
+
+  console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
+  startTime = performance.now();
+
+  let mapForMSOG: Map<number, EffectParameterMap> = 
+    new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+
+  console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
+
+  ZoomDevice.setEffectIDMapForMSOG(mapForMSOG);
+
+  // merge maps
+  let parameterMap: Map<number, EffectParameterMap>;
+  parameterMap = mapForMS50GPlus;
   mapForMS70CDRPlus.forEach( (value, key) => {
     parameterMap.set(key, value);
   })
+
+  ZoomDevice.setEffectIDMap(parameterMap);
+
+  // mapForMSOG.forEach( (value, key) => {
+  //   if (parameterMap.has(key) === true) {
+  //     console.warn(`Warning: Overriding effect ${parameterMap.get(key)!.name} for with MSOG effect "${value.name}" 0x${key.toString(16).padStart(8, "0")}`);
+  //   }
+  //   parameterMap.set(key, value);
+  // })
 
   console.log(`parameterMap.size = ${parameterMap.size}`);
 
   patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean) => {
     handlePatchEdited(zoomDevice, event, type, dirty);
   });
-
-  patchEditor.setEffectMaps([parameterMap]);
   
   // console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
@@ -231,7 +251,7 @@ function sleepForAWhile(timeoutMilliseconds: number)
   });
 }
 
-let mappings: { [key: string]: EffectMapping; } | undefined;
+let mappings: { [key: string]: EffectParameterMap; } | undefined;
 
 let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
 testButton.addEventListener("click", async (event) => {
@@ -573,13 +593,18 @@ async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 {
   let screenCollection = zoomDevice.currentScreenCollection;
+  if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
+    // Probably an MSOG device
+    screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
+  }
+
   let compare = previousEditScreenCollection;
   // Note: should probably take patch equality into consideration...
   if (screenCollection !== undefined &&  screenCollection.equals(previousEditScreenCollection))
     compare = lastChangedEditScreenCollection;
   else
     lastChangedEditScreenCollection = previousEditScreenCollection;
-  patchEditor.update(screenCollection, currentZoomPatch, zoomDevice.currentMemorySlotNumber, compare, previousEditPatch);
+  patchEditor.update(zoomDevice, screenCollection, currentZoomPatch, zoomDevice.currentMemorySlotNumber, compare, previousEditPatch);
   previousEditScreenCollection = screenCollection;
   previousEditPatch = currentZoomPatch;
 }
@@ -1197,11 +1222,11 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
     } 
   }
   else if (effectSlot !== undefined && parameterNumber !== undefined) {
-    if (currentZoomPatch !== undefined && currentZoomPatch.edtbEffectSettings !== null && effectSlot< currentZoomPatch.edtbEffectSettings.length) {
+    if (currentZoomPatch !== undefined && currentZoomPatch.effectSettings !== null && effectSlot< currentZoomPatch.effectSettings.length) {
       let effectID: number = -1;
-      effectID = currentZoomPatch.edtbEffectSettings[effectSlot].id;
+      effectID = currentZoomPatch.effectSettings[effectSlot].id;
       let valueString = cell.innerText;
-      let [rawValue, maxValue] = patchEditor.getRawValueFromString(effectID, parameterNumber, valueString);
+      let [rawValue, maxValue] = zoomDevice.getRawParameterValueFromString(effectID, parameterNumber, valueString);
 
       if (maxValue !== -1 && rawValue >= 0 && rawValue <= maxValue) {
         let updateParameter;
@@ -1227,7 +1252,7 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
             updateParameter = true;
           }
           else if (event.key === "Tab") {
-            let newParameterNumber = Math.min(currentZoomPatch.edtbEffectSettings[effectSlot].parameters.length - 1, 
+            let newParameterNumber = Math.min(currentZoomPatch.effectSettings[effectSlot].parameters.length - 1, 
               Math.max(0, parameterNumber + (event.shiftKey ? -1 : 1)));
             let cell = patchEditor.getCell(effectSlot, newParameterNumber);
             if (cell !== undefined) {
@@ -1236,7 +1261,7 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
           }
         }        
         if (updateParameter) {
-          cell.innerText = patchEditor.getStringFromRawValue(effectID, parameterNumber, rawValue);
+          cell.innerHTML = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, rawValue);
           setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, rawValue], "effectSettings");
         }
     }
