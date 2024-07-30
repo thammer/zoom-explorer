@@ -57,17 +57,18 @@ class ZoomMessageTypes
   tempoV2 = new StringAndBytes("64 20 00 64 02");
 }
 
-export type ParameterMapping = { 
+export type ParameterValueMap = { 
   name: string, 
   values: Array<string>,
   max: number
 };
 
-export type EffectMapping = {
+export type EffectParameterMap = {
   name: string,
-  parameters: Array<ParameterMapping>
+  parameters: Array<ParameterValueMap>
 };
 
+export type EffectIDMap = Map<number, EffectParameterMap>;
 
 /**
  * @example Usage pattern for screens and current patch
@@ -140,6 +141,10 @@ export class ZoomDevice
   private _currentPatchData: Uint8Array | undefined = undefined; // if set, needs parsing, then will be undefined
   private _currentPatch: ZoomPatch | undefined = undefined; // if undefined, need to parse _currentPatchData, then set _currentPatchData=undefined 
   private _currentTempo: number | undefined = undefined;
+
+  private static _effectIDMapForMSPlus: EffectIDMap | undefined = undefined;
+  private static _effectIDMapForMSOG: EffectIDMap | undefined = undefined; 
+  private _isMSOG: boolean = false; // Note: Try not to use this much, as we'd rather rely on probing
 
   public loggingEnabled: boolean = true;
 
@@ -277,6 +282,16 @@ export class ZoomDevice
     let tempo = this._currentTempo ?? 0; 
     for (let listener of this._tempoChangedListeners)
       listener(this, tempo);
+  }
+
+  public static setEffectIDMapForMSOG(effectIDMap: EffectIDMap)
+  {
+    ZoomDevice._effectIDMapForMSOG = effectIDMap; 
+  }
+
+  public static setEffectIDMap(effectIDMap: EffectIDMap)
+  {
+    ZoomDevice._effectIDMapForMSPlus = effectIDMap; 
   }
 
   public parameterEditEnable() 
@@ -1334,13 +1349,33 @@ export class ZoomDevice
       // Parameter was edited on device (MS Plus series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
       this.emitEffectParameterChangedEvent();
-      if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
-        this.requestScreens();
+      if (this._autoRequestScreens && this.currentPatch !== undefined) {
+        let screens: ZoomScreenCollection | undefined = undefined;
+        if (ZoomDevice._effectIDMapForMSPlus !== undefined)
+          screens = this._currentScreenCollection = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, ZoomDevice._effectIDMapForMSPlus);
+        if (screens !== undefined) {
+          this._currentScreenCollection = screens;
+          this._currentScreenCollectionData = undefined;
+          this.emitScreenChangedEvent();
+        }
+        else if (this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
+          this.requestScreens();
+      }
     }
     else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
       // Parameter was edited on device (MS series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
       this.emitEffectParameterChangedEvent();
+      if (ZoomDevice._effectIDMapForMSOG !== undefined && this.currentPatch !== undefined) {
+        let screens: ZoomScreenCollection | undefined;
+        screens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, ZoomDevice._effectIDMapForMSOG);
+        if (screens !== undefined) {
+          this._currentScreenCollection = screens;
+          this._currentScreenCollection = undefined;
+          this.emitScreenChangedEvent();
+        }
+      }
+
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) || this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2)) {
       this._currentPatch = undefined;
@@ -1393,8 +1428,8 @@ export class ZoomDevice
       this.emitPatchChangedEvent(memorySlot);
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.screensForCurrentPatch)) {
-      this._currentScreenCollection = undefined;
       this._currentScreenCollectionData = data;
+      this._currentScreenCollection = undefined;
       this.emitScreenChangedEvent();
     }
   }
@@ -1553,6 +1588,7 @@ export class ZoomDevice
     expectedReply = ZoomDevice.messageTypes.screensForCurrentPatch.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
+    this._isMSOG = [0x58, 0x5F, 0x61].includes(this._zoomDeviceID);
 
     if (this.loggingEnabled) {
       let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replace(/ /g, "").padEnd(2, "00") > b[0].replace(/ /g, "").padEnd(2, "00") ? 1 : -1))
@@ -1566,6 +1602,7 @@ export class ZoomDevice
       console.log(`  CRC bytes v1 mem patch:  ${this._patchDumpForMemoryLocationV1CRCBytes}`);
       console.log(`  PTCF format support:     ${this._ptcfPatchFormatSupported}`);
       console.log(`  Bank and prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
+      console.log(`  Is MSOG device:          ${this._isMSOG}`);
       
     }
 
@@ -1575,12 +1612,62 @@ export class ZoomDevice
       console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
   }
 
+  get effectIDMap(): EffectIDMap | undefined
+  {
+    return this._isMSOG ? ZoomDevice._effectIDMapForMSOG : ZoomDevice._effectIDMapForMSPlus;
+  }
+
+
+  /**
+   * Returns the raw value (zero-based) and maximum value (zero-based) for a given effect ID, parameter number, and value string.
+   *
+   * @param {number} effectID - The ID of the effect.
+   * @param {number} parameterNumber - The number of the parameter.
+   * @param {string} valueString - The value string to search for.
+   * @return {[number, number]} An array containing the raw value and maximum value. Returns [0, -1] if a mapping for valueString is not found.
+   */
+  getRawParameterValueFromString(effectID: number, parameterNumber: number, valueString: string): [rawValue: number, maxValue: number] 
+  {
+    if (this.effectIDMap === undefined)
+      return [0, -1];
+    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let parameterIndex = parameterNumber - 2;
+    if (effectMapping !== undefined) {
+      if (parameterIndex < effectMapping.parameters.length) {
+        let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
+        valueString = ZoomPatch.noteUTF16ToHtml(valueString);
+        valueString = valueString.replace(/ /g, "").toUpperCase();
+        let rawValue = parameterMapping.values.findIndex(str => str.replace(/ /g, "").toUpperCase() === valueString);
+        if (rawValue >= 0)
+          return [rawValue, parameterMapping.max];
+      }
+    }
+    console.log(`No mapping for effect ${effectID}, parameter ${parameterNumber}, value ${valueString}`);
+    return [0, -1];
+  }
+
+  getStringFromRawParameterValue(effectID: number, parameterNumber: number, rawValue: number): string
+  {
+    if (this.effectIDMap === undefined)
+      return "";
+    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let parameterIndex = parameterNumber - 2;
+    if (effectMapping !== undefined) {
+      if (parameterIndex < effectMapping.parameters.length) {
+        let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
+        if (rawValue < parameterMapping.values.length)
+          return parameterMapping.values[rawValue];
+      }
+    }
+    return "";
+  }
+
   public cancelMapping()
   {
     this._cancelMapping = true;
   }
 
-  public async mapParameters(): Promise<{ [key: string]: EffectMapping; } | undefined>
+  public async mapParameters(): Promise<{ [key: string]: EffectParameterMap; } | undefined>
   {
     this._disableMidiHandlers = true;
     
@@ -1613,7 +1700,7 @@ export class ZoomDevice
 
     this._midi.loggingEnabled = false;
 
-    let mappings: { [key: string]: EffectMapping } = {};
+    let mappings: { [key: string]: EffectParameterMap } = {};
 
     let paramBuffer = new Uint8Array(7);
     let command = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + paramBuffer.length);
@@ -1689,9 +1776,9 @@ export class ZoomDevice
 
       console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length} parameters`);
 
-      let mappingsForEffect: EffectMapping = {
+      let mappingsForEffect: EffectParameterMap = {
         name: effectList.get(id)!,
-        parameters: new Array<ParameterMapping>()
+        parameters: new Array<ParameterValueMap>()
       }; 
     
       for (let paramNumber = 2; paramNumber - 2 < effectSettings.parameters.length; paramNumber++) {
@@ -1699,7 +1786,7 @@ export class ZoomDevice
         console.log(`Mapping parameters for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}), paramNumber ${(paramNumber).toString().padStart(2, " ")} of ${effectSettings.parameters.length + 2 - 1}`);
         // paramNumber = paramIndex + 2;
 
-        let mappingsForParameterValue: ParameterMapping | undefined;
+        let mappingsForParameterValue: ParameterValueMap | undefined;
         [mappingsForParameterValue, error] = await mapParameter(this, effectSlot, paramNumber);
 
         if (error) {
@@ -1748,9 +1835,9 @@ export class ZoomDevice
 
     return mappings;
 
-    async function mapParameter(device: ZoomDevice, effectSlot: number, paramNumber: number): Promise<[ParameterMapping | undefined, boolean]>
+    async function mapParameter(device: ZoomDevice, effectSlot: number, paramNumber: number): Promise<[ParameterValueMap | undefined, boolean]>
     {
-      let mappingsForParameterValue: ParameterMapping | undefined = undefined;
+      let mappingsForParameterValue: ParameterValueMap | undefined = undefined;
       let error = false;
       let log = false;
       // If the param value on the pedal is already 0, we won't get a reply when we start probing (at value 0).
