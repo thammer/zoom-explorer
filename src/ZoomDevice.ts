@@ -1634,7 +1634,7 @@ export class ZoomDevice
    * @param {string} valueString - The value string to search for.
    * @return {[number, number]} An array containing the raw value and maximum value. Returns [0, -1] if a mapping for valueString is not found.
    */
-  getRawParameterValueFromString(effectID: number, parameterNumber: number, valueString: string): [rawValue: number, maxValue: number] 
+  public getRawParameterValueFromString(effectID: number, parameterNumber: number, valueString: string): [rawValue: number, maxValue: number] 
   {
     if (this.effectIDMap === undefined)
       return [0, -1];
@@ -1654,7 +1654,7 @@ export class ZoomDevice
     return [0, -1];
   }
 
-  getStringFromRawParameterValue(effectID: number, parameterNumber: number, rawValue: number): string
+  public getStringFromRawParameterValue(effectID: number, parameterNumber: number, rawValue: number): string
   {
     if (this.effectIDMap === undefined)
       return "";
@@ -1665,6 +1665,32 @@ export class ZoomDevice
         let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
         if (rawValue < parameterMapping.values.length)
           return parameterMapping.values[rawValue];
+      }
+    }
+    return "";
+  }
+
+  public getEffectName(effectID: number): string
+  {
+    if (this.effectIDMap === undefined)
+      return "";
+    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    if (effectMapping !== undefined) {
+      return effectMapping.name;
+    }
+    return "";
+  }
+
+  public getParameterName(effectID: number, parameterNumber: number): string
+  {
+    if (this.effectIDMap === undefined)
+      return "";
+    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let parameterIndex = parameterNumber - 2;
+    if (effectMapping !== undefined) {
+      if (parameterIndex < effectMapping.parameters.length) {
+        let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
+        return parameterMapping.name;
       }
     }
     return "";
