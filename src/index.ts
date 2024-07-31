@@ -153,7 +153,7 @@ async function start()
     device.parameterEditEnable();
     device.addListener(handleMIDIDataFromZoom);
     device.addMemorySlotChangedListener(handleMemorySlotChangedEvent);
-    device.autoRequestScreens = true;
+    device.autoUpdateScreens = true;
     device.addScreenChangedListener(handleScreenChangedEvent)
     device.autoRequestPatch = true;
     device.addCurrentPatchChangedListener(handleCurrentPatchChanged);
@@ -593,10 +593,10 @@ async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 {
   let screenCollection = zoomDevice.currentScreenCollection;
-  if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
-    // Probably an MSOG device
-    screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
-  }
+  // if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
+  //   // Probably an MSOG device
+  //   screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
+  // }
 
   let compare = previousEditScreenCollection;
   // Note: should probably take patch equality into consideration...

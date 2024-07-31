@@ -6,6 +6,8 @@ import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 export type EditPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => boolean;
 
+let debugCounter = 0;
+
 export class ZoomPatchEditor
 {
   private textEditedCallback: EditPatchTextEditedListenerType | undefined = undefined;
@@ -127,14 +129,25 @@ export class ZoomPatchEditor
                 (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
     }
 
+    console.log(`ZoomPatchEditor.update() - ${debugCounter++}`);	
+
     if (patch !== undefined) {
       this.patchNumberCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`;
-      this.patchNameCell.textContent = `${patch.nameTrimmed}`;
-      this.patchNameCell.blur();
-      this.patchTempoCell.textContent = `${patch.tempo.toString().padStart(3, "0")}`;
-      this.patchTempoCell.blur();
-      this.patchDescriptionCell.textContent = patch.descriptionEnglishTrimmed; 
-      this.patchDescriptionCell.blur();
+      let newPatchName = patch.nameTrimmed;
+      if (this.patchNameCell.textContent !== newPatchName) {
+        this.patchNameCell.textContent = newPatchName;
+        this.patchNameCell.blur();
+      }
+      let newPatchTempo = patch.tempo.toString().padStart(3, "0");
+      if (this.patchTempoCell.textContent !== newPatchTempo) {
+        this.patchTempoCell.textContent = newPatchTempo;
+        this.patchTempoCell.blur();
+      }
+      let newPatchDescription = patch.descriptionEnglishTrimmed;
+      if (this.patchDescriptionCell.textContent !== newPatchDescription) {
+        this.patchDescriptionCell.textContent = newPatchDescription;
+        this.patchDescriptionCell.blur();
+      }
     }
 
     if (screenCollection === undefined)

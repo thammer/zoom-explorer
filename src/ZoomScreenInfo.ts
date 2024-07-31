@@ -31,9 +31,45 @@ export class ZoomScreenCollection
 {
   screens: Array<ZoomScreen> = new Array<ZoomScreen>();
 
-  equals(other: ZoomScreenCollection | undefined): boolean
+  equals(other: ZoomScreenCollection | undefined, ignoreBlankScreens: boolean = false): boolean
   {
-    return other !== undefined && this.screens.length === other.screens.length && this.screens.every( (element, index) => element.equals(other.screens[index]) );
+    if (other === undefined)
+      return false;
+    if (ignoreBlankScreens) {
+      let thisIndex = 0;
+      let otherIndex = 0;
+      while (thisIndex < this.screens.length && otherIndex < other.screens.length) {
+        let thisScreen = this.screens[thisIndex];
+        let otherScreen = other.screens[otherIndex];
+
+        while (thisScreen.parameters.length === 2 && thisScreen.parameters[1].name === "Blank" && thisIndex < this.screens.length) {
+          thisIndex++;
+          thisScreen = this.screens[thisIndex];
+        }
+
+        while (otherScreen.parameters.length === 2 && otherScreen.parameters[1].name === "Blank" && otherIndex < other.screens.length) {
+          otherIndex++;
+          otherScreen = other.screens[otherIndex];
+        }
+
+        if (thisIndex >= this.screens.length && otherIndex >= other.screens.length)
+          return true;
+
+        if (thisIndex >= this.screens.length  || otherIndex >= other.screens.length)
+          return false; // one of them are at end of array, but not both
+
+
+        if (!thisScreen.equals(otherScreen)) {
+          return false;
+        }
+
+        thisIndex += 1;
+        otherIndex += 1;
+      }
+      return true;
+    }
+    else
+      return this.screens.length === other.screens.length && this.screens.every( (element, index) => element.equals(other.screens[index]) );
   }
   
 
@@ -138,14 +174,19 @@ export class ZoomScreenCollection
       parameter.valueString = effectMap.name;
       screen.parameters.push(parameter);
 
-      for (let paramIndex = 0; paramIndex < effectSettings.parameters.length; paramIndex++) {
+      let numParameters = effectMap.parameters.length;
+      if (effectMap.parameters.length < effectSettings.parameters.length) {
+        console.log(`effectMap.parameters.length ${effectMap.parameters.length} < effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
+          // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
+      } 
+      else if (effectMap.parameters.length > effectSettings.parameters.length) {
+        console.warn(`effectMap.parameters.length ${effectMap.parameters.length} > effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
+      }
+
+      for (let paramIndex = 0; paramIndex < effectMap.parameters.length; paramIndex++) {
         let value = effectSettings.parameters[paramIndex];
         let parameter = new ZoomScreenParameter()
-        if (paramIndex >= effectMap.parameters.length) {
-          console.info(`Info: paramIndex ${paramIndex} >= effectMap.parameters.length ${effectMap.parameters.length} for effect ${effectMap.name}`);
-          // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
-          break;
-        }
+
         if (value >= effectMap.parameters[paramIndex].values.length) {
           console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
           break;
