@@ -153,7 +153,7 @@ async function start()
     device.parameterEditEnable();
     device.addListener(handleMIDIDataFromZoom);
     device.addMemorySlotChangedListener(handleMemorySlotChangedEvent);
-    device.autoRequestScreens = true;
+    device.autoUpdateScreens = true;
     device.addScreenChangedListener(handleScreenChangedEvent)
     device.autoRequestPatch = true;
     device.addCurrentPatchChangedListener(handleCurrentPatchChanged);
@@ -164,58 +164,7 @@ async function start()
 
   let zoomDevice = zoomDevices[0];
 
-  let startTime = performance.now();
-  let timeSpent = performance.now() - startTime;
-
-  let obj = await downloadJSONResource("zoom-effect-mappings-ms50gp.json");
-
-  console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
-  startTime = performance.now();
-
-  let mapForMS50GPlus: Map<number, EffectParameterMap> = 
-    new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-
-  console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
-
-  obj = await downloadJSONResource("zoom-effect-mappings-ms70cdrp.json");
-
-  console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
-  startTime = performance.now();
-
-  let mapForMS70CDRPlus: Map<number, EffectParameterMap> = 
-    new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-
-  console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
-
-  obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
-
-  console.log(`Downloading took  ${((performance.now() - startTime)/1000).toFixed(3)} seconds ***`);
-  startTime = performance.now();
-
-  let mapForMSOG: Map<number, EffectParameterMap> = 
-    new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-
-  console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
-
-  ZoomDevice.setEffectIDMapForMSOG(mapForMSOG);
-
-  // merge maps
-  let parameterMap: Map<number, EffectParameterMap>;
-  parameterMap = mapForMS50GPlus;
-  mapForMS70CDRPlus.forEach( (value, key) => {
-    parameterMap.set(key, value);
-  })
-
-  ZoomDevice.setEffectIDMap(parameterMap);
-
-  // mapForMSOG.forEach( (value, key) => {
-  //   if (parameterMap.has(key) === true) {
-  //     console.warn(`Warning: Overriding effect ${parameterMap.get(key)!.name} for with MSOG effect "${value.name}" 0x${key.toString(16).padStart(8, "0")}`);
-  //   }
-  //   parameterMap.set(key, value);
-  // })
-
-  console.log(`parameterMap.size = ${parameterMap.size}`);
+  await downloadEffectMaps();
 
   patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean): boolean => {
     return handlePatchEdited(zoomDevice, event, type, dirty);
@@ -238,6 +187,57 @@ async function start()
   // });
   // console.log("Call and response end");
 
+}
+
+async function downloadEffectMaps() {
+  let startTime = performance.now();
+  let timeSpent = performance.now() - startTime;
+
+  let obj = await downloadJSONResource("zoom-effect-mappings-ms50gp.json");
+
+  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  startTime = performance.now();
+
+  let mapForMS50GPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+
+  console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
+
+  obj = await downloadJSONResource("zoom-effect-mappings-ms70cdrp.json");
+
+  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  startTime = performance.now();
+
+  let mapForMS70CDRPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+
+  console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
+
+  obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
+
+  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  startTime = performance.now();
+
+  let mapForMSOG: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+
+  console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
+
+  ZoomDevice.setEffectIDMapForMSOG(mapForMSOG);
+
+  // merge maps
+  let parameterMap: Map<number, EffectParameterMap>;
+  parameterMap = mapForMS50GPlus;
+  mapForMS70CDRPlus.forEach((value, key) => {
+    parameterMap.set(key, value);
+  });
+
+  ZoomDevice.setEffectIDMap(parameterMap);
+
+  // mapForMSOG.forEach( (value, key) => {
+  //   if (parameterMap.has(key) === true) {
+  //     console.warn(`Warning: Overriding effect ${parameterMap.get(key)!.name} for with MSOG effect "${value.name}" 0x${key.toString(16).padStart(8, "0")}`);
+  //   }
+  //   parameterMap.set(key, value);
+  // })
+  console.log(`parameterMap.size = ${parameterMap.size}`);
 }
 
 function sleepForAWhile(timeoutMilliseconds: number)
@@ -593,10 +593,10 @@ async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 {
   let screenCollection = zoomDevice.currentScreenCollection;
-  if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
-    // Probably an MSOG device
-    screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
-  }
+  // if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
+  //   // Probably an MSOG device
+  //   screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
+  // }
 
   let compare = previousEditScreenCollection;
   // Note: should probably take patch equality into consideration...

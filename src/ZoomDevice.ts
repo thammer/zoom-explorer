@@ -120,7 +120,7 @@ export class ZoomDevice
   private _patchList: Array<ZoomPatch> = new Array<ZoomPatch>();
   private _rawPatchList: Array<Uint8Array | undefined> = new Array<Uint8Array>();
 
-  private _autoRequestScreens: boolean = false;
+  private _autoUpdateScreens: boolean = false;
   private _autoRequestPatch: boolean = false; // FIXME: Do we need this for anything other than name, and that could have its own event ?
 
   private _autoRequestProgramChange: boolean = false; // MSOG pedals doesn't emit program change when user changes patch, so we need to poll
@@ -362,14 +362,14 @@ export class ZoomDevice
     return this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
   }
 
-  public get autoRequestScreens(): boolean
+  public get autoUpdateScreens(): boolean
   {
-    return this._autoRequestScreens;
+    return this._autoUpdateScreens;
   }
 
-  public set autoRequestScreens(value: boolean)
+  public set autoUpdateScreens(value: boolean)
   {
-    this._autoRequestScreens = value;
+    this._autoUpdateScreens = value;
   }
 
   public get autoRequestPatch(): boolean
@@ -1332,9 +1332,9 @@ export class ZoomDevice
           this.emitMemorySlotChangedEvent();
   
         // FIXME: Perhaps we should only request screens if program has changed
-        if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
-          this.requestScreens();
-      }
+        if (this._autoUpdateScreens)
+          this.updateScreens();
+        }
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.nameCharacterV2)) {
       // Name was edited on device (MS Plus series)
@@ -1355,18 +1355,9 @@ export class ZoomDevice
       // Parameter was edited on device (MS Plus series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
       this.emitEffectParameterChangedEvent();
-      if (this._autoRequestScreens && this.currentPatch !== undefined) {
-        let screens: ZoomScreenCollection | undefined = undefined;
-        if (ZoomDevice._effectIDMapForMSPlus !== undefined)
-          screens = this._currentScreenCollection = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, ZoomDevice._effectIDMapForMSPlus);
-        if (screens !== undefined) {
-          this._currentScreenCollection = screens;
-          this._currentScreenCollectionData = undefined;
-          this.emitScreenChangedEvent();
-        }
-        else if (this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
-          this.requestScreens();
-      }
+      if (this._autoUpdateScreens)
+        this.updateScreens();
+      
     }
     else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
       // Parameter was edited on device (MS series)
@@ -1387,8 +1378,8 @@ export class ZoomDevice
       this._currentPatch = undefined;
       this._currentPatchData = data;
       this.emitCurrentPatchChangedEvent();
-      if (this._autoRequestScreens && this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
-        this.requestScreens();
+      if (this._autoUpdateScreens)
+        this.updateScreens();
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.storeCurrentPatchToMemorySlotV1)) {
       // Current (edit) patch stored to memory slot on device (MS series)
@@ -1436,8 +1427,39 @@ export class ZoomDevice
     else if (this.isMessageType(data, ZoomDevice.messageTypes.screensForCurrentPatch)) {
       this._currentScreenCollectionData = data;
       this._currentScreenCollection = undefined;
+
+      if (this.currentPatch !== undefined && this.effectIDMap !== undefined) {
+        // Some debug logging
+        let incomingScreens = this.currentScreenCollection;
+        let generatedScreens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
+
+        if (incomingScreens !== undefined && generatedScreens !== undefined && incomingScreens.equals(generatedScreens, true))
+          console.log(`Incoming (MIDI) screen and generated screen are equal`);
+        else
+          console.warn(`Warning: Incoming (MIDI) screen and generated screen are different`);
+      }
+
       this.emitScreenChangedEvent();
     }
+  }
+
+  private updateScreens()
+  {
+    if (this.currentPatch === undefined) {
+      console.warn(`Can't update screens for device ${this.deviceInfo.deviceName} because currentPatch is undefined`);
+      return;
+    }
+
+    let screens: ZoomScreenCollection | undefined = undefined;
+    if (this.effectIDMap !== undefined)
+      screens = this._currentScreenCollection = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
+    if (screens !== undefined) {
+      this._currentScreenCollection = screens;
+      this._currentScreenCollectionData = undefined;
+      this.emitScreenChangedEvent();
+    }
+    else if (this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
+      this.requestScreens();
   }
 
   private async probeCommand(command: string, parameters: string, expectedReply: string, probeTimeoutMilliseconds: number, retryWithEditMode: boolean = false) : Promise<Uint8Array | undefined>
@@ -1882,6 +1904,7 @@ export class ZoomDevice
       command.set(paramBuffer, ZoomDevice.messageTypes.parameterValueV2.bytes.length);
       let reply = await device.sendCommandAndGetReply(command, received => true);
 
+      let hiddenParamCount: number = 1;
       let paramValue: number;
       for (paramValue = 0; paramValue < maxParamValue; paramValue++) {
         setParamBuffer(paramBuffer, effectSlot, paramNumber, paramValue);
@@ -1942,7 +1965,7 @@ export class ZoomDevice
             console.warn(`Warning: paramNumber (${paramNumber}) >= screen.parameters.length (${screen.parameters.length}), using (patch) paramValue as textValue. Investigate.`);
             console.warn(`           Unknown = ${paramValue} -> "${paramValue.toString()}"`);
             if (mappingsForParameterValue === undefined)
-              mappingsForParameterValue = { name: "Unknown", values: new Array<string>(), max: 0 };
+              mappingsForParameterValue = { name: `Hidden-${hiddenParamCount++}`, values: new Array<string>(), max: 0 };
             mappingsForParameterValue.values.push(paramValue.toString());
             continue;
           }
