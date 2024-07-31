@@ -4,7 +4,7 @@ import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 
-export type EditPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => void;
+export type EditPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => boolean;
 
 export class ZoomPatchEditor
 {
@@ -110,13 +110,16 @@ export class ZoomPatchEditor
 
       cell.addEventListener("blur", (e) => {
         if (!this.muteBlurOnEscape)
-          if (this.textEditedCallback !== undefined)
-            this.textEditedCallback(e, "blur", cell.innerText !== this.undoOnEscape);
+          if (this.textEditedCallback !== undefined) {
+            let acceptEdit = this.textEditedCallback(e, "blur", cell.innerText !== this.undoOnEscape);
+            if (!acceptEdit)
+              cell.innerText = this.undoOnEscape;
+          }
       });
     }
   }
 
-  update(zoomDevice: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
+  update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
     function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
@@ -137,7 +140,7 @@ export class ZoomPatchEditor
     if (screenCollection === undefined)
       return;
 
-    let maxNumParamsPerLine = 4;
+    let maxNumParamsPerLine = device.numParametersPerPage;
 
     // let offset = 6;
     // let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
@@ -299,7 +302,7 @@ export class ZoomPatchEditor
           td.id = this.encodeEffectAndParameterNumber(effectSlot, parameterNumber);
 
           if (effectID !== -1) {
-            let [rawValue, maxValue] = zoomDevice.getRawParameterValueFromString(effectID, parameterNumber, valueString);
+            let [rawValue, maxValue] = device.getRawParameterValueFromString(effectID, parameterNumber, valueString);
             let percentage = (rawValue / maxValue) * 100;
             td.style.backgroundSize = percentage.toFixed(0).toString() + "%";
           }

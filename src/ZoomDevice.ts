@@ -145,6 +145,7 @@ export class ZoomDevice
   private static _effectIDMapForMSPlus: EffectIDMap | undefined = undefined;
   private static _effectIDMapForMSOG: EffectIDMap | undefined = undefined; 
   private _isMSOG: boolean = false; // Note: Try not to use this much, as we'd rather rely on probing
+  private _numParametersPerPage = 0;
 
   public loggingEnabled: boolean = true;
 
@@ -438,6 +439,11 @@ export class ZoomDevice
   public get currentTempo(): number | undefined
   {
     return this._currentTempo;
+  }
+
+  public get numParametersPerPage(): number
+  {
+    return this._numParametersPerPage;
   }
 
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
@@ -1589,6 +1595,7 @@ export class ZoomDevice
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
     this._isMSOG = [0x58, 0x5F, 0x61].includes(this._zoomDeviceID);
+    this._numParametersPerPage = this._isMSOG ? 3 : 4;
 
     if (this.loggingEnabled) {
       let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replace(/ /g, "").padEnd(2, "00") > b[0].replace(/ /g, "").padEnd(2, "00") ? 1 : -1))
@@ -1601,7 +1608,8 @@ export class ZoomDevice
       console.log(`  Patches per bank:        ${this._patchesPerBank == -1 ? "Unknown" : this._patchesPerBank}`);
       console.log(`  CRC bytes v1 mem patch:  ${this._patchDumpForMemoryLocationV1CRCBytes}`);
       console.log(`  PTCF format support:     ${this._ptcfPatchFormatSupported}`);
-      console.log(`  Bank and prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
+      console.log(`  Bank + prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
+      console.log(`  Num parameters per page: ${this._numParametersPerPage}`);
       console.log(`  Is MSOG device:          ${this._isMSOG}`);
       
     }

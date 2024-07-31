@@ -217,8 +217,8 @@ async function start()
 
   console.log(`parameterMap.size = ${parameterMap.size}`);
 
-  patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean) => {
-    handlePatchEdited(zoomDevice, event, type, dirty);
+  patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean): boolean => {
+    return handlePatchEdited(zoomDevice, event, type, dirty);
   });
   
   // console.log("Call and response start");
@@ -1168,14 +1168,14 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 }
 
 
-function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, dirty: boolean)
+function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, dirty: boolean): boolean
 {
   console.log(`Patch edited e is "${event}`);
   if (event.target === null)
-    return;
+    return false;
   if (currentZoomPatch === undefined) {
     console.error("Attempting to edit patch when currentZoomPatch is undefined")
-    return;
+    return false;
   }
 
   let cell = event.target as HTMLTableCellElement;
@@ -1228,46 +1228,48 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
       let valueString = cell.innerText;
       let [rawValue, maxValue] = zoomDevice.getRawParameterValueFromString(effectID, parameterNumber, valueString);
 
-      if (maxValue !== -1 && rawValue >= 0 && rawValue <= maxValue) {
-        let updateParameter;
-        if (type === "blur") {
+      if (maxValue === -1 || rawValue < 0 || rawValue > maxValue) {
+        return false; // mapped parameter not found, cancel edit
+      }
+
+      let updateParameter;
+      if (type === "blur") {
+        updateParameter = true;
+      }
+      else if (type === "key" && event instanceof KeyboardEvent) {
+        updateParameter = false;
+        if (event.key === "ArrowUp") {
+          rawValue = Math.min(maxValue, rawValue + 1);
           updateParameter = true;
         }
-        else if (type === "key" && event instanceof KeyboardEvent) {
-          updateParameter = false;
-          if (event.key === "ArrowUp") {
-            rawValue = Math.min(maxValue, rawValue + 1);
-            updateParameter = true;
-          }
-          else if (event.key === "ArrowDown") {
-            rawValue = Math.max(0, rawValue - 1);
-            updateParameter = true;
-          }
-          else if (event.key === "PageUp") {
-            rawValue = Math.min(maxValue, rawValue + 10);
-            updateParameter = true;
-          }
-          else if (event.key === "PageDown") {
-            rawValue = Math.max(0, rawValue - 10);
-            updateParameter = true;
-          }
-          else if (event.key === "Tab") {
-            let newParameterNumber = Math.min(currentZoomPatch.effectSettings[effectSlot].parameters.length - 1, 
-              Math.max(0, parameterNumber + (event.shiftKey ? -1 : 1)));
-            let cell = patchEditor.getCell(effectSlot, newParameterNumber);
-            if (cell !== undefined) {
-              cell.focus();
-            }
-          }
-        }        
-        if (updateParameter) {
-          cell.innerHTML = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, rawValue);
-          setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, rawValue], "effectSettings");
+        else if (event.key === "ArrowDown") {
+          rawValue = Math.max(0, rawValue - 1);
+          updateParameter = true;
         }
-    }
-      // else reject the edit and fall back to a safe value
+        else if (event.key === "PageUp") {
+          rawValue = Math.min(maxValue, rawValue + 10);
+          updateParameter = true;
+        }
+        else if (event.key === "PageDown") {
+          rawValue = Math.max(0, rawValue - 10);
+          updateParameter = true;
+        }
+        else if (event.key === "Tab") {
+          let newParameterNumber = Math.min(currentZoomPatch.effectSettings[effectSlot].parameters.length - 1, 
+            Math.max(0, parameterNumber + (event.shiftKey ? -1 : 1)));
+          let cell = patchEditor.getCell(effectSlot, newParameterNumber);
+          if (cell !== undefined) {
+            cell.focus();
+          }
+        }
+      }        
+      if (updateParameter) {
+        cell.innerHTML = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, rawValue);
+        setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, rawValue], "effectSettings");
+      }
     } 
   }
+  return true;
 }
 
 function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectSettings>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
