@@ -927,7 +927,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   button.addEventListener("click", (event) => {
     if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
       let device = zoomDevices[0];
-      device.uploadCurrentPatch(savePatch);
+      device.uploadPatchToCurrentPatch(savePatch);
     }
   });
   headerCell.appendChild(button);
@@ -1301,7 +1301,7 @@ function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectS
 
   zoomPatch.updatePatchPropertiesFromDerivedProperties();
   if (syncToCurrentPatchOnPedalImmediately)
-    zoomDevice.uploadCurrentPatch(zoomPatch)
+    zoomDevice.uploadPatchToCurrentPatch(zoomPatch)
 
   updatePatchInfoTable(zoomPatch);
 }

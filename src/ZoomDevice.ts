@@ -664,7 +664,7 @@ export class ZoomDevice
       return undefined;
   }
 
-  public uploadCurrentPatch(patch: ZoomPatch, cacheCurrentPatch: boolean = true) 
+  public uploadPatchToCurrentPatch(patch: ZoomPatch, cacheCurrentPatch: boolean = true) 
   {
     let data: Uint8Array | undefined;
     if (patch.ptcfChunk !== null)
@@ -698,6 +698,8 @@ export class ZoomDevice
       this._currentPatch = patch.clone();
       Object.freeze(this._currentPatch);
     }
+
+    this.updateScreens();
   }
 
   /**
@@ -1351,29 +1353,40 @@ export class ZoomDevice
       this._currentTempo = data[9] + ((data[10] & 0b01111111) << 7);
       this.emitTempoChangedEvent();
     }
-    else if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {
-      // Parameter was edited on device (MS Plus series)
+    else if (messageType === MessageType.SysEx && 
+      ( (data.length === 15 && data[4] === 0x64 && data[5] === 0x20) || (data.length === 10 && data[4] === 0x31)) ) {
+      // Parameter was edited on device (MS Plus or MSOG series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
+      let parameterIndex = this._currentEffectParameterNumber - 2;
+      if (this.currentPatch !== undefined && this.currentPatch.effectSettings !== null && 
+          this._currentEffectSlot < this.currentPatch.effectSettings.length && parameterIndex < this.currentPatch.effectSettings[this._currentEffectSlot].parameters.length) {
+        this.currentPatch.effectSettings[this._currentEffectSlot].parameters[parameterIndex] = this._currentEffectParameterValue;
+      }
+      else {
+        console.warn(`Received invalid effect edit parameters. this._currentEffectSlot: ${this._currentEffectSlot}, this._currentEffectParameterNumber: ${this._currentEffectParameterNumber}`);
+        console.warn(`curentPatch: ${this.currentPatch}, effectSettings: ${this.currentPatch?.effectSettings}, ` + 
+          `this.currentPatch.effectSettings.length: ${this.currentPatch?.effectSettings?.length}, ` + 
+          `this.currentPatch.effectSettings[${parameterIndex}].parameters.length: ${this.currentPatch?.effectSettings?.[parameterIndex]?.parameters?.length}`);
+      }
       this.emitEffectParameterChangedEvent();
       if (this._autoUpdateScreens)
         this.updateScreens();
       
     }
-    else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
-      // Parameter was edited on device (MS series)
-      [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
-      this.emitEffectParameterChangedEvent();
-      if (ZoomDevice._effectIDMapForMSOG !== undefined && this.currentPatch !== undefined) {
-        let screens: ZoomScreenCollection | undefined;
-        screens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, ZoomDevice._effectIDMapForMSOG);
-        if (screens !== undefined) {
-          this._currentScreenCollection = screens;
-          this._currentScreenCollection = undefined;
-          this.emitScreenChangedEvent();
-        }
-      }
-
-    }
+    // else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
+    //   // Parameter was edited on device (MS series)
+    //   [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
+    //   this.emitEffectParameterChangedEvent();
+    //   if (ZoomDevice._effectIDMapForMSOG !== undefined && this.currentPatch !== undefined) {
+    //     let screens: ZoomScreenCollection | undefined;
+    //     screens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, ZoomDevice._effectIDMapForMSOG);
+    //     if (screens !== undefined) {
+    //       this._currentScreenCollection = screens;
+    //       this._currentScreenCollection = undefined;
+    //       this.emitScreenChangedEvent();
+    //     }
+    //   }
+    // }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) || this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2)) {
       this._currentPatch = undefined;
       this._currentPatchData = data;
@@ -1443,11 +1456,11 @@ export class ZoomDevice
     }
   }
 
-  private updateScreens()
+  public async updateScreens(sync: boolean = false): Promise<ZoomScreenCollection | undefined>
   {
     if (this.currentPatch === undefined) {
       console.warn(`Can't update screens for device ${this.deviceInfo.deviceName} because currentPatch is undefined`);
-      return;
+      return undefined;
     }
 
     let screens: ZoomScreenCollection | undefined = undefined;
@@ -1457,9 +1470,16 @@ export class ZoomDevice
       this._currentScreenCollection = screens;
       this._currentScreenCollectionData = undefined;
       this.emitScreenChangedEvent();
+      return this._currentScreenCollection
     }
-    else if (this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)
-      this.requestScreens();
+    else if (this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported) {
+      if (sync)
+        return await this.downloadScreens();
+      else
+        this.requestScreens();
+    }
+
+    return undefined;
   }
 
   private async probeCommand(command: string, parameters: string, expectedReply: string, probeTimeoutMilliseconds: number, retryWithEditMode: boolean = false) : Promise<Uint8Array | undefined>
@@ -1790,7 +1810,7 @@ export class ZoomDevice
         break;
 
       patch.effectSettings[0].id = id;
-      this.uploadCurrentPatch(patch, false);
+      this.uploadPatchToCurrentPatch(patch, false);
 
       // let verifyPatch = await this.downloadCurrentPatch();
 
