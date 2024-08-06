@@ -49,7 +49,7 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 33             |      6 | *    |         | F0 52 00 6E 33 F7 | Get current bank and program number. Replies with optional bank change messages and a program change message. |
 | 43             |     30 |      | *       | F0 52 00 6E 43 <num patches LSB> <num patches MSB> <patch length LSB> <patch length MSB> <unknown LSB> <unknown MSB> <patches per bank LSB> <patches per bank MSB> <unknown> <zeros> F7 | Bank/patch info. Response to message 44. Probably a more updated version of message 06 for newer pedals. |
 | 44             |      6 | *    |         | F0 52 00 6E 44 F7 | Get bank/patch info. |
-| 45 00 00       |    989 | *    | *       | F0 52 00 6E 45 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> \<length LSB\> \<length MSB\> \<patch data\> \<5 byte CRC\> F7 | Patch dump, automatically sent a few seconds after user changes a parameter, or after message type 46 00 is sent to the pedal |
+| 45 00 00       |    989 | *    | *       | F0 52 00 6E 45 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> \<length LSB\> \<length MSB\> \<patch data\> \<5 byte CRC\> F7 | Patch dump, automatically sent a few seconds after user changes a parameter, or after message type 46 00 is sent to the pedal. Perhaps this is sent only if auto save is enabled on pedal. |
 | 46 00          |     12 | *    |         | F0 52 00 6E 46 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Download patch from given bank/program slot |
 | 50             |      6 | *    |         | F0 52 00 6E 50 F7 | Parameter edit enable |
 | 51             |      6 | *    |         | F0 52 00 6E 51 F7 | Parameter edit disable |

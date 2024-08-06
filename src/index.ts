@@ -155,7 +155,7 @@ async function start()
     device.addMemorySlotChangedListener(handleMemorySlotChangedEvent);
     device.autoUpdateScreens = true;
     device.addScreenChangedListener(handleScreenChangedEvent)
-    device.autoRequestPatch = true;
+    device.autoRequestCurrentPatch = true;
     device.addCurrentPatchChangedListener(handleCurrentPatchChanged);
     device.addPatchChangedListener(handlePatchChanged);
     device.autoRequestProgramChange = true;
@@ -593,10 +593,11 @@ async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 {
   let screenCollection = zoomDevice.currentScreenCollection;
-  // if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
-  //   // Probably an MSOG device
-  //   screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
-  // }
+  if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
+    // Probably an MSOG device
+    // FIXME: Not the most robust of designs... Depends on mapping being loaded and existing for that pedal.
+    screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
+  }
 
   let compare = previousEditScreenCollection;
   // Note: should probably take patch equality into consideration...
@@ -1060,7 +1061,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       if (patch.prm2Unknown.length > 2)
         tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
       if (patch.prm2Unknown.length > 12)
-        editEffectSlotString = `${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
+        editEffectSlotString = `${patch.prm2EditEffectSlot}  bits: ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
       if (patch.prm2Unknown.length > 20)
         driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
     };
@@ -1135,6 +1136,9 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       let msogUnknown1_0_str = "EEDDDDDD";
       let msogUnknown1_1_str = "TTTMMM" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
       let msogUnknown1_2_str = patch.msogUnknown1[2].toString(2).padStart(8, "0").substring(0, 3) + "TTTTT";
+      // let msogUnknown1_0_str = patch.msogUnknown1[0].toString(2).padStart(8, "0");
+      // let msogUnknown1_1_str = patch.msogUnknown1[1].toString(2).padStart(8, "0");
+      // let msogUnknown1_2_str = patch.msogUnknown1[2].toString(2).padStart(8, "0");
       msogString += `  Unknown1: ${msogUnknown1_0_str} ${msogUnknown1_1_str} ${msogUnknown1_2_str}.`;
     }
     if (patch.msogUnknown2 !== null)
@@ -1180,6 +1184,8 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
 
   let cell = event.target as HTMLTableCellElement;
   let [effectSlot, parameterNumber] = patchEditor.getEffectAndParameterNumber(cell.id);
+  console.log(`type = ${type}, cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
+
 
   if (cell.id === "editPatchTableNameID") {
     if (type === "focus") {
@@ -1222,7 +1228,7 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
     } 
   }
   else if (effectSlot !== undefined && parameterNumber !== undefined) {
-    if (currentZoomPatch !== undefined && currentZoomPatch.effectSettings !== null && effectSlot< currentZoomPatch.effectSettings.length) {
+    if (currentZoomPatch !== undefined && currentZoomPatch.effectSettings !== null && effectSlot < currentZoomPatch.effectSettings.length) {
       let effectID: number = -1;
       effectID = currentZoomPatch.effectSettings[effectSlot].id;
       let valueString = cell.innerText;
@@ -1233,7 +1239,16 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
       }
 
       let updateParameter;
-      if (type === "blur") {
+      if (type === "focus") {
+        if (currentZoomPatch.currentEffectSlot !== effectSlot) {
+          currentZoomPatch.currentEffectSlot = effectSlot;
+          zoomDevice.setCurrentEffectSlot(effectSlot);
+          // currentZoomPatch.updatePatchPropertiesFromDerivedProperties();
+          // zoomDevice.uploadPatchToCurrentPatch(currentZoomPatch);      
+          updatePatchInfoTable(currentZoomPatch);
+        }
+      }
+      else if (type === "blur") {
         updateParameter = true;
       }
       else if (type === "key" && event instanceof KeyboardEvent) {
@@ -1262,8 +1277,10 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
             cell.focus();
           }
         }
-      }        
+      }
+
       if (updateParameter) {
+        currentZoomPatch.currentEffectSlot = effectSlot;
         cell.innerHTML = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, rawValue);
         setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, rawValue], "effectSettings");
       }
@@ -1291,17 +1308,27 @@ function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectS
     } else if (effectSettingsKey === "parameters") {
       let parameterNumber = value[2];
       let parameterIndex = parameterNumber - 2;
-      zoomPatch.effectSettings[effectSlot].parameters[parameterIndex] = value[3] as number;
+      let newValue = value[3] as number;
+      if (newValue != zoomPatch.effectSettings[effectSlot].parameters[parameterIndex]) {
+        zoomPatch.effectSettings[effectSlot].parameters[parameterIndex] = newValue;
+  
+        zoomPatch.updatePatchPropertiesFromDerivedProperties();
+        if (syncToCurrentPatchOnPedalImmediately) {
+          zoomDevice.setEffectParameterForCurrentPatch(effectSlot, parameterNumber, newValue);
+          // zoomDevice.uploadPatchToCurrentPatch(zoomPatch);
+        }
+      }
     }
   } 
   else {
     // Set basic parameter
     (zoomPatch[key] as T) = value; 
+
+    zoomPatch.updatePatchPropertiesFromDerivedProperties();
+    if (syncToCurrentPatchOnPedalImmediately) 
+      zoomDevice.uploadPatchToCurrentPatch(zoomPatch)
   }
 
-  zoomPatch.updatePatchPropertiesFromDerivedProperties();
-  if (syncToCurrentPatchOnPedalImmediately)
-    zoomDevice.uploadPatchToCurrentPatch(zoomPatch)
 
   updatePatchInfoTable(zoomPatch);
 }

@@ -176,7 +176,7 @@ export class ZoomScreenCollection
 
       let numParameters = effectMap.parameters.length;
       if (effectMap.parameters.length < effectSettings.parameters.length) {
-        console.log(`effectMap.parameters.length ${effectMap.parameters.length} < effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
+        // console.log(`effectMap.parameters.length ${effectMap.parameters.length} < effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
           // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
       } 
       else if (effectMap.parameters.length > effectSettings.parameters.length) {

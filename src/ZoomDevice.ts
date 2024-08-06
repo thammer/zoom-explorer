@@ -37,6 +37,7 @@ class ZoomMessageTypes
   requestPatchDumpForMemoryLocationV1 = new StringAndBytes("09 00 00"); // 09 00 00 <patch number>
   patchDumpForCurrentPatchV1 = new StringAndBytes("28");
   requestCurrentPatchV1 = new StringAndBytes("29");
+  parameterValueV1 = new StringAndBytes("31");
   storeCurrentPatchToMemorySlotV1 = new StringAndBytes("32");
   requestCurrentBankAndProgramV1 = new StringAndBytes("33");
   bankAndPatchInfoV2 =  new StringAndBytes("43");
@@ -80,6 +81,8 @@ export type EffectIDMap = Map<number, EffectParameterMap>;
  *   - object will do its best to keep the currentScreenCollection up to date when parameters or patches changes 
  *     - parameters changed
  *     - current patch received
+ * 
+ * 
  */
 export class ZoomDevice
 {
@@ -147,6 +150,7 @@ export class ZoomDevice
   private _isMSOG: boolean = false; // Note: Try not to use this much, as we'd rather rely on probing
   private _numParametersPerPage = 0;
 
+  public freezeCurrentPatch: boolean = false; // set to true for debugging, but might slow down execution, so it's not recommended for production
   public loggingEnabled: boolean = true;
 
   constructor(midi: IMIDIProxy, midiDevice: MIDIDeviceDescription, timeoutMilliseconds: number = 300)
@@ -372,12 +376,12 @@ export class ZoomDevice
     this._autoUpdateScreens = value;
   }
 
-  public get autoRequestPatch(): boolean
+  public get autoRequestCurrentPatch(): boolean
   {
     return this._autoRequestPatch;
   }
 
-  public set autoRequestPatch(value: boolean)
+  public set autoRequestCurrentPatch(value: boolean)
   {
     this._autoRequestPatch = value;
   }
@@ -402,6 +406,12 @@ export class ZoomDevice
       this._autoRequestProgramChange = value;
   }
 
+  /**
+   * Returns the current patch, as it is on the pedal. Properties of the current patch is not supposed to be changed by client code,
+   * only by code inside this class.
+   * We could enforce this by freezing the object, but that would have performance implications, resulting in a lot of unnecessary object cloning.
+   * ZoomDevice will attempt to keep this property in sync with the pedal at all times. 
+   */
   public get currentPatch(): ZoomPatch | undefined
   {
     if (this._currentPatchData !== undefined) {
@@ -413,7 +423,8 @@ export class ZoomDevice
         let patch = ZoomPatch.fromPatchData(eightBitData);
         if (patch !== undefined) {
           this._currentPatch = patch;
-          Object.freeze(this._currentPatch);
+          if (this.freezeCurrentPatch)
+            Object.freeze(this._currentPatch);
         }
       }
       this._currentPatchData = undefined;
@@ -446,6 +457,120 @@ export class ZoomDevice
     return this._numParametersPerPage;
   }
 
+  public setCurrentEffectSlot(effectSlot: number)
+  {
+    if (this.currentPatch === undefined) {
+      console.error(`Unable to set effect slot ${effectSlot} because currentPatch is undefined`);
+      return;
+    }
+
+    if (this.currentPatch.effectSettings === null || effectSlot >= this.currentPatch.effectSettings.length) {
+      console.error(`Unable to set effect parameter for current patch because effectSlot ${effectSlot} is out of range`);
+      return;
+    }
+
+    if (this.currentPatch.currentEffectSlot !== this._currentEffectSlot) {
+      console.warn(`currentPatch.currentEffectSlot (${this.currentPatch.currentEffectSlot}) !== _currentEffectSlot (${this._currentEffectSlot})`);
+    }
+
+    if (this._currentEffectSlot !== effectSlot)
+    {
+      let patch = this.freezeCurrentPatch ? this.currentPatch.clone() : this.currentPatch;
+
+      patch.currentEffectSlot = effectSlot;
+
+      if (this._supportedCommands.get(ZoomDevice.messageTypes.parameterValueV2.str) === SupportType.Supported) {
+        // Change current effect slot using sysex command 64 20 00 64 01
+        // FIXME: Optimize this. Use preallocated memory instead of allocating each time. Look at constructor.
+        // This should be one buffer for the whole sysex message
+        let parameterBuffer = new Uint8Array(7);
+        parameterBuffer[0] = 0x64;
+        parameterBuffer[1] = 0x01;
+        parameterBuffer[2] = effectSlot;
+  
+        let command = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + parameterBuffer.length);
+        command.set(ZoomDevice.messageTypes.parameterValueV2.bytes);
+        command.set(parameterBuffer, ZoomDevice.messageTypes.parameterValueV2.bytes.length);
+          
+        this.sendCommand(command);
+      }
+      else {
+        // Change current effect slot by updating current patch with the correct effect slot number
+        patch.updatePatchPropertiesFromDerivedProperties();
+        this.uploadPatchToCurrentPatch(patch);      
+      }
+
+      if (this.freezeCurrentPatch) {
+        this._currentPatch = patch;
+        Object.freeze(this._currentPatch);
+      }
+  
+
+      this._currentEffectSlot = effectSlot;
+    }
+  }
+
+  public setEffectParameterForCurrentPatch(effectSlot: number, parameterNumber: number, value: number)
+  {
+    if (this.currentPatch === undefined) {
+      console.error(`Unable to set effect parameter for current patch because currentPatch is undefined`);
+      return;
+    }
+
+    let patch = this.freezeCurrentPatch ? this.currentPatch.clone() : this.currentPatch;
+    let parameterIndex = parameterNumber - 2;
+
+    if (patch.effectSettings === null || effectSlot >= patch.effectSettings.length || parameterIndex >= patch.effectSettings[effectSlot].parameters.length) {
+      console.error(`Unable to set effect parameter for current patch because effectSlot ${effectSlot} or parameterIndex ${parameterIndex} is out of range`);
+      return;
+    }
+
+    patch.effectSettings[effectSlot].parameters[parameterIndex] = value;
+    
+    if (this._supportedCommands.get(ZoomDevice.messageTypes.parameterValueV2.str) === SupportType.Supported) {
+      // FIXME: Optimize this. Use preallocated memory instead of allocating each time. Look at constructor.
+      // This should be one buffer for the whole sysex message
+      let parameterBuffer = new Uint8Array(7);
+      parameterBuffer[0] = effectSlot;
+      parameterBuffer[1] = parameterNumber;
+      parameterBuffer[2] = value & 0b01111111; // LSB
+      parameterBuffer[3] = (value >> 7) & 0b01111111; // MSB
+
+      let command = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + parameterBuffer.length);
+      command.set(ZoomDevice.messageTypes.parameterValueV2.bytes);
+      command.set(parameterBuffer, ZoomDevice.messageTypes.parameterValueV2.bytes.length);
+        
+      this.sendCommand(command);
+    }
+    else if (this._supportedCommands.get(ZoomDevice.messageTypes.parameterValueV1.str) === SupportType.Supported) {
+      if (effectSlot < 3) {
+        // FIXME: Store "3" in a constant somewhere
+        // FIXME: Optimize this. Use preallocated memory instead of allocating each time. Look at constructor.
+        // This should be one buffer for the whole sysex message
+        let parameterBuffer = new Uint8Array(4);
+        parameterBuffer[0] = effectSlot;
+        parameterBuffer[1] = parameterNumber;
+        parameterBuffer[2] = value & 0b01111111; // LSB
+        parameterBuffer[3] = (value >> 7) & 0b01111111; // MSB
+  
+        let command = new Uint8Array(ZoomDevice.messageTypes.parameterValueV1.bytes.length + parameterBuffer.length);
+        command.set(ZoomDevice.messageTypes.parameterValueV1.bytes);
+        command.set(parameterBuffer, ZoomDevice.messageTypes.parameterValueV1.bytes.length);
+          
+        this.sendCommand(command);
+      }
+      else {
+        this.uploadPatchToCurrentPatch(patch);
+      }
+    }
+
+    if (this.freezeCurrentPatch) {
+      this._currentPatch = patch;
+      Object.freeze(this._currentPatch);
+    }
+
+  }
+
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
   {
     let reply: Uint8Array | undefined;
@@ -471,7 +596,8 @@ export class ZoomDevice
     if (eightBitData != undefined) {
       this._currentPatchData = undefined;
       this._currentPatch = ZoomPatch.fromPatchData(eightBitData);
-      Object.freeze(this._currentPatch);
+      if (this.freezeCurrentPatch)
+        Object.freeze(this._currentPatch);
       return this._currentPatch;
     }
     else
@@ -695,8 +821,11 @@ export class ZoomDevice
 
     if (cacheCurrentPatch) {
       this._currentPatchData = undefined;
-      this._currentPatch = patch.clone();
-      Object.freeze(this._currentPatch);
+      if (patch !== this._currentPatch) {
+        this._currentPatch = patch.clone();
+        if (this.freezeCurrentPatch)
+          Object.freeze(this._currentPatch);
+      }
     }
 
     this.updateScreens();
@@ -826,7 +955,8 @@ export class ZoomDevice
   /**
    * Makes sure the patchList is updated with the latest unparsed patches.
    * Received patches aren't parsed immediately, since that is a semi-expensive operation 
-   * and the MS Plus pedals will send patch messages a few seconds after parameter edit.
+   * and the MS Plus pedals will send patch messages a few seconds after parameter edit (if auto-save is enabled).
+   * After this method is called, all patches in the patch list will be parsed.
    */
   private syncPatchList(): void
   {
@@ -1333,8 +1463,7 @@ export class ZoomDevice
         if (!this._autoRequestProgramChangeTimerStarted || this._currentBank !== this._previousBank || this._currentProgram !== this._previousProgram)
           this.emitMemorySlotChangedEvent();
   
-        // FIXME: Perhaps we should only request screens if program has changed
-        if (this._autoUpdateScreens)
+        if (this._autoUpdateScreens && (this._currentBank !== this._previousBank || this._currentProgram !== this._previousProgram))
           this.updateScreens();
         }
     }
@@ -1354,7 +1483,7 @@ export class ZoomDevice
       this.emitTempoChangedEvent();
     }
     else if (messageType === MessageType.SysEx && 
-      ( (data.length === 15 && data[4] === 0x64 && data[5] === 0x20) || (data.length === 10 && data[4] === 0x31)) ) {
+      ( (data.length === 15 && data[4] === 0x64 && data[5] === 0x20 && data[6] === 0x00) || (data.length === 10 && data[4] === 0x31)) ) {
       // Parameter was edited on device (MS Plus or MSOG series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
       let parameterIndex = this._currentEffectParameterNumber - 2;
@@ -1373,20 +1502,6 @@ export class ZoomDevice
         this.updateScreens();
       
     }
-    // else if (messageType === MessageType.SysEx && data.length === 10 && data[4] === 0x31) {
-    //   // Parameter was edited on device (MS series)
-    //   [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
-    //   this.emitEffectParameterChangedEvent();
-    //   if (ZoomDevice._effectIDMapForMSOG !== undefined && this.currentPatch !== undefined) {
-    //     let screens: ZoomScreenCollection | undefined;
-    //     screens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, ZoomDevice._effectIDMapForMSOG);
-    //     if (screens !== undefined) {
-    //       this._currentScreenCollection = screens;
-    //       this._currentScreenCollection = undefined;
-    //       this.emitScreenChangedEvent();
-    //     }
-    //   }
-    // }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) || this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2)) {
       this._currentPatch = undefined;
       this._currentPatchData = data;
@@ -1512,6 +1627,8 @@ export class ZoomDevice
 
   private async probeDevice() 
   {
+    this._disableMidiHandlers = true;
+
     let probeTimeoutMilliseconds = 300;
 
     let command: string;
@@ -1532,10 +1649,18 @@ export class ZoomDevice
     command =ZoomDevice.messageTypes.requestCurrentPatchV1.str;
     expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
+    if (reply !== undefined) {
+      this._currentPatch = undefined;
+      this._currentPatchData = reply;
+    }
 
     command =ZoomDevice.messageTypes.requestCurrentPatchV2.str;
     expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
+    if (reply !== undefined) {
+      this._currentPatch = undefined;
+      this._currentPatchData = reply;
+    }
 
     command =ZoomDevice.messageTypes.requestBankAndPatchInfoV1.str;
     expectedReply = ZoomDevice.messageTypes.bankAndPatchInfoV1.str;
@@ -1636,6 +1761,25 @@ export class ZoomDevice
     expectedReply = ZoomDevice.messageTypes.screensForCurrentPatch.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
+    // Abandoned attempt at probing for setting parameter values
+    // if (this._supportedCommands.get(ZoomDevice.messageTypes.requestCurrentPatchV2.str) == SupportType.Supported && currentPatchV2 !== undefined) {
+    //   // get patch
+    //   let patch = await this.downloadCurrentPatch();
+    //   if (patch !== undefined) {
+    //     let effectSlot = 0;
+    //     patch.effectSettings[]
+    //   }
+    //   // try changing the first parameter and see if we get a confirmation message
+    // }
+
+    // We assume that if we can get current patch using v1 command, then we can also set parameters using v1 command
+    let parameterValueV1Supported = this._supportedCommands.get(ZoomDevice.messageTypes.requestCurrentPatchV1.str) == SupportType.Supported ? SupportType.Supported : SupportType.Unknown;
+    this._supportedCommands.set(ZoomDevice.messageTypes.parameterValueV1.str, parameterValueV1Supported);
+
+    // We assume that if we can get current patch using v2 command, then we can also set parameters using v2 command
+    let parameterValueV2Supported = this._supportedCommands.get(ZoomDevice.messageTypes.requestCurrentPatchV2.str) == SupportType.Supported ? SupportType.Supported : SupportType.Unknown;
+    this._supportedCommands.set(ZoomDevice.messageTypes.parameterValueV2.str, parameterValueV2Supported);
+
     this._isMSOG = [0x58, 0x5F, 0x61].includes(this._zoomDeviceID);
     this._numParametersPerPage = this._isMSOG ? 3 : 4;
 
@@ -1660,6 +1804,8 @@ export class ZoomDevice
 
     if (this.loggingEnabled)
       console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
+
+    this._disableMidiHandlers = false;
   }
 
   get effectIDMap(): EffectIDMap | undefined
