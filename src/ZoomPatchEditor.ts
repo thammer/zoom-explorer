@@ -282,7 +282,13 @@ export class ZoomPatchEditor
       if (screen.parameters.length < 2) {
         console.info(`screen.parameters.length < 2`);
       }
-      effectTable.className = (screen.parameters.length > 0 && screen.parameters[0].valueString === "0") ? "editEffectTable editEffectOff" : "editEffectTable";          
+      let effectTableClass = "editEffectTable";
+      if (patch !== undefined && patch.currentEffectSlot === effectSlot)
+        effectTableClass += " editEffectSlot";
+      if (screen.parameters.length > 0 && screen.parameters[0].valueString === "0")
+        effectTableClass += " editEffectOff";
+
+      effectTable.className = effectTableClass;
       effectHeader.textContent = screen.parameters.length > 1 ? screen.parameters[1].name : "BPM";
 
       for (let cellPairNumber=0; cellPairNumber<numCellsPairsToFill; cellPairNumber++) {

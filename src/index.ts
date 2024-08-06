@@ -1061,9 +1061,13 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       if (patch.prm2Unknown.length > 2)
         tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
       if (patch.prm2Unknown.length > 12)
-        editEffectSlotString = `${patch.prm2EditEffectSlot}  bits: ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
+        editEffectSlotString = `${patch.prm2EditEffectSlot}  bits: ${patch.prm2Unknown[9].toString(2).padStart(8, "0")} ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
       if (patch.prm2Unknown.length > 20)
         driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
+      if (patch.prm2Unknown.length > 13 && patch.prm2Unknown[9] !== 0x80)
+        console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[9]: ${patch.prm2Unknown[9].toString(2).padStart(8, "0")} -Investigate`); 
+      if (patch.prm2Unknown.length > 13 && (patch.prm2Unknown[10] & 0b00011111) !== 0b00001100)
+        console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[10]: ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} -Investigate`); 
     };
     let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
       `                  Unknown: ${unknownString}`;
@@ -1186,7 +1190,6 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
   let [effectSlot, parameterNumber] = patchEditor.getEffectAndParameterNumber(cell.id);
   console.log(`type = ${type}, cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
 
-
   if (cell.id === "editPatchTableNameID") {
     if (type === "focus") {
       console.log("focus");
@@ -1280,7 +1283,11 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
       }
 
       if (updateParameter) {
-        currentZoomPatch.currentEffectSlot = effectSlot;
+        if (currentZoomPatch.currentEffectSlot !== effectSlot) {
+          currentZoomPatch.currentEffectSlot = effectSlot;
+          zoomDevice.setCurrentEffectSlot(effectSlot);
+          updatePatchInfoTable(currentZoomPatch);
+        }
         cell.innerHTML = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, rawValue);
         setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, rawValue], "effectSettings");
       }

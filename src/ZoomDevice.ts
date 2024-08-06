@@ -10,6 +10,7 @@ import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
 export type EffectParameterChangedListenerType = (zoomDevice: ZoomDevice, effectSlot: number, paramNumber: number, paramVaule: number) => void;
+export type EffectSlotChangedListenerType = (zoomDevice: ZoomDevice, effectSlot: number) => void;
 export type CurrentPatchChangedListenerType = (zoomDevice: ZoomDevice) => void;
 export type PatchChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
 export type ScreenChangedListenerType = (zoomDevice: ZoomDevice) => void;
@@ -52,9 +53,10 @@ class ZoomMessageTypes
   requestScreensForCurrentPatch = new StringAndBytes("64 02");
   patchDumpForCurrentPatchV2 = new StringAndBytes("64 12");
   requestCurrentPatchV2 = new StringAndBytes("64 13");
+  nameCharacterV2 = new StringAndBytes("64 20 00 5F");
+  currentEffectSlotV2 = new StringAndBytes("64 20 00 64 01");
   parameterValueV2 = new StringAndBytes("64 20 00");
   parameterValueAcceptedV2 = new StringAndBytes("64 20 01");
-  nameCharacterV2 = new StringAndBytes("64 20 00 5F");
   tempoV2 = new StringAndBytes("64 20 00 64 02");
 }
 
@@ -106,6 +108,7 @@ export class ZoomDevice
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
   private _memorySlotChangedListeners: MemorySlotChangedListenerType[] = new Array<MemorySlotChangedListenerType>();
   private _effectParameterChangedListeners: EffectParameterChangedListenerType[] = new Array<EffectParameterChangedListenerType>();
+  private _effectSlotChangedListeners: EffectSlotChangedListenerType[] = new Array<EffectSlotChangedListenerType>();
   private _currentPatchChangedListeners: CurrentPatchChangedListenerType[] = new Array<CurrentPatchChangedListenerType>();
   private _patchChangedListeners: PatchChangedListenerType[] = new Array<PatchChangedListenerType>();
   private _screenChangedListeners: ScreenChangedListenerType[] = new Array<ScreenChangedListenerType>();
@@ -124,7 +127,7 @@ export class ZoomDevice
   private _rawPatchList: Array<Uint8Array | undefined> = new Array<Uint8Array>();
 
   private _autoUpdateScreens: boolean = false;
-  private _autoRequestPatch: boolean = false; // FIXME: Do we need this for anything other than name, and that could have its own event ?
+  private _autoRequestCurrentPatch: boolean = false; // FIXME: Do we need this for anything other than name, and that could have its own event ?
 
   private _autoRequestProgramChange: boolean = false; // MSOG pedals doesn't emit program change when user changes patch, so we need to poll
   private _autoRequestProgramChangeTimerStarted: boolean = false;
@@ -174,6 +177,8 @@ export class ZoomDevice
     this.connectMessageHandler();
     await this.probeDevice();
     this.startAutoRequestProgramChangeIfNeeded();
+    if (this.autoRequestCurrentPatch)
+      await this.downloadCurrentPatch();
   }
 
   public async close()
@@ -226,6 +231,21 @@ export class ZoomDevice
   private emitEffectParameterChangedEvent() {
     for (let listener of this._effectParameterChangedListeners)
       listener(this, this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue);
+  }
+
+  public addEffectSlotChangedListener(listener: EffectSlotChangedListenerType): void
+  {
+    this._effectSlotChangedListeners.push(listener);
+  }
+
+  public removeEffectSlotChangedListener(listener: EffectSlotChangedListenerType): void
+  {
+    this._effectSlotChangedListeners = this._effectSlotChangedListeners.filter( (l) => l !== listener);
+  }
+
+  private emitEffectSlotChangedEvent() {
+    for (let listener of this._effectSlotChangedListeners)
+      listener(this, this._currentEffectSlot);
   }
 
   public addCurrentPatchChangedListener(listener: CurrentPatchChangedListenerType): void
@@ -378,12 +398,14 @@ export class ZoomDevice
 
   public get autoRequestCurrentPatch(): boolean
   {
-    return this._autoRequestPatch;
+    return this._autoRequestCurrentPatch;
   }
 
   public set autoRequestCurrentPatch(value: boolean)
   {
-    this._autoRequestPatch = value;
+    this._autoRequestCurrentPatch = value;
+    if (this.autoRequestCurrentPatch && this.currentPatch === undefined)
+      this.requestCurrentPatch();
   }
 
   public get autoRequestProgramChange(): boolean
@@ -1473,7 +1495,7 @@ export class ZoomDevice
       // We'll get a lot of these messages just for one changed character, so we'll throttle the request for current patch
       // FIXME: Consider just emitting a name changed event for this particular case, after receiving the throttled new current patch
       this._throttler.doItLater(() => {
-        if (this._autoRequestPatch)
+        if (this._autoRequestCurrentPatch)
           this.requestCurrentPatch();
       }, this._throttleTimeoutMilliseconds);
     }
@@ -1482,8 +1504,27 @@ export class ZoomDevice
       this._currentTempo = data[9] + ((data[10] & 0b01111111) << 7);
       this.emitTempoChangedEvent();
     }
-    else if (messageType === MessageType.SysEx && 
-      ( (data.length === 15 && data[4] === 0x64 && data[5] === 0x20 && data[6] === 0x00) || (data.length === 10 && data[4] === 0x31)) ) {
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.currentEffectSlotV2)) {
+      // Current (edit) effect slot was changed on pedal (MS Plus)
+      let newEffectSLot = data[9];
+      if (this._currentEffectSlot !== newEffectSLot) {
+        this._currentEffectSlot = newEffectSLot;
+
+        if (this.currentPatch !== undefined) {
+          let patch = this.freezeCurrentPatch ? this.currentPatch.clone() : this.currentPatch;
+          patch.currentEffectSlot = this._currentEffectSlot;    
+          if (this.freezeCurrentPatch) {
+            this._currentPatch = patch;
+            Object.freeze(this._currentPatch);
+          }
+        }
+  
+        this.emitEffectSlotChangedEvent();
+        if (this._autoUpdateScreens)
+          this.updateScreens();
+      }
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.parameterValueV2) ||  this.isMessageType(data, ZoomDevice.messageTypes.parameterValueV1)) {
       // Parameter was edited on device (MS Plus or MSOG series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
       let parameterIndex = this._currentEffectParameterNumber - 2;
@@ -1512,7 +1553,7 @@ export class ZoomDevice
     else if (this.isMessageType(data, ZoomDevice.messageTypes.storeCurrentPatchToMemorySlotV1)) {
       // Current (edit) patch stored to memory slot on device (MS series)
       let memorySlot = data[8];
-      if (this._autoRequestPatch) {
+      if (this._autoRequestCurrentPatch) {
         if (this._autoRequestPatchForMemorySlotInProgress)
           console.warn(`Auto-requesting patch from memory slot ${memorySlot} while auto request already in progress for another memory slot ${this._autoRequestPatchMemorySlotNumber}`);
         if (memorySlot !== this.currentMemorySlotNumber)
