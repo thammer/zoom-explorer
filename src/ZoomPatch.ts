@@ -35,6 +35,7 @@ export class ZoomPatch
   maxNameLength: number = 0;
   descriptionEnglish: string = "";
   tempo: number = 0;
+  currentEffectSlot: number = 0;
   
   updateDerivedPropertiesFromPatchProperties()
   {
@@ -50,6 +51,8 @@ export class ZoomPatch
     this.descriptionEnglish = this.txe1DescriptionEnglish !== null ? this.txe1DescriptionEnglish.replace(/\x00/g, "") : "";
 
     this.tempo = this.prm2Tempo !== null ? this.prm2Tempo : this.msogTempo !== null ? this.msogTempo : 0;
+
+    this.currentEffectSlot = this.prm2EditEffectSlot !== null ? this.prm2EditEffectSlot : this.msogEditEffectSlot !== null ? this.msogEditEffectSlot : 0;
   }
 
   updatePatchPropertiesFromDerivedProperties()
@@ -80,6 +83,11 @@ export class ZoomPatch
       this.prm2Tempo = this.tempo;
     else if (this.msogTempo !== null)
       this.msogTempo = this.tempo;
+
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlot = this.currentEffectSlot;
+    else if (this.msogEditEffectSlot !== null)
+      this.msogEditEffectSlot = this.currentEffectSlot;
   }
 
   get name(): string
@@ -512,12 +520,14 @@ export class ZoomPatch
       chunkOffset = 0;
       this.PRM2 = chunkID;
       this.prm2Length = chunkData.length;
-      if (this.prm2Length != null && this.prm2Length > 0) {
+      if (this.prm2Length != null && this.prm2Length > 2) {
         this.prm2Unknown = chunkData.slice(chunkOffset, chunkOffset + this.prm2Length); chunkOffset += this.prm2Length;
         let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
         let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
         this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
-        // FIXME: Read prm2EditEffectSlot, see description above
+        if (this.prm2Length > 10) {
+          this.prm2EditEffectSlot = (this.prm2Unknown[10] & 0b11100000) >> 5;
+        }
       }
     }
 
@@ -804,9 +814,10 @@ export class ZoomPatch
       
       this.prm2Unknown[this.prm2Unknown.length -2] = tempo1;
       this.prm2Unknown[this.prm2Unknown.length -1] = tempo2;
-      // let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
-      // let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
-      // this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
+
+      if (this.prm2Length > 10) {
+        this.prm2Unknown[10] = (this.prm2Unknown[10] & 0b00011111) | (this.currentEffectSlot & 0b00000111) << 5;
+      }
 
       offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.prm2Length); success &&= (result !== 0);
@@ -969,7 +980,13 @@ export class ZoomPatch
 
     this.msogUnknown1[1] = tempo1;
     this.msogUnknown1[2] = tempo2;
-  // this.msogTempo = ((this.msogUnknown1[1] & 0b11100000) >> 5) + ((this.msogUnknown1[2] & 0b00011111) << 3);
+  
+    let leftToRightEffectSlot = 5 - this.currentEffectSlot;
+    this.msogUnknown1[0] &= 0b00111111; // blank the 2 upper bits
+    this.msogUnknown1[0] |= (leftToRightEffectSlot & 0b00000011) << 6; // the two lower bits in the effect slot number
+    this.msogUnknown1[1] &= 0b11111110; // blank the 1 lower bit
+    this.msogUnknown1[1] |= (leftToRightEffectSlot & 0b00000100) >> 2; // bit 3 in the effect slot number
+    // let leftToRightEffectSlot = ((this.msogUnknown1[0] & 0b11000000) >> 6) + ((this.msogUnknown1[1] & 0b00000001) << 2);
 
     offset = result = this.writeSlice(msogDataBuffer, offset, this.msogUnknown1); success &&= (result !== 0);  
 
@@ -1053,7 +1070,8 @@ export class ZoomPatch
 
     this.msogTempo = ((this.msogUnknown1[1] & 0b11100000) >> 5) + ((this.msogUnknown1[2] & 0b00011111) << 3);
 
-    this.msogEditEffectSlot = ((this.msogUnknown1[0] & 0b11000000) >> 6) + ((this.msogUnknown1[2] & 0b00000001) << 2);
+    let leftToRightEffectSlot = ((this.msogUnknown1[0] & 0b11000000) >> 6) + ((this.msogUnknown1[1] & 0b00000001) << 2);
+    this.msogEditEffectSlot = 5 - leftToRightEffectSlot;
 
     this.msogDSPFullBits = (this.msogUnknown1[0] & 0b00111111);
 
