@@ -528,6 +528,24 @@ export class ZoomPatch
         if (this.prm2Length > 10) {
           this.prm2EditEffectSlot = (this.prm2Unknown[10] & 0b11100000) >> 5;
         }
+        /*
+        o prm2 unknown byte 9 is always 0x80. But scanning through patches om MS-50G+ gives 1 anomaly (warning) for this (Krampus drive).
+        o prm2 unknown byte 10 is always 3 effect slot bits, then 01100. But scanning through patches om MS-50G+ gives 1 anomaly (warning) for this (Krampus drive).
+        o prm2 unknown bytes 11 and 12 change depending on effect slot. Byte 12 is probably logically before byte 11.
+
+          Effect slot B11 B12 Bits 11  Bits 12  Bits 11
+                    1 42  86  01000010 10000110 01000010
+                    2 64  A8  01100100 10101000 01100100
+                    3 86  0A  10000110 00001010 10000110
+                    4 A8  00  10101000 00000000 10101000
+                    5 0A  00  00001010 00000000 00001010
+                    6 00  00  00000000 00000000 00000000
+              
+          It's just a bit pattern that is shifted four bits to the right for each effect slot, 
+          and it's the same for each patch, no matter which effect is selected in each slot. Weird.
+        */
+
+
       }
     }
 
