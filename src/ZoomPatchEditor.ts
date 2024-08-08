@@ -5,12 +5,15 @@ import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 
 export type EditPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => boolean;
+export type EditPatchMouseEventListenerType = (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => void;
 
 let debugCounter = 0;
 
 export class ZoomPatchEditor
 {
   private textEditedCallback: EditPatchTextEditedListenerType | undefined = undefined;
+  private mouseMovedCallback: EditPatchMouseEventListenerType | undefined = undefined;
+  private mouseUpCallback: EditPatchMouseEventListenerType | undefined = undefined;
 
   private undoOnEscape = "";
   private muteBlurOnEscape = false;
@@ -25,6 +28,11 @@ export class ZoomPatchEditor
   private patchTempoCell: HTMLTableCellElement;
   private patchDescriptionRow: HTMLTableRowElement;
   private patchDescriptionCell: HTMLTableCellElement;
+
+  private currentMouseMoveCell: HTMLTableCellElement | undefined = undefined;
+  private initialMouseMoveCellText: string = "";
+  private mouseDownX: number = 0;
+  private mouseDownY: number = 0;
 
   constructor()
   {
@@ -47,11 +55,56 @@ export class ZoomPatchEditor
     for (let cell of [this.patchNameCell, this.patchTempoCell, this.patchDescriptionCell]) {
       this.setupEventListenersForCell(cell);
     }
+
+    document.addEventListener("mousemove", e => {
+      if (this.currentMouseMoveCell !== undefined && this.mouseMovedCallback !== undefined) {
+        let xOffset = e.pageX - this.mouseDownX;
+        let yOffset = -1 * (e.pageY - this.mouseDownY);
+
+        // if (Math.abs(yOffset) > 8) {
+        //   // attempt to disable selection
+        //   let sel = window.getSelection();
+        //   if (sel !== null) {
+        //     const range = sel.getRangeAt(0);
+        //     const { startOffset, endOffset } = range;
+        //     if (endOffset - startOffset > 0) {
+        //         this.setCaret(this.currentMouseMoveCell, endOffset);
+        //     }
+        //   }
+        // }
+
+        this.mouseMovedCallback(this.currentMouseMoveCell, this.initialMouseMoveCellText, xOffset, yOffset);
+      }
+    });
+
+    window.addEventListener("mouseup", (e) => {
+      if (e.button === 0) {
+        let xOffset = e.pageX - this.mouseDownX;
+        let yOffset = -1 * (e.pageY - this.mouseDownY);
+
+        if (this.mouseUpCallback !== undefined && this.currentMouseMoveCell !== undefined)
+          this.mouseUpCallback(this.currentMouseMoveCell, this.initialMouseMoveCellText, xOffset, yOffset);
+        
+        this.currentMouseMoveCell = undefined;
+        this.initialMouseMoveCellText = ""
+      }
+    });
+
   }
 
   setTextEditedCallback(textEditedCallback: EditPatchTextEditedListenerType) 
   { 
     this.textEditedCallback = textEditedCallback;
+  }
+
+  setMouseMovedCallback(mouseMovedCallback: EditPatchMouseEventListenerType) 
+  { 
+    this.mouseMovedCallback = mouseMovedCallback;
+  }
+
+  setMouseUpCallback(mouseUpCallback: EditPatchMouseEventListenerType) 
+  { 
+    this.mouseUpCallback = mouseUpCallback;
   }
 
   getEffectAndParameterNumber(str: string): [effectSlot: number | undefined, parameterNumber: number | undefined] {
@@ -75,9 +128,28 @@ export class ZoomPatchEditor
     return cell;
   }
 
+  private setCaret(target: HTMLElement, position = 0)
+  {
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.setStart(target.childNodes[0], position);
+    range.collapse(true);
+    if (sel !== null) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+
   private setupEventListenersForCell(cell: HTMLTableCellElement) {
     if (cell !== undefined) {
       cell.contentEditable = supportsContentEditablePlaintextOnly() ? "plaintext-only" : "true";
+
+      cell.ondrag = () => { this.currentMouseMoveCell = undefined; return false; };
+      cell.ondragenter = () => { this.currentMouseMoveCell = undefined; return false; };
+      cell.ondragleave = () => { this.currentMouseMoveCell = undefined; return false; };
+      cell.ondragover = () => { this.currentMouseMoveCell = undefined; return false; };
+      cell.ondragstart = () => { this.currentMouseMoveCell = undefined; return false; };
+      cell.ondragend = () => { this.currentMouseMoveCell = undefined; return false; };
 
       cell.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -117,6 +189,15 @@ export class ZoomPatchEditor
             if (!acceptEdit)
               cell.innerText = this.undoOnEscape;
           }
+      });
+
+      cell.addEventListener("mousedown", (e) => {
+        if (e.button === 0) {
+          this.currentMouseMoveCell = cell;
+          this.initialMouseMoveCellText = cell.innerText;
+          this.mouseDownX = e.pageX;
+          this.mouseDownY = e.pageY;
+        }
       });
     }
   }
@@ -330,5 +411,13 @@ export class ZoomPatchEditor
           td.textContent = " ";
       }
     }
+  }
+
+  updateValueBar(cell: HTMLTableCellElement, rawValue: number, maxValue: number)
+  {
+    let id = cell.id;
+    let [effectSlot, parameterNumber] = this.getEffectAndParameterNumber(id);
+    let percentage = (rawValue / maxValue) * 100;
+    cell.style.backgroundSize = percentage.toFixed(0).toString() + "%";
   }
 }

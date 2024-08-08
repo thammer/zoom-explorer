@@ -169,7 +169,15 @@ async function start()
   patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean): boolean => {
     return handlePatchEdited(zoomDevice, event, type, dirty);
   });
+
+  patchEditor.setMouseMovedCallback( (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
+    handleMouseMoved(zoomDevice, cell, initialValueString, x, y);
+  });
   
+  patchEditor.setMouseUpCallback( (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
+    handleMouseUp(zoomDevice, cell, initialValueString, x, y);
+  });
+
   // console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
   // let commandIndex = 0x51;
@@ -1295,6 +1303,57 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
   }
   return true;
 }
+
+function handleMouseMoved(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, initialValueString: string, x: number, y: number)
+{
+  if (currentZoomPatch === undefined) {
+    console.error("Attempting to edit patch when currentZoomPatch is undefined")
+    return;
+  }
+
+  let [effectSlot, parameterNumber] = patchEditor.getEffectAndParameterNumber(cell.id);
+  console.log(`Mouse move (${x}, ${y}) for cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
+
+  if (effectSlot !== undefined && parameterNumber !== undefined && currentZoomPatch !== undefined && 
+    currentZoomPatch.effectSettings !== null && effectSlot < currentZoomPatch.effectSettings.length)
+  {
+    let effectID: number = -1;
+    effectID = currentZoomPatch.effectSettings[effectSlot].id;
+    let currentValueString = cell.innerText;
+    let [currentRawValue, maxValue] = zoomDevice.getRawParameterValueFromString(effectID, parameterNumber, currentValueString);
+    let initialRawValue;
+    [initialRawValue, maxValue] = zoomDevice.getRawParameterValueFromString(effectID, parameterNumber, initialValueString);
+
+    if (maxValue === -1 || initialRawValue < 0 || initialRawValue > maxValue) {
+      return; // mapped parameter not found, cancel edit
+    }
+
+    // let angle = Math.atan2(y, x);
+    // angle = Number.isNaN(angle) ? 0 : angle;
+    // let sign = angle > - Math.PI/4 && angle < Math.PI*3/4 ? 1 : -1;
+    // let sign = x >= 0 ? 1 : -1;
+    // let distance = 0.1 * Math.sqrt(x*x + y*y) * sign;
+    let deadZone = 10;
+    if (Math.abs(y) < deadZone)
+      return; // mouse is too close to initial position, cancel edit
+    y = (Math.abs(y) - deadZone) * Math.sign(y);
+    let scale = maxValue <= 25 ? 0.12 : maxValue <= 50 ? 0.25 :maxValue <= 100 ? 0.5 : maxValue <= 150 ? 0.7 : 1;
+    let distance = scale * y;
+    let newRawValue = Math.round(Math.max(0, Math.min(maxValue, initialRawValue + distance)));
+
+    if (newRawValue !== currentRawValue) {
+      let newValueString = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, newRawValue);
+      cell.innerHTML = newValueString;
+      patchEditor.updateValueBar(cell, newRawValue, maxValue);
+      console.log(`Changing value for cell.id = ${cell.id} from ${currentValueString} (${currentRawValue}) to ${newValueString} (${newRawValue})`);
+      setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, newRawValue], "effectSettings");
+    }
+  } 
+}
+
+function handleMouseUp(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) {
+}
+
 
 function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectSettings>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
   syncToCurrentPatchOnPedalImmediately = true)
