@@ -149,6 +149,7 @@ let idObject = {
   0x01000070: "ZNR",
   0x07000070: "Z-Organ",
   0x0200002a: "Z TronFLT",
+  0x07000ff0: "BPM", // Added manually
 };
 
 let zoomEffectIDsMS70CDRPlus: Map<number, string> = new Map(Object.entries(idObject).map(([key, value]) => [parseInt(key), value]));
