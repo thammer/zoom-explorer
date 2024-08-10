@@ -15,6 +15,17 @@ export function getExceptionErrorString(err:any, extra?: string): string
   return message;
 }
 
+/**
+ * Converts a number to a hexadecimal string.
+ *
+ * @param {number} number - the number to be converted
+ * @return {string} a hexadecimal string representation of the number, padded with zeros to a minimum length of 8 characters
+ */
+export function numberToHexString(number: number) : string
+{
+  return number.toString(16).toUpperCase().padStart(8, "0");
+}
+
 export function bytesWithCharactersToString(bytes: Iterable<number> | ArrayLike<number>) : string
 {
   return Array.from(bytes, byte => String.fromCharCode(byte)).join("");
