@@ -591,6 +591,9 @@ export class ZoomDevice
       Object.freeze(this._currentPatch);
     }
 
+    // FIXME: Consider not updating screens here, but rather on demand when the user requests it, in the currentScreenCollection getter
+    if (this._autoUpdateScreens && this.currentScreenCollection !== undefined && this.effectIDMap !== undefined)
+      this.currentScreenCollection.setEffectParameterValue(this.currentPatch, this.effectIDMap, effectSlot, parameterNumber, value);
   }
 
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
