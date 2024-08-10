@@ -1,5 +1,6 @@
-import { EffectParameterMap } from "./ZoomDevice";
-import { ZoomPatch } from "./ZoomPatch";
+import { numberToHexString } from "./tools.js";
+import { EffectParameterMap } from "./ZoomDevice.js";
+import { ZoomPatch } from "./ZoomPatch.js";
 
 
 export class ZoomScreenParameter
@@ -158,7 +159,7 @@ export class ZoomScreenCollection
       let effectSettings = patch.effectSettings[effectSlot];
       let effectMap = effectsMap.get(effectSettings.id);
       if (effectMap === undefined) {
-        console.error(`Unable to find mapping for effect id ${effectSettings.id} in effectSlot ${effectSlot} in patch ${patch.name}`);
+        console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
         return undefined;
       }
 
@@ -200,6 +201,35 @@ export class ZoomScreenCollection
     }
     return this;
   }
+
+  setEffectParameterValue(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>, effectSlot: number, parameterNumber: number, value: number) : void
+  {
+    if (effectSlot >= this.screens.length || parameterNumber >= this.screens[effectSlot].parameters.length) {
+      console.error(`setEffectParameterValue() effectSlot ${effectSlot} or parameterNumber ${parameterNumber} out of range`);
+      return;  
+    }
+
+    if (patch.effectSettings === null) {
+      console.error(`patch.effectSettings == null for patch ${patch.name}`);
+      return;
+    }
+
+    let effectSettings = patch.effectSettings[effectSlot];
+    let effectMap = effectsMap.get(effectSettings.id);
+    if (effectMap === undefined) {
+      console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
+      return;
+    }
+
+    let screen = this.screens[effectSlot];
+    let parameter = screen.parameters[parameterNumber];
+
+    let parameterIndex = parameterNumber - 2;
+    let valueString = effectMap.parameters[parameterIndex].values[value];
+
+    console.log(`Changing effect parameter value from "${parameter.valueString}" to "${valueString}" for effect ${effectMap.name}, parameter ${parameter.name}`);
+    parameter.valueString = valueString;
+ }
  
   static fromScreenData(data: Uint8Array, offset: number = 0) : ZoomScreenCollection 
   {
