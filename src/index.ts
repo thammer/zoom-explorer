@@ -602,7 +602,6 @@ function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 {
   let screenCollection = zoomDevice.currentScreenCollection;
   if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
-    // Probably an MSOG device
     // FIXME: Not the most robust of designs... Depends on mapping being loaded and existing for that pedal.
     screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
   }
@@ -1328,11 +1327,6 @@ function handleMouseMoved(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, in
       return; // mapped parameter not found, cancel edit
     }
 
-    // let angle = Math.atan2(y, x);
-    // angle = Number.isNaN(angle) ? 0 : angle;
-    // let sign = angle > - Math.PI/4 && angle < Math.PI*3/4 ? 1 : -1;
-    // let sign = x >= 0 ? 1 : -1;
-    // let distance = 0.1 * Math.sqrt(x*x + y*y) * sign;
     let deadZone = 10;
     if (Math.abs(y) < deadZone)
       return; // mouse is too close to initial position, cancel edit
