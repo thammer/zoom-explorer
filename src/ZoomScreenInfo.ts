@@ -43,6 +43,18 @@ export class ZoomScreenCollection
         let thisScreen = this.screens[thisIndex];
         let otherScreen = other.screens[otherIndex];
 
+        // while (thisScreen.parameters.length === 0) {
+        //   // parameters.length === 0 for a BPM device
+        //   thisIndex++;
+        //   thisScreen = this.screens[thisIndex];
+        // }
+
+        // while (otherScreen.parameters.length === 0) {
+        //   // parameters.length === 0 for a BPM device
+        //   otherIndex++;
+        //   otherScreen = other.screens[otherIndex];
+        // }
+
         while (thisScreen.parameters.length === 2 && thisScreen.parameters[1].name === "Blank" && thisIndex < this.screens.length) {
           thisIndex++;
           thisScreen = this.screens[thisIndex];
