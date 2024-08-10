@@ -1597,21 +1597,24 @@ export class ZoomDevice
       this.emitPatchChangedEvent(memorySlot);
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.screensForCurrentPatch)) {
-      this._currentScreenCollectionData = data;
-      this._currentScreenCollection = undefined;
+      if (this.effectIDMap === undefined) {
+        // we only use the incoming screen message if we don't have an effectIDMap
+        this._currentScreenCollectionData = data;
+        this._currentScreenCollection = undefined;        
 
-      if (this.currentPatch !== undefined && this.effectIDMap !== undefined) {
-        // Some debug logging
-        let incomingScreens = this.currentScreenCollection;
-        let generatedScreens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
-
-        if (incomingScreens !== undefined && generatedScreens !== undefined && incomingScreens.equals(generatedScreens, true))
-          console.log(`Incoming (MIDI) screen and generated screen are equal`);
-        else
-          console.warn(`Warning: Incoming (MIDI) screen and generated screen are different`);
+        if (this.currentPatch !== undefined && this.effectIDMap !== undefined) {
+          // Some debug logging
+          let incomingScreens = this.currentScreenCollection;
+          let generatedScreens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
+  
+          if (incomingScreens !== undefined && generatedScreens !== undefined && incomingScreens.equals(generatedScreens, true))
+            console.log(`Incoming (MIDI) screen and generated screen are equal`);
+          else
+            console.warn(`Warning: Incoming (MIDI) screen and generated screen are different`);
+        }
+  
+        this.emitScreenChangedEvent();
       }
-
-      this.emitScreenChangedEvent();
     }
   }
 
@@ -1983,7 +1986,12 @@ export class ZoomDevice
     
     for (let id of effectList.keys()) {
 
-      // if (counter < 4) {
+      // if (id !== 0x07000ff0) {
+      //   counter++;
+      //   continue;
+      // }
+
+      // if (counter < 104) {
       //    counter++;
       //    continue;
       // }
