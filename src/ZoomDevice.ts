@@ -1530,21 +1530,41 @@ export class ZoomDevice
     else if (this.isMessageType(data, ZoomDevice.messageTypes.parameterValueV2) ||  this.isMessageType(data, ZoomDevice.messageTypes.parameterValueV1)) {
       // Parameter was edited on device (MS Plus or MSOG series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
-      let parameterIndex = this._currentEffectParameterNumber - 2;
-      if (this.currentPatch !== undefined && this.currentPatch.effectSettings !== null && 
-          this._currentEffectSlot < this.currentPatch.effectSettings.length && parameterIndex < this.currentPatch.effectSettings[this._currentEffectSlot].parameters.length) {
-        this.currentPatch.effectSettings[this._currentEffectSlot].parameters[parameterIndex] = this._currentEffectParameterValue;
+      if (this._currentEffectParameterNumber === 0) {
+        // effect slot on/off
+        if (this.currentPatch !== undefined && this.currentPatch.effectSettings !== null && 
+          this._currentEffectSlot < this.currentPatch.effectSettings.length)
+        {
+          this.currentPatch.effectSettings[this._currentEffectSlot].enabled = this._currentEffectParameterValue === 1;
+        }
+        else {
+          console.warn(`Received invalid effect edit parameters. this._currentEffectSlot: ${this._currentEffectSlot}, this._currentEffectParameterNumber: ${this._currentEffectParameterNumber}`);
+          console.warn(`curentPatch: ${this.currentPatch}, effectSettings: ${this.currentPatch?.effectSettings}, ` + 
+            `this.currentPatch.effectSettings.length: ${this.currentPatch?.effectSettings?.length}`); 
+        }
+      }
+      else if (this._currentEffectParameterNumber === 1) {
+        // This hasn't been observed before, so we should investigate why it happened
+        console.warn(`Received effect edit parameter number 1. this._currentEffectSlot: ${this._currentEffectSlot}. Investigate.`);
       }
       else {
-        console.warn(`Received invalid effect edit parameters. this._currentEffectSlot: ${this._currentEffectSlot}, this._currentEffectParameterNumber: ${this._currentEffectParameterNumber}`);
-        console.warn(`curentPatch: ${this.currentPatch}, effectSettings: ${this.currentPatch?.effectSettings}, ` + 
-          `this.currentPatch.effectSettings.length: ${this.currentPatch?.effectSettings?.length}, ` + 
-          `this.currentPatch.effectSettings[${parameterIndex}].parameters.length: ${this.currentPatch?.effectSettings?.[parameterIndex]?.parameters?.length}`);
+        let parameterIndex = this._currentEffectParameterNumber - 2;
+        if (this.currentPatch !== undefined && this.currentPatch.effectSettings !== null && 
+            this._currentEffectSlot < this.currentPatch.effectSettings.length && parameterIndex < this.currentPatch.effectSettings[this._currentEffectSlot].parameters.length)
+        {
+          this.currentPatch.effectSettings[this._currentEffectSlot].parameters[parameterIndex] = this._currentEffectParameterValue;
+        }
+        else {
+          console.warn(`Received invalid effect edit parameters. this._currentEffectSlot: ${this._currentEffectSlot}, this._currentEffectParameterNumber: ${this._currentEffectParameterNumber}`);
+          console.warn(`curentPatch: ${this.currentPatch}, effectSettings: ${this.currentPatch?.effectSettings}, ` + 
+            `this.currentPatch.effectSettings.length: ${this.currentPatch?.effectSettings?.length}, ` + 
+            `this.currentPatch.effectSettings[${parameterIndex}].parameters.length: ${this.currentPatch?.effectSettings?.[parameterIndex]?.parameters?.length}`);
+        }
       }
+
       this.emitEffectParameterChangedEvent();
       if (this._autoUpdateScreens)
         this.updateScreens();
-      
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) || this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2)) {
       this._currentPatch = undefined;
