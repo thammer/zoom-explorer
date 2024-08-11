@@ -166,8 +166,8 @@ async function start()
 
   await downloadEffectMaps();
 
-  patchEditor.setTextEditedCallback( (event: Event, type: string, dirty: boolean): boolean => {
-    return handlePatchEdited(zoomDevice, event, type, dirty);
+  patchEditor.setTextEditedCallback( (event: Event, type: string, initialValueString: string): boolean => {
+    return handlePatchEdited(zoomDevice, event, type, initialValueString);
   });
 
   patchEditor.setMouseMovedCallback( (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
@@ -1183,7 +1183,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 }
 
 
-function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, dirty: boolean): boolean
+function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, initialValueString: string): boolean
 {
   console.log(`Patch edited e is "${event}`);
   if (event.target === null)
@@ -1209,7 +1209,7 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, d
         cell.innerText = currentZoomPatch.nameTrimmed;
       }
     } else if (type === "input") {
-      console.log(`Name changed to "${cell.innerText}`);
+      console.log(`Name changed to "${cell.innerText}"`);
       if (currentZoomPatch !== undefined) {
         currentZoomPatch.name = cell.innerText;
         currentZoomPatch.updatePatchPropertiesFromDerivedProperties();

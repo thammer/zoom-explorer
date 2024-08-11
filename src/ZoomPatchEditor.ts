@@ -4,7 +4,7 @@ import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 
-export type EditPatchTextEditedListenerType = (event: Event, type: string, dirty: boolean) => boolean;
+export type EditPatchTextEditedListenerType = (event: Event, type: string, initialValueString: string) => boolean;
 export type EditPatchMouseEventListenerType = (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => void;
 
 let debugCounter = 0;
@@ -159,7 +159,7 @@ export class ZoomPatchEditor
         else if (e.key === "Escape" || e.key === "Esc") {
           cell.innerText = this.undoOnEscape;
           if (this.textEditedCallback !== undefined)
-            this.textEditedCallback(e, "input", cell.innerText !== this.undoOnEscape);
+            this.textEditedCallback(e, "input", this.undoOnEscape);
           this.muteBlurOnEscape = true;
           cell.blur();
           this.muteBlurOnEscape = false;
@@ -167,25 +167,25 @@ export class ZoomPatchEditor
         else if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "PageUp" || e.key === "PageDown" || e.key === "Tab") {
           e.preventDefault();
           if (this.textEditedCallback !== undefined)
-            this.textEditedCallback(e, "key", cell.innerText !== this.undoOnEscape);
+            this.textEditedCallback(e, "key", this.undoOnEscape);
           }
       });
 
       cell.addEventListener("input", (e) => {
         if (this.textEditedCallback !== undefined)
-          this.textEditedCallback(e, "input", cell.innerText !== this.undoOnEscape);
+          this.textEditedCallback(e, "input", this.undoOnEscape);
       });
 
       cell.addEventListener("focus", (e) => {
         this.undoOnEscape = cell.innerText;
         if (this.textEditedCallback !== undefined)
-          this.textEditedCallback(e, "focus", cell.innerText !== this.undoOnEscape);
+          this.textEditedCallback(e, "focus", this.undoOnEscape);
       });
 
       cell.addEventListener("blur", (e) => {
         if (!this.muteBlurOnEscape)
           if (this.textEditedCallback !== undefined) {
-            let acceptEdit = this.textEditedCallback(e, "blur", cell.innerText !== this.undoOnEscape);
+            let acceptEdit = this.textEditedCallback(e, "blur", this.undoOnEscape);
             if (!acceptEdit)
               cell.innerText = this.undoOnEscape;
           }
@@ -388,8 +388,11 @@ export class ZoomPatchEditor
         td = paramValueRow.children[columnNumber] as HTMLTableCellElement;
         if (parameterNumber < screen.parameters.length) {
           let valueChanged = previousPatch !== undefined && patch !== undefined && previousPatch.name === patch.name && previousScreenCollection !== undefined &&
-          previousScreenCollection.screens.length === screenCollection.screens.length && previousScreenCollection.screens[effectSlot].parameters.length === screen.parameters.length && 
-              previousScreenCollection.screens[effectSlot].parameters[parameterNumber].valueString !== screen.parameters[parameterNumber].valueString;
+            previousScreenCollection.screens.length === screenCollection.screens.length && 
+            previousScreenCollection.screens[effectSlot].parameters.length === screen.parameters.length && 
+            previousScreenCollection.screens[effectSlot].parameters.length >= 2 && 
+            previousScreenCollection.screens[effectSlot].parameters[1].name === screen.parameters[1].name &&
+            previousScreenCollection.screens[effectSlot].parameters[parameterNumber].valueString !== screen.parameters[parameterNumber].valueString;
           let boldStart = valueChanged ? "<b>" : "";
           let boldEnd = valueChanged ? "</b>" : "";
           // Map Zoom's byte codes to HTML/unicode characters. This is also done in ZoomDevice.ts

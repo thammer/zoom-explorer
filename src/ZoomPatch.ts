@@ -17,6 +17,20 @@ export class EffectSettings
     settings.parameters = Array.from(this.parameters);
     return settings;
   }
+
+  setFrom(other: EffectSettings)
+  {
+    this.enabled = other.enabled;
+    this.id = other.id;
+    this.parameters = Array.from(other.parameters);
+  }
+
+  static from(other: EffectSettings)
+  {
+    let settings = new EffectSettings();
+    settings.setFrom(other);
+    return settings;
+  }
 }
 
 /**
