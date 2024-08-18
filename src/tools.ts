@@ -1,7 +1,12 @@
 export function getFunctionName(stackLevel: number = 0): string
 {
   let error = new Error();
-  return error.stack ? error.stack.split('at ')[2 + stackLevel].split(' ')[0] : "unknown";
+  if (!error.stack)
+    return "unknown";
+  if (error.stack.includes("at "))
+    return error.stack.split("at ")[2 + stackLevel].split(' ')[0];
+  else
+    return error.stack.split("\n")[2 + stackLevel];
 }
 
 export function getExceptionErrorString(err:any, extra?: string): string
