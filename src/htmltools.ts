@@ -55,6 +55,29 @@ export class ConfirmDialog
   }
 }
 
+export class InfoDialog
+{
+  private infoDialog: HTMLDialogElement;
+  private infoLabel: HTMLLabelElement;
+
+  constructor(dialogID: string, labelID: string)
+  {
+    this.infoDialog = document.getElementById(dialogID) as HTMLDialogElement;
+    this.infoLabel = document.getElementById(labelID) as HTMLLabelElement;
+  }
+
+  public show(text: string): void
+  {
+    this.infoLabel.textContent = text;
+    this.infoDialog.showModal();
+  }
+
+  public close(): void
+  {
+    this.infoDialog.close();
+  }
+}
+
 let cachedSupportsContentEditablePlaintextOnly: boolean | undefined = undefined;
 
 export function supportsContentEditablePlaintextOnly(): boolean
