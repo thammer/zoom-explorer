@@ -1,6 +1,6 @@
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
-import { IMIDIProxy, MessageType } from "./midiproxy.js";
+import { DeviceID, IMIDIProxy, ListenerType, MessageType } from "./midiproxy.js";
 import { MIDIDeviceDescription } from "./miditools.js";
 import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
@@ -91,6 +91,7 @@ export class ZoomDevice
   private _midiDevice: MIDIDeviceDescription;
   private _timeoutMilliseconds: number;
   private _midi: IMIDIProxy;
+  private _midiMessageHandler: ListenerType;
   private _isOpen: boolean = false;
   private _zoomDeviceID: number;
   private _zoomDeviceIdString: string;
@@ -161,6 +162,9 @@ export class ZoomDevice
     this._midiDevice = midiDevice;
     this._timeoutMilliseconds = timeoutMilliseconds;
     this._midi = midi;
+    this._midiMessageHandler = (deviceHandle, data) => {
+      this.handleMIDIDataFromZoom(data);
+    };
     this._zoomDeviceID = this._midiDevice.familyCode[0];
     this._zoomDeviceIdString = this._zoomDeviceID.toString(16).padStart(2, "0");
 
@@ -171,6 +175,10 @@ export class ZoomDevice
 
   public async open()
   {
+    if (this._isOpen) {
+      console.warn(`Attempting to open ZoomDevice ${this._zoomDeviceIdString} which is already open`);
+      return;
+    }
     this._isOpen = true;
     await this._midi.openInput(this._midiDevice.inputID);
     await this._midi.openOutput(this._midiDevice.outputID);
@@ -183,14 +191,33 @@ export class ZoomDevice
 
   public async close()
   {
-    // FIXME: Disconnect handlers here
-    this._isOpen = false;
+    if (!this._isOpen) {
+      console.warn(`Attempting to close ZoomDevice ${this._zoomDeviceIdString} which is not open`);
+      return;
+    }
+
+    this.removeAllListeners();
+    this.removeAllCurrentPatchChangedListeners();
+    this.removeAllEffectParameterChangedListeners();
+    this.removeAllEffectSlotChangedListeners();
+    this.removeAllMemorySlotChangedListeners();
+    this.removeAllPatchChangedListeners();
+    this.removeAllScreenChangedListeners
+    this.removeAllTempoChangedListeners();
+
     this.disconnectMessageHandler();
     if (this._autoRequestProgramChangeTimerStarted) {
       clearInterval(this._autoRequestProgramChangeTimerID);
       this._autoRequestProgramChangeTimerStarted = false;
       this._autoRequestProgramChangeMuteLog = false;
     }
+    
+    this._isOpen = false;
+    
+    await this._midi.closeInput(this._midiDevice.inputID);
+    await this._midi.closeOutput(this._midiDevice.outputID);
+    
+    console.log(`Closed ZoomDevice ${this._zoomDeviceIdString}`);
   }
 
   public addListener(listener: ZoomDeviceListenerType): void
@@ -203,6 +230,11 @@ export class ZoomDevice
     this._listeners = this._listeners.filter( (l) => l !== listener);
   }
 
+  public removeAllListeners(): void
+  {
+    this._listeners = [];
+  }
+
   public addMemorySlotChangedListener(listener: MemorySlotChangedListenerType): void
   {
     this._memorySlotChangedListeners.push(listener);
@@ -211,6 +243,11 @@ export class ZoomDevice
   public removeMemorySlotChangedListener(listener: MemorySlotChangedListenerType): void
   {
     this._memorySlotChangedListeners = this._memorySlotChangedListeners.filter( (l) => l !== listener);
+  }
+
+  public removeAllMemorySlotChangedListeners(): void
+  {
+    this._memorySlotChangedListeners = [];
   }
 
   private emitMemorySlotChangedEvent() {
@@ -228,6 +265,11 @@ export class ZoomDevice
     this._effectParameterChangedListeners = this._effectParameterChangedListeners.filter( (l) => l !== listener);
   }
 
+  public removeAllEffectParameterChangedListeners(): void
+  {
+    this._effectParameterChangedListeners = [];
+  }
+
   private emitEffectParameterChangedEvent() {
     for (let listener of this._effectParameterChangedListeners)
       listener(this, this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue);
@@ -241,6 +283,11 @@ export class ZoomDevice
   public removeEffectSlotChangedListener(listener: EffectSlotChangedListenerType): void
   {
     this._effectSlotChangedListeners = this._effectSlotChangedListeners.filter( (l) => l !== listener);
+  }
+
+  public removeAllEffectSlotChangedListeners(): void
+  {
+    this._effectSlotChangedListeners = [];
   }
 
   private emitEffectSlotChangedEvent() {
@@ -258,6 +305,11 @@ export class ZoomDevice
     this._currentPatchChangedListeners = this._currentPatchChangedListeners.filter( (l) => l !== listener);
   }
 
+  public removeAllCurrentPatchChangedListeners(): void
+  {
+    this._currentPatchChangedListeners = [];
+  }
+
   private emitCurrentPatchChangedEvent() {
     for (let listener of this._currentPatchChangedListeners)
       listener(this);
@@ -271,6 +323,11 @@ export class ZoomDevice
   public removePatchChangedListener(listener: PatchChangedListenerType): void
   {
     this._patchChangedListeners = this._patchChangedListeners.filter( (l) => l !== listener);
+  }
+
+  public removeAllPatchChangedListeners(): void
+  {
+    this._patchChangedListeners = [];
   }
 
   private emitPatchChangedEvent(memorySlot: number) {
@@ -288,6 +345,11 @@ export class ZoomDevice
     this._screenChangedListeners = this._screenChangedListeners.filter( (l) => l !== listener);
   }
 
+  public removeAllScreenChangedListeners(): void
+  {
+    this._screenChangedListeners = [];
+  }
+
   private emitScreenChangedEvent() {
     for (let listener of this._screenChangedListeners)
       listener(this);
@@ -301,6 +363,11 @@ export class ZoomDevice
   public removeTempoChangedListener(listener: TempoChangedListenerType): void
   {
     this._tempoChangedListeners = this._tempoChangedListeners.filter( (l) => l !== listener);
+  }
+
+  public removeAllTempoChangedListeners(): void
+  {
+    this._tempoChangedListeners = [];
   }
 
   private emitTempoChangedEvent() {
@@ -964,6 +1031,11 @@ export class ZoomDevice
     return this._midiDevice;
   }
 
+  public get isOpen(): boolean
+  {
+    return this._isOpen;
+  }
+
   public get currentMemorySlotNumber(): number {
     let memorySlot = this._currentProgram;
     if (this._patchesPerBank !== -1 && this._currentBank !== -1)
@@ -1423,13 +1495,12 @@ export class ZoomDevice
 
   private connectMessageHandler() 
   {
-    this._midi.addListener(this._midiDevice.inputID, (deviceHandle, data) => {
-      this.handleMIDIDataFromZoom(data);
-    });
+    this._midi.addListener(this._midiDevice.inputID, this._midiMessageHandler);
   }
 
-  private disconnectMessageHandler() {
-    throw new Error("Method not implemented.");
+  private disconnectMessageHandler()
+  {
+    this._midi.removeListener(this._midiDevice.inputID, this._midiMessageHandler);
   }
 
   private handleMIDIDataFromZoom(data: Uint8Array): void
