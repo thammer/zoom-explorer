@@ -89,7 +89,16 @@ export class ZoomPatchEditor
         this.initialMouseMoveCellText = ""
       }
     });
+  }
 
+  hide()
+  {
+    this.patchEditorTable.style.display = "none";
+  }
+
+  show()
+  {
+    this.patchEditorTable.style.display = "block";
   }
 
   setTextEditedCallback(textEditedCallback: EditPatchTextEditedListenerType) 
