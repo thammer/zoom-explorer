@@ -31,7 +31,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     try
     {
       this.midi = await this.navigator.requestMIDIAccess({sysex: true});
-      console.log(`Web MIDI API Enabled`);
+      // console.log(`Web MIDI API Enabled`);
       this.enabled = true;
       // this.midi.onstatechange = (ev: Event) => {
       //   let event = ev as MIDIConnectionEvent;
@@ -114,12 +114,12 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       throw `Attempting to close MIDI input without first enabling Web MIDI`;
 
     let input = this.midi.inputs.get(deviceHandle);
-    if (input === undefined)
-    {
-      throw `No input found with ID "${deviceHandle}"`;
+    if (input === undefined) {
+      console.log(`No input found with ID "${deviceHandle}", so there's nothing to close. Removing listeners anyway.`);
     }
-
-    await input.close();
+    else {
+      await input.close();
+    }
     
     let listeners = this.midiMessageListenerMap.get(deviceHandle);
     if (listeners === undefined)
@@ -128,7 +128,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     // Remove all listeners
     this.midiMessageListenerMap.set(deviceHandle, new Array<ListenerType>());
 
-    return input.id;
+    return deviceHandle;
   }
 
   async closeAllInputs() : Promise<void>
@@ -183,14 +183,14 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       throw `Attempting to close MIDI output without first enabling Web MIDI`;
 
     let output = this.midi.outputs.get(deviceHandle);
-    if (output === undefined)
-    {
-      throw `No output found with ID "${deviceHandle}"`;
+    if (output === undefined) {
+      console.log(`No output found with ID "${deviceHandle}", so there's nothing to close`);
     }
-
-    await output.close();
+    else {
+      await output.close();
+    }
     
-    return output.id;
+    return deviceHandle;
   }
 
   async closeAllOutputs() : Promise<void>
@@ -268,7 +268,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let input = this.midi.inputs.get(deviceHandle);
     if (input === undefined)
     {
-      throw `No input found with ID "${deviceHandle}"`;
+      console.log(`No input found with ID "${deviceHandle}". Removing listener anyway.`);
     }
 
     let listeners = this.midiMessageListenerMap.get(deviceHandle);
@@ -337,6 +337,14 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     }
   }
 
+  /**
+   * Handles MIDI connection state changes by notifying registered listeners. 
+   * Note that this method might get called rapidly multiple times on connection and disconnection.
+   * The number of disconnect events seems to match the prevoius number of connect events (on starting the application).
+   * I suspect this is due to a bug in the Web MIDI API implementation in Chrome.
+   *
+   * @param {MIDIConnectionEvent} event - The MIDI connection event that triggered this state change.
+   */
   onStateChange(event: MIDIConnectionEvent)
   {
     for (let listener of this.connectionStateChangeListeners)

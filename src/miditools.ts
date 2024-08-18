@@ -154,9 +154,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
     }
   
     async function done()
-    {
-      if (logging) console.log(`Done sending identity requests`);
-  
+    { 
       for (const [id, device] of inputs)
       {
         let listener = listeners.get(device.id);
