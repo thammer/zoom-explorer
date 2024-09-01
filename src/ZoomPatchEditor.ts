@@ -211,7 +211,22 @@ export class ZoomPatchEditor
     }
   }
 
-  update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
+  public updateEffectSlotFrame(currentEffectSlot: number): void
+  {
+    for (let effectColumn=0; effectColumn<this.effectsRow.children.length; effectColumn++) {
+      let cellWithEffectTable = this.effectsRow.children[effectColumn] as HTMLTableRowElement;
+      let effectTable: HTMLTableElement = cellWithEffectTable.children[0] as HTMLTableElement;
+      let className = effectTable.className;
+      className = className.replace("editEffectSlot", "");
+      let effectSlot = this.effectsRow.children.length - effectColumn - 1;
+      if (effectSlot === currentEffectSlot) {
+        className = className + " editEffectSlot";
+      }
+      effectTable.className = className;
+    }
+  }
+
+  public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
     function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
