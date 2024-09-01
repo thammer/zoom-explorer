@@ -26,6 +26,8 @@ export class MIDIDeviceDescription
   }
 }
 
+let getMIDIDeviceListIsRunning: boolean = false;
+
 /**
  * Returns a list of MIDI input and output devices. Unopened ports are opened and closed them again. Already open ports are not closed. 
  * @param inputs 
@@ -37,6 +39,11 @@ export class MIDIDeviceDescription
 export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, DeviceInfo>, outputs: Map<DeviceID, DeviceInfo>, 
                                   timeoutMilliseconds: number = 100, logging: boolean = false) : Promise<MIDIDeviceDescription[]>
 {
+  if (getMIDIDeviceListIsRunning) {
+    console.error(`getMIDIDeviceList() is already running. Last call was with inputs: ${inputs.size}, outputs: ${outputs.size}`);
+  }
+
+  getMIDIDeviceListIsRunning = true;
   return new Promise<MIDIDeviceDescription[]>(async resolve =>
   {
     let currentOutput: DeviceInfo;
@@ -268,6 +275,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
       // add input devices with no outputs
       // 
 
+      getMIDIDeviceListIsRunning = false;
       resolve(midiDevices);
     }
   
