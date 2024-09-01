@@ -1,6 +1,6 @@
 
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType } from "./midiproxy.js";
-import { bytesToHexString } from "./tools.js";
+import { bytesToHexString, getFunctionName } from "./tools.js";
 //import jzz from "jzz";
 
 // Copied from https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/webmidi/index.d.ts
@@ -86,13 +86,16 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
   async openInput(id: DeviceID) : Promise<DeviceID>
   {
-    if (this.midi === undefined)
+    if (this.midi === undefined) {
+      console.trace();
       throw `Attempting to open MIDI input without first enabling Web MIDI`;
+    }
 
     let input = this.midi.inputs.get(id);
     if (input === undefined)
     {
-      throw `No input found with ID "${id}"`;
+      console.trace();
+      throw `No input found with ID "${id}" in ${getFunctionName()}`;
     }
 
     await input.open();
@@ -150,7 +153,8 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let info = this.midi.inputs.get(id);
     if (info === undefined)
     {
-      throw `No input found with ID "${id}"`;
+      console.trace();
+      throw `No input found with ID "${id}" in ${getFunctionName()}`;
     }
 
     return { 
@@ -223,6 +227,36 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     }
   }
 
+  isOutputConnected(id: DeviceID) : boolean
+  {
+    if (this.midi === undefined)
+      return false;
+
+    let info = this.midi.outputs.get(id);
+    if (info === undefined)
+      return false;
+
+    if (info.state === "disconnected")
+      return false;
+
+    return true;
+  }
+
+  isInputConnected(id: DeviceID) : boolean
+  {
+    if (this.midi === undefined)
+      return false;
+
+    let info = this.midi.inputs.get(id);
+    if (info === undefined)
+      return false;
+
+    if (info.state === "disconnected")
+      return false;
+
+    return true;
+  }
+
   send(deviceHandle: DeviceID, data: Uint8Array) : void
   {
     if (this.midi === undefined)
@@ -250,12 +284,13 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let input = this.midi.inputs.get(deviceHandle);
     if (input === undefined)
     {
-      throw `No input found with ID "${deviceHandle}"`;
+      console.trace();
+      throw `No input found with ID "${deviceHandle}" in ${getFunctionName()}`;
     }
 
     let listeners = this.midiMessageListenerMap.get(deviceHandle);
     if (listeners === undefined)
-      throw `Attemped to add listener for device "${deviceHandle}" with no listener list`;
+      throw `Attempted to add listener for device "${deviceHandle}" with no listener list`;
 
     listeners.push(listener);
   }
@@ -286,7 +321,8 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let input = this.midi.inputs.get(deviceHandle);
     if (input === undefined)
     {
-      throw `No input found with ID "${deviceHandle}"`;
+      console.trace();
+      throw `No input found with ID "${deviceHandle}" in ${getFunctionName()}`;
     }
 
     let listeners = this.midiMessageListenerMap.get(deviceHandle);

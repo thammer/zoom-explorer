@@ -48,6 +48,10 @@ export interface IMIDIProxy
 
   enable() : Promise<boolean>;
 
+  isOutputConnected(id: DeviceID) : boolean;
+  isInputConnected(id: DeviceID) : boolean;
+  isDeviceConnected(id: DeviceID, type: PortType) : boolean;
+
   openInput(id: DeviceID) : Promise<DeviceID>;
   closeInput(deviceHandle: DeviceID) : Promise<DeviceID>;
   closeAllInputs() : Promise<void>;
@@ -57,6 +61,8 @@ export interface IMIDIProxy
   closeOutput(deviceHandle: DeviceID) : Promise<DeviceID>;
   closeAllOutputs() : Promise<void>;
   getOutputInfo(id: DeviceID) : DeviceInfo;
+
+  getDeviceInfo(id: DeviceID, type: PortType) : DeviceInfo;
 
   send(deviceHandle: DeviceID, data: number[] | Uint8Array) : void;
   sendPC(deviceHandle: DeviceID, channel: number, program: number) : void;
@@ -92,6 +98,9 @@ export abstract class MIDIProxy implements IMIDIProxy
   abstract readonly outputs: Map<DeviceID, DeviceInfo>; 
   abstract enable() : Promise<boolean>;
 
+  abstract isOutputConnected(id: DeviceID) : boolean;
+  abstract isInputConnected(id: DeviceID) : boolean;
+
   abstract openInput(id: DeviceID) : Promise<DeviceID>;
   abstract closeInput(deviceHandle: DeviceID) : Promise<DeviceID>;
   abstract closeAllInputs() : Promise<void>;
@@ -118,6 +127,16 @@ export abstract class MIDIProxy implements IMIDIProxy
   public get enabled(): boolean
   {
     return this._enabled;       
+  }
+
+  public isDeviceConnected(id: DeviceID, type: PortType) : boolean
+  {
+    return type === "input" ? this.isInputConnected(id) : this.isOutputConnected(id);
+  }
+
+  public getDeviceInfo(id: DeviceID, type: PortType) : DeviceInfo
+  {
+    return type === "input" ? this.getInputInfo(id) : this.getOutputInfo(id);
   }
 
   public sendPC(deviceHandle: DeviceID, channel: number, program: number) : void
