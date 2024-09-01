@@ -6,6 +6,7 @@ import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
+import { IMIDIDevice } from "./MIDIDeviceManager.js";
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
@@ -86,7 +87,7 @@ export type EffectIDMap = Map<number, EffectParameterMap>;
  * 
  * 
  */
-export class ZoomDevice
+export class ZoomDevice implements IMIDIDevice
 {
   private _midiDevice: MIDIDeviceDescription;
   private _timeoutMilliseconds: number;
@@ -157,7 +158,7 @@ export class ZoomDevice
   public freezeCurrentPatch: boolean = false; // set to true for debugging, but might slow down execution, so it's not recommended for production
   public loggingEnabled: boolean = true;
 
-  constructor(midi: IMIDIProxy, midiDevice: MIDIDeviceDescription, timeoutMilliseconds: number = 300)
+  constructor(midi: IMIDIProxy, midiDevice: MIDIDeviceDescription, timeoutMilliseconds: number = 500)
   {
     this._midiDevice = midiDevice;
     this._timeoutMilliseconds = timeoutMilliseconds;
@@ -179,6 +180,7 @@ export class ZoomDevice
       console.warn(`Attempting to open ZoomDevice ${this._zoomDeviceIdString} which is already open`);
       return;
     }
+    console.log(`Opening ZoomDevice ${this._midiDevice.deviceName}`);
     this._isOpen = true;
     await this._midi.openInput(this._midiDevice.inputID);
     await this._midi.openOutput(this._midiDevice.outputID);
@@ -195,6 +197,7 @@ export class ZoomDevice
       console.warn(`Attempting to close ZoomDevice ${this._zoomDeviceIdString} which is not open`);
       return;
     }
+    console.log(`Closing ZoomDevice ${this._midiDevice.deviceName}`);
 
     this.removeAllListeners();
     this.removeAllCurrentPatchChangedListeners();
@@ -207,6 +210,7 @@ export class ZoomDevice
 
     this.disconnectMessageHandler();
     if (this._autoRequestProgramChangeTimerStarted) {
+      console.log(`Stopping auto-request program change timer for ZoomDevice ${this._zoomDeviceID}`);	
       clearInterval(this._autoRequestProgramChangeTimerID);
       this._autoRequestProgramChangeTimerStarted = false;
       this._autoRequestProgramChangeMuteLog = false;
@@ -217,7 +221,7 @@ export class ZoomDevice
     await this._midi.closeInput(this._midiDevice.inputID);
     await this._midi.closeOutput(this._midiDevice.outputID);
     
-    console.log(`Closed ZoomDevice ${this._zoomDeviceIdString}`);
+    console.log(`Closed ZoomDevice ${this._zoomDeviceID}`);
   }
 
   public addListener(listener: ZoomDeviceListenerType): void
@@ -512,6 +516,7 @@ export class ZoomDevice
         let patch = ZoomPatch.fromPatchData(eightBitData);
         if (patch !== undefined) {
           this._currentPatch = patch;
+          this._currentEffectSlot = this._currentPatch.currentEffectSlot;
           if (this.freezeCurrentPatch)
             Object.freeze(this._currentPatch);
         }
@@ -558,7 +563,7 @@ export class ZoomDevice
       return;
     }
 
-    if (this.currentPatch.currentEffectSlot !== this._currentEffectSlot) {
+    if (this._currentEffectSlot !== -1 && this.currentPatch.currentEffectSlot !== this._currentEffectSlot) {
       console.warn(`currentPatch.currentEffectSlot (${this.currentPatch.currentEffectSlot}) !== _currentEffectSlot (${this._currentEffectSlot})`);
     }
 
@@ -591,10 +596,10 @@ export class ZoomDevice
 
       if (this.freezeCurrentPatch) {
         this._currentPatch = patch;
+        this._currentEffectSlot = this._currentPatch.currentEffectSlot;
         Object.freeze(this._currentPatch);
       }
   
-
       this._currentEffectSlot = effectSlot;
     }
   }
@@ -655,6 +660,7 @@ export class ZoomDevice
 
     if (this.freezeCurrentPatch) {
       this._currentPatch = patch;
+      this._currentEffectSlot = this._currentPatch.currentEffectSlot;
       Object.freeze(this._currentPatch);
     }
 
@@ -688,6 +694,7 @@ export class ZoomDevice
     if (eightBitData != undefined) {
       this._currentPatchData = undefined;
       this._currentPatch = ZoomPatch.fromPatchData(eightBitData);
+      this._currentEffectSlot = this._currentPatch.currentEffectSlot;
       if (this.freezeCurrentPatch)
         Object.freeze(this._currentPatch);
       return this._currentPatch;
@@ -915,6 +922,7 @@ export class ZoomDevice
       this._currentPatchData = undefined;
       if (patch !== this._currentPatch) {
         this._currentPatch = patch.clone();
+        this._currentEffectSlot = this._currentPatch.currentEffectSlot;
         if (this.freezeCurrentPatch)
           Object.freeze(this._currentPatch);
       }
@@ -1217,6 +1225,7 @@ export class ZoomDevice
       this._autoRequestProgramChangeTimerID = setInterval(() => {
         device.autoRequestProgramChangeTimer();
       }, this._autoRequestProgramChangeIntervalMilliseconds);
+      console.log(`Starting auto-request program change timer for ZoomDevice ${this._zoomDeviceID}`);	
       this._autoRequestProgramChangeTimerStarted = true;
       if (this.loggingEnabled)
         console.log(`Started regular polling of program change (timer ID ${this._autoRequestProgramChangeTimerID}). Muting logging of program and bank requests and the bank and program change message.`);
@@ -1432,12 +1441,11 @@ export class ZoomDevice
 
   private sendCommand(data: Uint8Array, prependCommand: Uint8Array | null = null, appendCRC: Uint8Array | null = null) : void
   {
-    let output = this._midi.getOutputInfo(this._midiDevice.outputID);
-    if (output === undefined)
-    {
-      console.warn(`WARNING: Not sending MIDI message to device ${this._midiDevice.outputID} as the device is unknown"`);
+    if (!this._midi.isOutputConnected(this._midiDevice.outputID)) {
+      console.warn(`WARNING: Not sending MIDI message to device ${this._midiDevice.outputID} as the device is not connected"`);
       return;
     }
+    let output = this._midi.getOutputInfo(this._midiDevice.outputID);
     if (output.connection != "open")
     {
       console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
@@ -1460,12 +1468,11 @@ export class ZoomDevice
   private async sendCommandAndGetReply(data: Uint8Array, verifyReply: (data: Uint8Array) => boolean, prependCommand: Uint8Array | null = null, appendCRC: Uint8Array | null = null,
     timeoutMilliseconds: number = this._timeoutMilliseconds) : Promise<Uint8Array | undefined>
   {
-    let output = this._midi.getOutputInfo(this._midiDevice.outputID);
-    if (output === undefined)
-    {
-      console.warn(`WARNING: Not sending MIDI message to device ${this._midiDevice.outputID} as the device is unknown"`);
+    if (!this._midi.isOutputConnected(this._midiDevice.outputID)) {
+      console.warn(`WARNING: Not sending MIDI message to device ${this._midiDevice.outputID} as the device is not connected"`);
       return;
     }
+    let output = this._midi.getOutputInfo(this._midiDevice.outputID);
     if (output.connection != "open")
     {
       console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
@@ -1589,6 +1596,7 @@ export class ZoomDevice
           patch.currentEffectSlot = this._currentEffectSlot;    
           if (this.freezeCurrentPatch) {
             this._currentPatch = patch;
+            this._currentEffectSlot = this._currentPatch.currentEffectSlot;
             Object.freeze(this._currentPatch);
           }
         }
@@ -1853,7 +1861,7 @@ export class ZoomDevice
     if (program !== undefined) {
       let newBank: number = 0;
       let newProgram: number = 0;
-    this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
+      this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
       this._midi.sendCC(this._midiDevice.outputID, 0, 0x20, bank & 0x7F); // bank LSB = 0
       let pcMessage = new Uint8Array(2); pcMessage[0] = 0xC0; pcMessage[1] = program & 0b01111111;
       reply = await this._midi.sendAndGetReply(this._midiDevice.outputID, pcMessage, this._midiDevice.inputID, (data: Uint8Array) => {
