@@ -2015,19 +2015,19 @@ export class ZoomDevice implements IMIDIDevice
     return "";
   }
 
-  public getParameterName(effectID: number, parameterNumber: number): string
+  public getParameterNameAndMaxValue(effectID: number, parameterNumber: number): [parameterName: string | undefined, maxValue: number | undefined]
   {
     if (this.effectIDMap === undefined)
-      return "";
+      return [undefined, undefined];
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
     if (effectMapping !== undefined) {
       if (parameterIndex < effectMapping.parameters.length) {
         let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
-        return parameterMapping.name;
+        return [parameterMapping.name, parameterMapping.max];
       }
     }
-    return "";
+    return [undefined, undefined];
   }
 
   public cancelMapping()
