@@ -2,7 +2,8 @@ import { DeviceID, DeviceInfo, MIDIProxy, IMIDIProxy, ListenerType } from "./mid
 import { getExceptionErrorString, bytesToHexString } from "./tools.js";
 
 // See: http://midi.teragonaudio.com/tech/midispec/identity.htm
-// See: https://web.archive.org/web/20231019045329/https://midi.org/SysExIDtable
+// See: https://web.archive.org/web/20231019045329/
+// See: https://midi.org/SysExIDtable
 
 export class MIDIDeviceDescription
 {
@@ -352,6 +353,7 @@ let MIDIDeviceHexStringToName: { [key: string]: string; } =
   "52 61 00 00 00" : "MS-70CDR",
   "52 6E 00 23 00" : "MS-50G+",
   "52 6E 00 26 00" : "MS-70CDR+",
+  "52 6E 00 27 00" : "MS-60B+",
   "00 20 29 61 00 00 00" : "Launch Control XL",
   "00 01 79 04 00 01 00" : "Midi Fighter Spectra",
   "00 20 6B 06 00 06 01" : "MicroFreak",
