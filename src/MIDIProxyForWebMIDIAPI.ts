@@ -18,6 +18,8 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
   private navigator: Navigator;
   private midiMessageListenerMap = new Map<DeviceID, ListenerType[]>();
   private connectionStateChangeListeners = new Array<ConnectionListenerType>();
+  private inputPortsConnectionState = new Map<DeviceID, MIDIPortConnectionState>;
+  private outputPortsConnectionState = new Map<DeviceID, MIDIPortConnectionState>;
 
   constructor() 
   {
@@ -31,15 +33,35 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     try
     {
       this.midi = await this.navigator.requestMIDIAccess({sysex: true});
-      // console.log(`Web MIDI API Enabled`);
       this.enabled = true;
-      // this.midi.onstatechange = (ev: Event) => {
-      //   let event = ev as MIDIConnectionEvent;
-      // }
-      //this.midi.onstatechange = (event: MIDIConnectionEvent) => this.onStateChange(event);
       this.midi.onstatechange = (ev: Event) => {
         let event = ev as MIDIConnectionEvent;
-        this.onStateChange(event);
+        // console.log(`*** ${event.port?.type} ${event.port?.state} ${event.port?.name} ${event.port?.connection}`);
+        if (event.port === null)
+          return;
+
+        // Skip state change events from already connected ports - ignoring open and close port state change events
+        let skipStateChange = false;
+
+        skipStateChange = event.port.state === "connected" && (event.port.type === "input" && this.inputPortsConnectionState.has(event.port.id) || 
+          event.port.type === "output" && this.outputPortsConnectionState.has(event.port.id));
+
+        if (!skipStateChange)
+          this.onStateChange(event);
+        // else
+        //   console.log(`*** Not emitting state change for ${event.port?.type} ${event.port?.state} ${event.port?.name} ${event.port?.connection}`);
+
+        if (event.port.state === "disconnected")
+          if (event.port.type === "input")
+            this.inputPortsConnectionState.delete(event.port.id);
+          else
+            this.outputPortsConnectionState.delete(event.port.id);
+        else
+          if (event.port.type === "input")
+            this.inputPortsConnectionState.set(event.port.id, event.port.connection);
+          else
+            this.outputPortsConnectionState.set(event.port.id, event.port.connection);
+
       }
       return true;
     }
@@ -332,6 +354,11 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     this.midiMessageListenerMap.set(deviceHandle, new Array<ListenerType>());
   }
 
+  /**
+   * 
+   * @param listener function to get called every time a device is connected or disconnected. 
+   * Opening and closing a device does not result in the listener being called.
+   */
   addConnectionListener(listener: ConnectionListenerType): void
   {
     let existingListener = this.connectionStateChangeListeners.find( (l) => l === listener);
