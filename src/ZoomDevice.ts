@@ -59,6 +59,7 @@ class ZoomMessageTypes
   parameterValueV2 = new StringAndBytes("64 20 00");
   parameterValueAcceptedV2 = new StringAndBytes("64 20 01");
   tempoV2 = new StringAndBytes("64 20 00 64 02");
+  bankAndProgramNumberV2 = new StringAndBytes("64 26 00 00");
 }
 
 export type ParameterValueMap = { 
@@ -75,7 +76,20 @@ export type EffectParameterMap = {
 export type EffectIDMap = Map<number, EffectParameterMap>;
 
 /**
- * @example Usage pattern for screens and current patch
+ * The ZoomDevice class represents one Zoom effect pedal. It will strive to keep its state in sync with the pedal state at all times.
+ * 
+ * In particular, that means that these state properties will always be kept up to date:
+ * - patchList
+ * - currentPatch
+ * - currentTempo
+ * - currentScreenCollection
+ * - currentEffectSlot
+ * - currentProgram
+ * - previousBank
+ * - currentEffectParameterNumber
+ * - currentEffectParameterValue
+ * 
+ * pattern for screens and current patch
  * - Manual usage:
  *   - requestScreens() will request current screen collection from pedal
  *   - object will emitScreenChangedEvent when current screen collection is received from pedal
@@ -124,7 +138,7 @@ export class ZoomDevice implements IMIDIDevice
   private _usesBankBeforeProgramChange: boolean = false;  
   private _bankAndProgramSentOnUpdate: boolean = false
   private _bankMessagesReceived = false; // true after having received bank messages, reset when program change message received
-
+  private _maxNumEffects = 0;
   private _patchList: Array<ZoomPatch> = new Array<ZoomPatch>();
   private _rawPatchList: Array<Uint8Array | undefined> = new Array<Uint8Array>();
 
@@ -172,6 +186,11 @@ export class ZoomDevice implements IMIDIDevice
     // pre-allocate command buffers for messages of length 6 to 15
     for (let i=6; i<15; i++)
       this.getCommandBufferFromData(new Uint8Array(i-5));
+  }
+
+  public static isDeviceType(device: MIDIDeviceDescription): boolean
+  {
+    return device.manufacturerID[0] === 0x52;
   }
 
   public async open()
@@ -417,37 +436,53 @@ export class ZoomDevice implements IMIDIDevice
   //   return [this._currentBank, this._currentProgram];
   // }
 
-  public setCurrentBankAndProgram(bank: number, program: number)
+  public setCurrentBankAndProgram(bank: number, program: number, forceUpdate: boolean = false)
   {
     this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
     this._midi.sendCC(this._midiDevice.outputID, 0, 0x20, bank & 0x7F); // bank LSB
     this._midi.sendPC(this._midiDevice.outputID, 0, program & 0x7F); // program
+
+    let changed = this.syncStateWithNewBankAndProgram(bank, program, forceUpdate);
     
-    this._previousBank = this._currentBank;
-    this._previousProgram = this._currentProgram;
-    this._currentBank = bank;
-    this._currentProgram = program;
+    // this._previousBank = this._currentBank;
+    // this._previousProgram = this._currentProgram;
+    // this._currentBank = bank;
+    // this._currentProgram = program;
     
-    if (this._autoRequestProgramChangeTimerStarted)
+    // FIXME: Do we really need this line?
+//    if (this._autoRequestProgramChangeTimerStarted)
+    if (changed)
       this.emitMemorySlotChangedEvent();
 }
 
-  public setCurrentMemorySlot(memorySlot: number)
+  public setCurrentMemorySlot(memorySlot: number, forceUpdate: boolean = false)
   {
     if (this._patchesPerBank !== -1) {
       let bank = Math.floor(memorySlot / this._patchesPerBank);
       let program = memorySlot % this._patchesPerBank;
-      this.setCurrentBankAndProgram(bank, program);
+      if (forceUpdate || this._currentBank !== bank || this._currentProgram !== program)
+        this.setCurrentBankAndProgram(bank, program, forceUpdate);
     }
     else {
-      this._midi.sendPC(this._midiDevice.outputID, 0, memorySlot & 0x7F); // program
-      
-      this._previousProgram = this._currentProgram;
-      this._currentProgram = memorySlot;
-      
-      if (this._autoRequestProgramChangeTimerStarted)
+      if (forceUpdate || this._currentProgram !== memorySlot) {
+        this._midi.sendPC(this._midiDevice.outputID, 0, memorySlot & 0x7F); // program
+        
+        this._previousProgram = this._currentProgram;
+        this._currentProgram = memorySlot;
+        
+        // if (this._autoRequestProgramChangeTimerStarted)
+
+        // Note: Line below is untested (for MSOG pedals)
+        this.syncStateWithNewBankAndProgram(-1, memorySlot, forceUpdate);
+
         this.emitMemorySlotChangedEvent();
+      }
     }
+
+    // Note: Screen is also attempted updated in the syncState... call above, but only with mapped data
+    if (this._autoUpdateScreens)
+      this.updateScreens();
+
   }
 
   public logMutedTemporarilyForPollMessages(data: Uint8Array): boolean
@@ -549,6 +584,11 @@ export class ZoomDevice implements IMIDIDevice
   public get numParametersPerPage(): number
   {
     return this._numParametersPerPage;
+  }
+
+  public get maxNumEffects(): number
+  {
+    return this._maxNumEffects;
   }
 
   public setCurrentEffectSlot(effectSlot: number)
@@ -1499,6 +1539,63 @@ export class ZoomDevice implements IMIDIDevice
       data.slice(4, 4 + command.length).every( (element, index) => element === command[index] );
   }
   
+  /**
+   * Updates internal state to match the new bank and program.
+   * This method will not send any MIDI to the pedal, just use the internal patch list and screen mapping to update the state.
+   * This method will not emit events for changed state properties.
+   * @param bank 
+   * @param program 
+   * @param forceUpdate 
+   * @returns true if the bank or program was different from the previous bank or program
+   */
+  private syncStateWithNewBankAndProgram(bank: number, program: number, forceUpdate: boolean = false): boolean
+  {
+    let memorySlot = program;
+    if (this._patchesPerBank !== -1 && bank != -1)
+      memorySlot += bank * this._patchesPerBank;
+    
+    if (memorySlot >= this._patchList.length) {
+      console.error(`Unable to sync state for bank ${bank} and program ${program} with memory slot number ${memorySlot} as it is out of bounds - this._patchList.length = ${this._patchList.length}`);
+      return false;
+    }
+    
+    let changed = forceUpdate ||this._currentBank !== bank || this._currentProgram !== program;
+    if (changed) {
+      this._previousBank = this._currentBank;
+      this._previousProgram = this._currentProgram;
+      this._currentBank = bank;
+      this._currentProgram = program;
+      this._currentPatchData = undefined;
+      this._currentPatch = this._patchList[memorySlot].clone();
+      if (this.freezeCurrentPatch)
+        Object.freeze(this._currentPatch);
+      this._currentEffectSlot = this._currentPatch.currentEffectSlot;
+      this._currentTempo = this._currentPatch.tempo;
+      let screens: ZoomScreenCollection | undefined = undefined;
+      if (this.effectIDMap !== undefined)
+        screens = this._currentScreenCollection = ZoomScreenCollection.fromPatchAndMappings(this._currentPatch, this.effectIDMap);
+      if (screens !== undefined) {
+        this._currentScreenCollection = screens;
+        this._currentScreenCollectionData = undefined;
+      }
+    }
+    return changed;
+  }
+
+  private allEffectsAreMapped(patch: ZoomPatch): boolean
+  {
+    if (this.effectIDMap === undefined || patch.effectSettings === null)
+      return false;
+
+    for (let i=0; i<patch.effectSettings.length; i++) {
+      if (!this.effectIDMap.has(patch.effectSettings[i].id)) {
+        // There's at least one effect in the currentPatch that is not in the effectIDMap
+        return false;
+      }
+    }
+
+    return true;
+  }
 
   private connectMessageHandler() 
   {
@@ -1536,11 +1633,12 @@ export class ZoomDevice implements IMIDIDevice
     const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
     const tempSkipLog = this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
 
-    if (this.loggingEnabled && ! this.logMutedTemporarilyForPollMessages(data))
-      console.log(`${performance.now().toFixed(1)} Received: ${bytesToHexString(data, " ")}`);
-
-    if (this._patchListDownloadInProgress)
+    let log = this.loggingEnabled && ! this.logMutedTemporarilyForPollMessages(data); 
+    if (this._patchListDownloadInProgress) {
+      if (log) console.log(`${performance.now().toFixed(1)} Received: ${bytesToHexString(data, " ")}`);
+        
       return; // mute all message handling while the patch list is being downloaded
+    }
 
     if (messageType === MessageType.CC && data1 === 0x00) {
       // Bank MSB
@@ -1548,6 +1646,7 @@ export class ZoomDevice implements IMIDIDevice
       this._previousBank = this._currentBank;
       this._currentBank = (this._currentBank & 0b0000000001111111) | (data2<<7);
       this._bankMessagesReceived = true;
+      if (log) console.log(`${performance.now().toFixed(1)} Received Bank MSB ${data2}, currentBank: ${this._currentBank}, raw: ${bytesToHexString(data, " ")}`);
     }
     else if (messageType === MessageType.CC && data1 === 0x20) { 
       // Bank LSB
@@ -1555,22 +1654,26 @@ export class ZoomDevice implements IMIDIDevice
       this._previousBank = this._currentBank;
       this._currentBank = (this._currentBank & 0b0011111110000000) | data2;
       this._bankMessagesReceived = true;
+      if (log) console.log(`${performance.now().toFixed(1)} Received Bank LSB ${data2}, currentBank: ${this._currentBank}, raw: ${bytesToHexString(data, " ")}`);
     }
     else if (messageType === MessageType.PC) {
       // Program change
+      if (log) console.log(`${performance.now().toFixed(1)} Received Program Change ${data1}, raw: ${bytesToHexString(data, " ")}`);
       if (!this._usesBankBeforeProgramChange || (this._usesBankBeforeProgramChange && this._bankMessagesReceived)) {
         this._bankMessagesReceived = false;
-        this._previousProgram = this._currentProgram;
-        this._currentProgram = data1;
-
-        if (!this._autoRequestProgramChangeTimerStarted || this._currentBank !== this._previousBank || this._currentProgram !== this._previousProgram)
-          this.emitMemorySlotChangedEvent();
-  
-        if (this._autoUpdateScreens && (this._currentBank !== this._previousBank || this._currentProgram !== this._previousProgram))
+        let program = data1;
+        let changed = this.syncStateWithNewBankAndProgram(this._currentBank, program);
+        // Note: On MS Plus series, we will probably have received a message with bank and program change earlier on, bankAndProgramNumberV2
+        // Screen is not updated yet on the pedal then, but hopefully it'll be updated now.
+        if (this._autoUpdateScreens)
           this.updateScreens();
-        }
+
+        if (changed)
+          this.emitMemorySlotChangedEvent();  
+      }
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.nameCharacterV2)) {
+      if (log) console.log(`${performance.now().toFixed(1)} Received name character index ${data[8]}, character: ${data[9]}, raw: ${bytesToHexString(data, " ")}`);
       // Name was edited on device (MS Plus series)
       // We need to get the current patch to get the name
       // We'll get a lot of these messages just for one changed character, so we'll throttle the request for current patch
@@ -1583,10 +1686,12 @@ export class ZoomDevice implements IMIDIDevice
     else if (this.isMessageType(data, ZoomDevice.messageTypes.tempoV2)) {
       // Tempo changed on device (MS Plus series)
       this._currentTempo = data[9] + ((data[10] & 0b01111111) << 7);
+      if (log) console.log(`${performance.now().toFixed(1)} Received tempo ${this._currentTempo}, raw: ${bytesToHexString(data, " ")}`);
       this.emitTempoChangedEvent();
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.currentEffectSlotV2)) {
       // Current (edit) effect slot was changed on pedal (MS Plus)
+      if (log) console.log(`${performance.now().toFixed(1)} Received current effect slot change ${data[9]} raw: ${bytesToHexString(data, " ")}`);
       let newEffectSLot = data[9];
       if (this._currentEffectSlot !== newEffectSLot) {
         this._currentEffectSlot = newEffectSLot;
@@ -1602,6 +1707,7 @@ export class ZoomDevice implements IMIDIDevice
         }
   
         this.emitEffectSlotChangedEvent();
+
         if (this._autoUpdateScreens)
           this.updateScreens();
       }
@@ -1609,6 +1715,8 @@ export class ZoomDevice implements IMIDIDevice
     else if (this.isMessageType(data, ZoomDevice.messageTypes.parameterValueV2) ||  this.isMessageType(data, ZoomDevice.messageTypes.parameterValueV1)) {
       // Parameter was edited on device (MS Plus or MSOG series)
       [this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue] = this.getEffectEditParameters(data);
+      if (log) console.log(`${performance.now().toFixed(1)} Received parameter edit slot ${this._currentEffectSlot}, ` +
+        `parameter ${this._currentEffectParameterNumber}, value ${this._currentEffectParameterValue}, raw: ${bytesToHexString(data, " ")}`);
       if (this._currentEffectParameterNumber === 0) {
         // effect slot on/off
         if (this.currentPatch !== undefined && this.currentPatch.effectSettings !== null && 
@@ -1641,19 +1749,35 @@ export class ZoomDevice implements IMIDIDevice
         }
       }
 
-      this.emitEffectParameterChangedEvent();
       if (this._autoUpdateScreens)
         this.updateScreens();
+
+      this.emitEffectParameterChangedEvent();
+
+      // Check if the effect slot is different from patch.currentEffectSlot. 
+      // Only relevant for MSOG pedals, as the MS+ pedals will send an effect slot changed MIDI message.
+      if (this.currentPatch !== undefined && this._currentEffectSlot !== this.currentPatch.currentEffectSlot) {
+        let patch = this.freezeCurrentPatch ? this.currentPatch.clone() : this.currentPatch;
+        patch.currentEffectSlot = this._currentEffectSlot;    
+        if (this.freezeCurrentPatch) {
+          this._currentPatch = patch;
+          this._currentEffectSlot = this._currentPatch.currentEffectSlot;
+          Object.freeze(this._currentPatch);
+        }
+        this.emitEffectSlotChangedEvent();
+      }
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) || this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV2)) {
+      if (log) console.log(`${performance.now().toFixed(1)} Received patch dump for current patch, raw: ${bytesToHexString(data, " ")}`);
       this._currentPatch = undefined;
       this._currentPatchData = data;
-      this.emitCurrentPatchChangedEvent();
       if (this._autoUpdateScreens)
         this.updateScreens();
+      this.emitCurrentPatchChangedEvent();
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.storeCurrentPatchToMemorySlotV1)) {
       // Current (edit) patch stored to memory slot on device (MS series)
+      if (log) console.log(`${performance.now().toFixed(1)} Received confirmation that current edit patch was stored to patch number ${data[7]} was stored, raw: ${bytesToHexString(data, " ")}`);
       let memorySlot = data[8];
       if (this._autoRequestCurrentPatch) {
         if (this._autoRequestPatchForMemorySlotInProgress)
@@ -1668,6 +1792,8 @@ export class ZoomDevice implements IMIDIDevice
       }
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForMemoryLocationV1)) {
+      if (log) console.log(`${performance.now().toFixed(1)} Received patch dump for patch number ${data[7]}, raw: ${bytesToHexString(data, " ")}`);
+
       let autoRequestInProgress = this._autoRequestPatchForMemorySlotInProgress;
       this._autoRequestPatchForMemorySlotInProgress = false;
       let autoRequestPatchMemorySlotNumber = this._autoRequestPatchMemorySlotNumber;
@@ -1686,6 +1812,8 @@ export class ZoomDevice implements IMIDIDevice
       }
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForMemoryLocationV2)) {
+      if (log) console.log(`${performance.now().toFixed(1)} Received patch dump for bank number ${data[7] + (data[8]<<7)} ` +
+        `program number ${data[9] + (data[10]<<7)}, raw: ${bytesToHexString(data, " ")}`);
       let bank = data[7] + ((data[8] & 0b0111111) >> 7); 
       let program = data[9] + ((data[10] & 0b0111111) >> 7); 
       if (this._patchesPerBank !== -1)
@@ -1696,24 +1824,46 @@ export class ZoomDevice implements IMIDIDevice
       this.emitPatchChangedEvent(memorySlot);
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.screensForCurrentPatch)) {
-      if (this.effectIDMap === undefined) {
+      if (log) console.log(`${performance.now().toFixed(1)} Received screens for current patch, raw: ${bytesToHexString(data, " ")}`);
+      let useIncomingScreens: boolean = this.currentPatch === undefined || !this.allEffectsAreMapped(this.currentPatch);
+      console.log(`useIncomingScreens: ${useIncomingScreens}`);
+      if (useIncomingScreens) {
         // we only use the incoming screen message if we don't have an effectIDMap
         this._currentScreenCollectionData = data;
         this._currentScreenCollection = undefined;        
 
-        if (this.currentPatch !== undefined && this.effectIDMap !== undefined) {
-          // Some debug logging
-          let incomingScreens = this.currentScreenCollection;
-          let generatedScreens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
+        // if (this.currentPatch !== undefined && this.effectIDMap !== undefined) {
+        //   // Some debug logging
+        //   let incomingScreens = this.currentScreenCollection;
+        //   let generatedScreens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
   
-          if (incomingScreens !== undefined && generatedScreens !== undefined && incomingScreens.equals(generatedScreens, true))
-            console.log(`Incoming (MIDI) screen and generated screen are equal`);
-          else
-            console.warn(`Warning: Incoming (MIDI) screen and generated screen are different`);
-        }
+        //   if (incomingScreens !== undefined && generatedScreens !== undefined && incomingScreens.equals(generatedScreens, true))
+        //     console.log(`Incoming (MIDI) screen and generated screen are equal`);
+        //   else
+        //     console.warn(`Warning: Incoming (MIDI) screen and generated screen are different`);
+        // }
   
         this.emitScreenChangedEvent();
       }
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.bankAndProgramNumberV2)) {
+      let bank = data[8] + (data[9] << 7);
+      let program = data[10] + (data[11] << 7);
+      if (log) console.log(`${performance.now().toFixed(1)} Received bank and program number, bank number ${bank} ` +
+        `program number ${program}, raw: ${bytesToHexString(data, " ")}`);
+      let changed = this.syncStateWithNewBankAndProgram(bank, program);
+      if (changed)
+        this.emitMemorySlotChangedEvent();  
+    }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.parameterValueAcceptedV2)) {
+      let effectSlot = data[7];
+      let parameterNumber = data[8];
+      let parameterValue = data[9] + (data[10] << 7);
+      if (log) console.log(`${performance.now().toFixed(1)} Received parameter update accepted for effect slot ${effectSlot}, ` +
+        `parameter number ${parameterNumber}, value ${parameterValue}, raw: ${bytesToHexString(data, " ")}`);
+    }
+    else {
+      if (log) console.log(`${performance.now().toFixed(1)} Received unknown message raw: ${bytesToHexString(data, " ")}`);
     }
   }
 
@@ -1726,11 +1876,13 @@ export class ZoomDevice implements IMIDIDevice
 
     let screens: ZoomScreenCollection | undefined = undefined;
     if (this.effectIDMap !== undefined)
-      screens = this._currentScreenCollection = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
+      screens = ZoomScreenCollection.fromPatchAndMappings(this.currentPatch, this.effectIDMap);
     if (screens !== undefined) {
-      this._currentScreenCollection = screens;
-      this._currentScreenCollectionData = undefined;
-      this.emitScreenChangedEvent();
+      if (this._currentScreenCollection === undefined || !this._currentScreenCollection.equals(screens)) {
+        this._currentScreenCollection = screens;
+        this._currentScreenCollectionData = undefined;
+        this.emitScreenChangedEvent();
+      }
       return this._currentScreenCollection
     }
     else if (this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported) {
@@ -1928,6 +2080,7 @@ export class ZoomDevice implements IMIDIDevice
 
     this._isMSOG = [0x58, 0x5F, 0x61].includes(this._zoomDeviceID);
     this._numParametersPerPage = this._isMSOG ? 3 : 4;
+    this._maxNumEffects = 6; // FIXME: Support MS-60B and other pedals with different number of max effects
 
     if (this.loggingEnabled) {
       let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replace(/ /g, "").padEnd(2, "00") > b[0].replace(/ /g, "").padEnd(2, "00") ? 1 : -1))
