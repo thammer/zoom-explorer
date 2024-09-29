@@ -226,6 +226,15 @@ export class ZoomPatchEditor
     }
   }
 
+  public updateTempo(tempo: number): void
+  {
+    let newPatchTempo = tempo.toString().padStart(3, "0");
+    if (this.patchTempoCell.textContent !== newPatchTempo) {
+      this.patchTempoCell.textContent = newPatchTempo;
+      this.patchTempoCell.blur();
+    }
+  }
+
   public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
@@ -430,7 +439,11 @@ export class ZoomPatchEditor
 
           if (effectID !== -1) {
             let [rawValue, maxValue] = device.getRawParameterValueFromString(effectID, parameterNumber, valueString);
-            let percentage = (rawValue / maxValue) * 100;
+            let percentage: number;
+            if (maxValue === -1)
+              percentage = 0;
+            else
+              percentage = (rawValue / maxValue) * 100;
             td.style.backgroundSize = percentage.toFixed(0).toString() + "%";
           }
         }
