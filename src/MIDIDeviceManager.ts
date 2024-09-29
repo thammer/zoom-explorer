@@ -25,7 +25,8 @@ export type ConnectListenerType = (deviceManager: MIDIDeviceManager, device: IMI
 export class MIDIDeviceManager
 {
   private _midi: IMIDIProxy;
-  private _factories: Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
+  // private _factories: Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
+  private _factories: Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
   private _deviceList: Map<string, IMIDIDevice[]> = new Map<string, IMIDIDevice[]>();
   private _midiDeviceList: MIDIDeviceDescription[] = [];
   private _disconnectListeners: DisconnectListenerType[] = new Array<DisconnectListenerType>();
@@ -42,29 +43,23 @@ export class MIDIDeviceManager
   }
   
   /**
-   * Adds a factory function for a specific device type.
+   * Adds a factory function for a specific device type. Factory functions are traversed in the order they are added, so if
+   * you want one factory to have precedence over another you need to add it first.
    *
-   * @param {string} key - The unique identifier for the device type. For instance "ZoomDevice".
+   * @param {string} factoryKey - The unique identifier for the device type. For instance "ZoomDevice".
    * @param {MatchDeviceFunctionType} matchDevice - The function to match the device.
    * @param {FactoryFuntionType} createObject - The function to create the device object.
    * @return {void}
    */
-  public addFactoryFunction(key: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType): void
+  public addFactoryFunction(factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType): void
   { 
-    this._factories.set(key, {matchDevice: matchDevice, createObject: createObject});
+    // this._factories.set(key, {matchDevice: matchDevice, createObject: createObject});
+    this._factories.push({factoryKey: factoryKey, matchDevice: matchDevice, createObject: createObject});
   }
   
   async updateMIDIDeviceList(): Promise<Map<string, IMIDIDevice[]> | undefined>
   {
     return await this._sequentialRunner.run(this.updateMIDIDeviceListSerial.bind(this));
-    // while (this._updatePromises.length > 0) {
-    //   await this._updatePromises[0];
-    //   this._updatePromises.shift();
-    // }
-    // let p = this.updateMIDIDeviceList();
-    // this._updatePromises.push(p);
-    // await Promise.all(this._updatePromises)
-    // return p;
   }
 
   async updateMIDIDeviceListSerial(): Promise<Map<string, IMIDIDevice[]> | undefined>
@@ -111,23 +106,49 @@ export class MIDIDeviceManager
 
     let newDevices: Map<string, IMIDIDevice[]> = new Map<string, IMIDIDevice[]>();
 
-    for (let typeID of this._factories.keys()) {
-      let matchDevice = this._factories.get(typeID)!.matchDevice;
-      let createObject = this._factories.get(typeID)!.createObject;
-      let matchingDeviceDescriptors = newDeviceDescriptors.filter((device) => matchDevice(device));
-      let matchingDevices: IMIDIDevice[];
-      if (matchingDeviceDescriptors.length > 0) {
-        matchingDevices = matchingDeviceDescriptors.map((device) => createObject(this._midi, device));
+    for (let device of newDeviceDescriptors) {
+      for (let factory of this._factories) {
+        let factoryKey = factory.factoryKey;
+        let matchDevice = factory.matchDevice;
+        let createObject = factory.createObject;
+        if (matchDevice(device)) {
+          let newDevice = createObject(this._midi, device);
+          let existingDevices = this._deviceList.get(factoryKey);
+          if (existingDevices === undefined)
+            this._deviceList.set(factoryKey, [newDevice]);
+          else 
+            existingDevices.push(newDevice);
+
+          let existingNewDevices = newDevices.get(factoryKey);
+          if (existingNewDevices === undefined)
+            newDevices.set(factoryKey, [newDevice]);
+          else
+            existingNewDevices.push(newDevice);
+          
+          break;
+        }
       }
-      else 
-        matchingDevices = [];
-      let existingDevices = this._deviceList.get(typeID);
-      if (existingDevices === undefined)
-        this._deviceList.set(typeID, matchingDevices);
-      else 
-        this._deviceList.set(typeID, existingDevices.concat(matchingDevices));
-      newDevices.set(typeID, matchingDevices);
     }
+
+    // loop through factories and match up devices. 
+    // for (let factory of this._factories) {
+    //   let factoryKey = factory.factoryKey;
+    //   let matchDevice = factory.matchDevice;
+    //   let createObject = factory.createObject;
+    //   let matchingDeviceDescriptors = newDeviceDescriptors.filter((device) => matchDevice(device));
+    //   let matchingDevices: IMIDIDevice[];
+    //   if (matchingDeviceDescriptors.length > 0) {
+    //     matchingDevices = matchingDeviceDescriptors.map((device) => createObject(this._midi, device));
+    //   }
+    //   else 
+    //     matchingDevices = [];
+    //   let existingDevices = this._deviceList.get(factoryKey);
+    //   if (existingDevices === undefined)
+    //     this._deviceList.set(factoryKey, matchingDevices);
+    //   else 
+    //     this._deviceList.set(factoryKey, existingDevices.concat(matchingDevices));
+    //   newDevices.set(factoryKey, matchingDevices);
+    // }
 
     this._concurrentRunsCounter--;
     console.log(`Completed updateMIDIDeviceList  - counter = ${this._concurrentRunsCounter}`);
@@ -240,6 +261,7 @@ export class MIDIDeviceManager
         console.log(`Device "${deviceName}" (${deviceHandle}) is not in the device list. Updating MIDI device list`);
         // let newDevices = await this.updateMIDIDeviceList();
         this.updateMIDIDeviceList().then((newDevices) => {
+          // console.log(`Device "${deviceName}" (${deviceHandle}) done updating MIDI device list`);
           if (newDevices !== undefined) {
             if (newDevices.size > 1) {
               console.warn(`Multiple devices of multiple types created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
