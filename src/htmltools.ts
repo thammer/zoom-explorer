@@ -200,6 +200,19 @@ export function getChildWithIDThatStartsWith(children: HTMLCollection, startsWid
   return null;
 }
 
+/**
+ * Removes all event listeners from the given HTMLElement by replacing it with a clone.
+ *
+ * @param {HTMLElement} element - the HTMLElement to remove event listeners from
+ * @return {HTMLElement} the cloned HTMLElement with no event listeners
+ */
+export function removeAllEventListeners(element: HTMLElement): HTMLElement
+{
+    let clonedElement = element.cloneNode(true) as HTMLElement;
+    element.parentNode?.replaceChild(clonedElement, element);
+    return clonedElement;
+}
+
 export function getColorFromEffectID(effectID: number): string
 {
   let effectGroup = (effectID >> 24) & 0xFF;
