@@ -45,7 +45,8 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 06             |     10 |      | *       | F0 52 00 6E 06 <num patches LSB> <num patches MSB> <patch length LSB> <patch length MSB> F7 | Total number of patches and patch length |
 | 07             |      6 | *    |         | F0 52 00 6E 07 F7 | Get total number of patches and patch length (reply with message type 06) |
 | 08             |    986 |      | *       | F0 52 00 6E 08 00 00 \<patch number\> \<length LSB\> \<length MSB\> \<patch\> 00 \<5 byte CRC\> F7 | Patch dump, after message type 09 is sent to the pedal. Length is for unpacked 8-bit patch data. Some pedals / OS versions might not have the CRC at the end?|
-| 09             |      9 | *    |         | F0 52 00 6E 09 00 00 \<patch number\> F7 | Download patch from given patch slot (reply with message 08) || 28             |    984 | *    |         | F0 52 00 6E 28 <patch data> F7 | Send current patch to pedal |
+| 09             |      9 | *    |         | F0 52 00 6E 09 00 00 \<patch number\> F7 | Download patch from given patch slot (reply with message 08) |
+| 28             |    984 | *    |         | F0 52 00 6E 28 <patch data> F7 | Send current patch to pedal |
 | 33             |      6 | *    |         | F0 52 00 6E 33 F7 | Get current bank and program number. Replies with optional bank change messages and a program change message. |
 | 43             |     30 |      | *       | F0 52 00 6E 43 <num patches LSB> <num patches MSB> <patch length LSB> <patch length MSB> <unknown LSB> <unknown MSB> <patches per bank LSB> <patches per bank MSB> <unknown> <zeros> F7 | Bank/patch info. Response to message 44. Probably a more updated version of message 06 for newer pedals. |
 | 44             |      6 | *    |         | F0 52 00 6E 44 F7 | Get bank/patch info. |
@@ -67,8 +68,10 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 20 00 5F    |     15 | ?    | *       | F0 52 00 6E 64 20 00 5F \<character index\> \<ASCII character\>  00 00 00 00 F7 | Name edited (backspace) |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
+| 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<Auto-save\> 00 00 00 F7 | Auto-save off/on (00 - 01)|
+| 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<Contrast\> 00 00 00 F7 | Screen contrast (00 - 0C) |
+| 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<ECO mode\> 00 00 00 F7 | ECO mode off/on (00 - 01) |
 | 64 20 01       |     15 |      | *       | F0 52 00 6E 64 20 01 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Acknowledge that parameter has been updated. Response to 64 20 00 if the parameter was accepted (in range).|
-| 64 13          |      7 | *    |         | F0 52 00 6E 64 13 F7 | Get current patch from edit buffer (expects a reply with message type 64 12)|
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
 | 64 42          |      7 | *    |         | F0 52 00 6E 64 42 F7 | Unknown. See https://github.com/mungewell/zoom-zt2/issues/70 |
 | 64 43          |      ? |      | *       | F0 52 00 6E 64 42 F7 | Reply to 64 42. Unknown.  |
