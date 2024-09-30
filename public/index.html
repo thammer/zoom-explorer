@@ -319,6 +319,7 @@
       </table>
       
       <button id="downloadPatchesButton">Download all patches</button>
+      <button id="mapEffectsButton" hidden>Map all effects</button>
       <button id="testButton">Test</button>
 
       <div>
@@ -523,6 +524,20 @@
       </div>
     </form>
   </dialog>
+  
+  <dialog id="infoDialog">
+    <form>
+      <p>
+        <label id="infoLabel">
+          Info text goes here
+        </label>
+      </p>
+      <div>
+        <button id="infoOKButton" value="ok" hidden>OK</button>
+      </div>
+    </form>
+  </dialog>    
+
   <script type="module" src="./index.js"></script>
   <!-- For www.waveformer.net <script>includeHTML();</script> -->
 </body>

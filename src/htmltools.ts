@@ -46,7 +46,7 @@ export class ConfirmDialog
   public async getUserConfirmation(text: string): Promise<boolean>
   {
     return new Promise<boolean>( (resolve, reject) => {
-      this.confirmLabel.textContent = text;
+      this.confirmLabel.innerHTML = text;
       this.confirmEvent = async (result: boolean) => {
         resolve(result);
       }
@@ -59,11 +59,22 @@ export class InfoDialog
 {
   private infoDialog: HTMLDialogElement;
   private infoLabel: HTMLLabelElement;
+  private confirmButton: HTMLButtonElement | undefined;
 
-  constructor(dialogID: string, labelID: string)
+  constructor(dialogID: string, labelID: string, buttonID: string = "")
   {
     this.infoDialog = document.getElementById(dialogID) as HTMLDialogElement;
     this.infoLabel = document.getElementById(labelID) as HTMLLabelElement;
+    if (buttonID !== "") {
+      this.confirmButton = document.getElementById(buttonID) as HTMLButtonElement;
+      this.confirmButton.hidden = false;
+      this.confirmButton.addEventListener("click", (event) => {
+        event.preventDefault(); // 
+        this.infoDialog.close("ok");
+      });
+      }
+    else
+      this.confirmButton = undefined;
   }
 
   public show(text: string): void

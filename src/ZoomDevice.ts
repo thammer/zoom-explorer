@@ -56,6 +56,7 @@ class ZoomMessageTypes
   requestCurrentPatchV2 = new StringAndBytes("64 13");
   nameCharacterV2 = new StringAndBytes("64 20 00 5F");
   currentEffectSlotV2 = new StringAndBytes("64 20 00 64 01");
+  autoSaveV2 = new StringAndBytes("64 20 00 64 0F");
   parameterValueV2 = new StringAndBytes("64 20 00");
   parameterValueAcceptedV2 = new StringAndBytes("64 20 01");
   tempoV2 = new StringAndBytes("64 20 00 64 02");
@@ -482,7 +483,18 @@ export class ZoomDevice implements IMIDIDevice
     // Note: Screen is also attempted updated in the syncState... call above, but only with mapped data
     if (this._autoUpdateScreens)
       this.updateScreens();
+  }
 
+  public setAutoSave(on: boolean) 
+  {
+    let parameterBuffer = new Uint8Array(5);
+    parameterBuffer[0] = on ? 1 : 0;   
+
+    let command = new Uint8Array(ZoomDevice.messageTypes.autoSaveV2.bytes.length + parameterBuffer.length);
+    command.set(ZoomDevice.messageTypes.autoSaveV2.bytes);
+    command.set(parameterBuffer, ZoomDevice.messageTypes.autoSaveV2.bytes.length);
+      
+    this.sendCommand(command);
   }
 
   public logMutedTemporarilyForPollMessages(data: Uint8Array): boolean
@@ -2192,13 +2204,6 @@ export class ZoomDevice implements IMIDIDevice
   {
     this._disableMidiHandlers = true;
     
-    // let originalCurrentPatch = await this.downloadCurrentPatch();
-    // if (originalCurrentPatch === undefined) {
-    //   console.error("Failed to download current patch");
-    //   return;
-    // }
-    // originalCurrentPatch = originalCurrentPatch.clone();
-
     if (this.currentPatch === undefined || this.currentPatch.effectSettings === null) {
       console.error("Cannot map parameters when currentPatch == undefined or currentPatch.effectSettings == null");
       return undefined;
@@ -2326,6 +2331,9 @@ export class ZoomDevice implements IMIDIDevice
         }
 
         mappingsForEffect.parameters.push(mappingsForParameterValue);
+
+        if (this._cancelMapping)
+          break;  
       }
      
       if (error) {
@@ -2337,7 +2345,7 @@ export class ZoomDevice implements IMIDIDevice
 
       counter++;
 
-      sleepForAWhile(100); // let the chrome console catch up ???
+      await sleepForAWhile(100); // let the chrome console catch up ???
     }
 
     let timeSpent = performance.now() - startTime;

@@ -5,7 +5,7 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { EffectParameterMap, ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot } from "./htmltools.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 
@@ -238,6 +238,7 @@ async function downloadEffectMaps() {
   });
 
   ZoomDevice.setEffectIDMap(parameterMap);
+  //ZoomDevice.setEffectIDMap(mapForMS70CDRPlus);
 
   // mapForMSOG.forEach( (value, key) => {
   //   if (parameterMap.has(key) === true) {
@@ -261,28 +262,79 @@ function sleepForAWhile(timeoutMilliseconds: number)
 
 let mappings: { [key: string]: EffectParameterMap; } | undefined;
 
-let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
-testButton.addEventListener("click", async (event) => {
+let mapEffectsButton: HTMLButtonElement = document.getElementById("mapEffectsButton") as HTMLButtonElement;
+let origonalMapEffectsLabel = mapEffectsButton.innerText;
+mapEffectsButton.addEventListener("click", async (event) => {
 
   let zoomDevice = zoomDevices[0];
 
-  if (testButton.innerText == "Cancel") {
-    testButton.innerText = "...";
+  let text = `
+    <p>You're about to start mapping all parameters for all effects on your pedal</p>
+
+    <p>This is only relevant for the MS+ series of pedals, so if you have any other pedals, this mapping probably won't work. 
+    Also, mapping has already been done for the MS-50G+ and MS-70CDR+ pedals, so there's no need to map these again.</p>
+
+    <p>The mapping process will generate a mapping file that is needed for the patch editor to work for your pedal.
+    This mapping file will be added to future releases of ZoomExplorer.</p>
+
+    <p>To prevent any patch changes being saved to the pedal during mapping, auto-save will be disabled before the mapping starts.
+    If you want to enable it again, you need to do so in the menu on the pedal after mapping has completed.</p>
+
+    <p>The mapping process could take several hours. Please leave the pedal untouched while the mapping is ongoing.</p>
+
+    <p>When the mapping is done, please click the "Save mappings" button to save the mapping to a file, and email this file to h@mmer.no. 
+    Please also include the name of your pedal.</p>
+
+    <p>Do you want to continue?</p>
+  `;
+
+
+  if (mapEffectsButton.innerText == "Cancel") {
     zoomDevice.cancelMapping();
+    mapEffectsButton.innerText = "...";
     return;
   }
 
   if (mappings === undefined) {
-    testButton.innerText = "Cancel";
-    sleepForAWhile(300);
+    let result = await confirmDialog.getUserConfirmation(text);
+
+    if (!result)
+      return;
+
+    if (zoomDevice.currentPatch === undefined || zoomDevice.currentPatch.effectSettings === null || 
+      zoomDevice.currentPatch.effectSettings[0].id === 0)
+    {
+      // Select a non-empty patch
+      if (zoomDevice.patchList.length <1)
+        await updatePatchList();
+
+      let memorySlot = 0;
+      while (memorySlot < zoomDevice.patchList.length) {
+        let patch = zoomDevice.patchList[memorySlot];
+        if (patch.effectSettings !== null && patch.effectSettings[0].id !== 0)
+          break;
+        memorySlot++;
+      }
+      zoomDevice.setCurrentMemorySlot(memorySlot)
+    }
+
+    zoomDevice.setAutoSave(false);   
+    zoomDevice.setCurrentEffectSlot(0); // set current effect slot to 0, to give the user a chance to monitor the mapping 
+
+    await sleepForAWhile(600);
+
+    mapEffectsButton.innerText = "Cancel";
     mappings = await zoomDevice.mapParameters();
-    testButton.innerText = "Save";
+    mapEffectsButton.innerText = "Save mappings";
+
+    infoDialog.show(`Mapping completed. Please click the "Save mappings" button and email the file to h@mmer.no together with the name of your pedal.`);
   }
   else {
     let json = JSON.stringify(mappings, null, 2);
     const blob = new Blob([json]);
-    await saveBlobToFile(blob, "mappings.json", ".json", "Mappings json");
-    testButton.innerText = "Test";
+    let filename = zoomDevice.deviceInfo.deviceName + "-mappings.txt";
+    await saveBlobToFile(blob, filename, ".txt", "Mappings json");
+    mapEffectsButton.innerText = origonalMapEffectsLabel;
     mappings = undefined;
   }
 
@@ -769,8 +821,8 @@ patchesTable.addEventListener("click", (event) => {
 
 });
 
-let downloadPatchesButton: HTMLButtonElement = document.getElementById("downloadPatchesButton") as HTMLButtonElement;
-downloadPatchesButton.addEventListener("click", async (event) => {
+async function updatePatchList()
+{
   let device = zoomDevices[0];
   
   await device.updatePatchListFromPedal();
@@ -791,16 +843,14 @@ downloadPatchesButton.addEventListener("click", async (event) => {
       currentZoomPatch = device.patchList[currentMemorySlot].clone();
       updatePatchInfoTable(currentZoomPatch);
       getScreenCollectionAndUpdateEditPatchTable(device); // Added for MSOG 2024-07-13
-      // Probably not needed, since we auto-update in device class ?
-      // let screenCollection = await device.downloadScreens();
-      // updateEditPatchTable(screenCollection, currentZoomPatch, previousEditScreenCollection, previousEditPatch);
-      // previousEditScreenCollection = screenCollection;
-      // previousEditPatch = currentZoomPatch;
-      
-      // Request screen info immediately
-      // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], hexStringToUint8Array("64 02 00 07 00"));
     }
   } 
+}
+
+
+let downloadPatchesButton: HTMLButtonElement = document.getElementById("downloadPatchesButton") as HTMLButtonElement;
+downloadPatchesButton.addEventListener("click", async (event) => {
+  await updatePatchList();
 
 //   let sysexStringListFiles = "F0 52 00 6E 60 25 00 00 2a 2e 2a 00 F7";
 //   let sysexDataListFiles = Uint8Array.from(sysexStringListFiles.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
@@ -1425,6 +1475,7 @@ let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefine
 let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
 
 let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
+let infoDialog = new InfoDialog("infoDialog", "infoLabel", "infoOKButton");
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
 
