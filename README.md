@@ -68,9 +68,9 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 20 00 5F    |     15 | ?    | *       | F0 52 00 6E 64 20 00 5F \<character index\> \<ASCII character\>  00 00 00 00 F7 | Name edited (backspace) |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
-| 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<Auto-save\> 00 00 00 F7 | Auto-save off/on (00 - 01)|
-| 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<Contrast\> 00 00 00 F7 | Screen contrast (00 - 0C) |
-| 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<ECO mode\> 00 00 00 F7 | ECO mode off/on (00 - 01) |
+| 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<Auto-save\> 00 00 00 00 F7 | Auto-save off/on (00 - 01)|
+| 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<Contrast\> 00 00 00 00 F7 | Screen contrast (00 - 0C) |
+| 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<ECO mode\> 00 00 00 00 F7 | ECO mode off/on (00 - 01) |
 | 64 20 01       |     15 |      | *       | F0 52 00 6E 64 20 01 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Acknowledge that parameter has been updated. Response to 64 20 00 if the parameter was accepted (in range).|
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
 | 64 42          |      7 | *    |         | F0 52 00 6E 64 42 F7 | Unknown. See https://github.com/mungewell/zoom-zt2/issues/70 |
