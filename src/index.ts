@@ -1,6 +1,6 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
-import { MIDIDeviceDescription, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
+import { getChannelMessage, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
 import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
@@ -8,6 +8,7 @@ import { EffectParameterMap, ZoomDevice } from "./ZoomDevice.js";
 import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
+import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -699,7 +700,7 @@ function handleTempoChanged(zoomDevice: ZoomDevice, tempo: number): void {
 // FIXME: Look into if it's a good idea to have this function be async. 2024-06-26.
 async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): Promise<void>
 {
-  let [messageType, channel, data1, data2] = midi.getChannelMessage(data); 
+  let [messageType, channel, data1, data2] = getChannelMessage(data); 
 
   let device = zoomDevice.deviceInfo;
   updateMidiMonitorTable(device, data, messageType, (data: Uint8Array) => zoomDevice.logMutedTemporarilyForPollMessages(data)

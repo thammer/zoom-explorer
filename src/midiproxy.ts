@@ -74,8 +74,6 @@ export interface IMIDIProxy
 
   addConnectionListener(listener: ConnectionListenerType): void;
   removeConnectionListener(listener: ConnectionListenerType): void;
-
-  getChannelMessage(data: Uint8Array): [MessageType, number, number, number];
 }
 
 /**
@@ -180,15 +178,4 @@ export abstract class MIDIProxy implements IMIDIProxy
     // leftover code to compare two datasets:
     // replyStart.length === 0 || data.length >= replyStart.length && data.slice(0, replyStart.length).every((element, index) => element === replyStart[index])
   }
-
-  public getChannelMessage(data: Uint8Array): [MessageType, number, number, number] 
-  {
-    if (data.length < 1)
-      return [MessageType.Unknown, 0, 0, 0];
-    else if (data.length === 1)
-      return [data[0] & 0b11110000, data[0] & 0b00001111, 0, 0];
-    else if (data.length === 2)
-      return [data[0] & 0b11110000, data[0] & 0b00001111, data[1], 0];
-    else return [data[0] & 0b11110000, data[0] & 0b00001111, data[1], data[2]];
-  }    
 }

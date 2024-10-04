@@ -1,20 +1,13 @@
+import { IManagedMIDIDevice } from "./IManagedMIDIDevice.js";
+import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { DeviceID, DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
-import { getMIDIDeviceList, MIDIDeviceDescription } from "./miditools.js";
+import { getMIDIDeviceList} from "./miditools.js";
 import { SequentialAsyncRunner } from "./SequentialAsyncRunner.js";
 
-export interface IMIDIDevice
-{
-  get isOpen(): boolean;
-  get deviceInfo(): MIDIDeviceDescription;
-
-  open(): Promise<void>;
-  close(): Promise<void>;
-}
-
 export type MatchDeviceFunctionType = (device: MIDIDeviceDescription) => boolean; 
-export type FactoryFuntionType = (midi: IMIDIProxy, midiDevice: MIDIDeviceDescription) => IMIDIDevice;
-export type DisconnectListenerType = (deviceManager: MIDIDeviceManager, device: IMIDIDevice, key: string) => void;
-export type ConnectListenerType = (deviceManager: MIDIDeviceManager, device: IMIDIDevice, key: string) => void;
+export type FactoryFuntionType = (midi: IMIDIProxy, midiDevice: MIDIDeviceDescription) => IManagedMIDIDevice;
+export type DisconnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string) => void;
+export type ConnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string) => void;
 
 /**
  * Maintains a list of MIDI devices.
@@ -27,7 +20,7 @@ export class MIDIDeviceManager
   private _midi: IMIDIProxy;
   // private _factories: Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
   private _factories: Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
-  private _deviceList: Map<string, IMIDIDevice[]> = new Map<string, IMIDIDevice[]>();
+  private _deviceList: Map<string, IManagedMIDIDevice[]> = new Map<string, IManagedMIDIDevice[]>();
   private _midiDeviceList: MIDIDeviceDescription[] = [];
   private _disconnectListeners: DisconnectListenerType[] = new Array<DisconnectListenerType>();
   private _connectListeners: ConnectListenerType[] = new Array<ConnectListenerType>();
@@ -57,12 +50,12 @@ export class MIDIDeviceManager
     this._factories.push({factoryKey: factoryKey, matchDevice: matchDevice, createObject: createObject});
   }
   
-  async updateMIDIDeviceList(): Promise<Map<string, IMIDIDevice[]> | undefined>
+  async updateMIDIDeviceList(): Promise<Map<string, IManagedMIDIDevice[]> | undefined>
   {
     return await this._sequentialRunner.run(this.updateMIDIDeviceListSerial.bind(this));
   }
 
-  async updateMIDIDeviceListSerial(): Promise<Map<string, IMIDIDevice[]> | undefined>
+  async updateMIDIDeviceListSerial(): Promise<Map<string, IManagedMIDIDevice[]> | undefined>
   {
     this._concurrentRunsCounter++;
 
@@ -104,7 +97,7 @@ export class MIDIDeviceManager
       }
     }
 
-    let newDevices: Map<string, IMIDIDevice[]> = new Map<string, IMIDIDevice[]>();
+    let newDevices: Map<string, IManagedMIDIDevice[]> = new Map<string, IManagedMIDIDevice[]>();
 
     for (let device of newDeviceDescriptors) {
       for (let factory of this._factories) {
@@ -159,7 +152,7 @@ export class MIDIDeviceManager
     return this._midiDeviceList;
   }
 
-  public getDevices(typeID: string): IMIDIDevice[]
+  public getDevices(typeID: string): IManagedMIDIDevice[]
   {
     let device = this._deviceList.get(typeID);
     return device ?? [];
@@ -180,7 +173,7 @@ export class MIDIDeviceManager
     this._disconnectListeners = [];
   }
 
-  private emitDisconnectEvent(device: IMIDIDevice, key: string) {
+  private emitDisconnectEvent(device: IManagedMIDIDevice, key: string) {
     for (let listener of this._disconnectListeners)
       listener(this, device, key);
   }
@@ -200,12 +193,12 @@ export class MIDIDeviceManager
     this._connectListeners = [];
   }
 
-  private emitConnectEvent(device: IMIDIDevice, key: string) {
+  private emitConnectEvent(device: IManagedMIDIDevice, key: string) {
     for (let listener of this._connectListeners)
       listener(this, device, key);
   }
 
-  private getDeviceFromHandle(deviceHandle: string): [device: IMIDIDevice | undefined, key: string | undefined]
+  private getDeviceFromHandle(deviceHandle: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
   {
     for (let [key, deviceList] of this._deviceList) {
       let device = deviceList.find( (device) => device.deviceInfo.inputID === deviceHandle || device.deviceInfo.outputID === deviceHandle);
@@ -281,4 +274,6 @@ export class MIDIDeviceManager
   }
 }
  
+
+export { IManagedMIDIDevice };
 

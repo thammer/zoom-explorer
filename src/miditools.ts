@@ -1,31 +1,11 @@
-import { DeviceID, DeviceInfo, MIDIProxy, IMIDIProxy, ListenerType } from "./midiproxy.js";
+import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
+import { DeviceID, DeviceInfo, MIDIProxy, IMIDIProxy, ListenerType, MessageType } from "./midiproxy.js";
 import { getExceptionErrorString, bytesToHexString } from "./tools.js";
 
 // See: http://midi.teragonaudio.com/tech/midispec/identity.htm
 // See: https://web.archive.org/web/20231019045329/
 // See: https://midi.org/SysExIDtable
 
-export class MIDIDeviceDescription
-{
-  public readonly inputID: string = "";
-  public readonly inputName: string = ""; 
-  public readonly outputID: string = "";
-  public readonly outputName: string = "";
-  public readonly isInput: boolean = false;
-  public readonly isOutput: boolean = false;
-  public readonly manufacturerID: [number] | [number, number, number] = [0];
-  public readonly manufacturerName: string = "unknown";
-  public readonly familyCode: [number, number] = [0, 0];
-  public readonly modelNumber: [number, number] = [0, 0];
-  public readonly deviceName: string = "unknown"; // deduced from manufacturerID, familyCode and modelNumber
-  public readonly versionNumber: [number, number, number, number] = [0, 0, 0, 0];
-  public readonly identityResponse: Uint8Array = new Uint8Array();
-
-  constructor(data: Partial<MIDIDeviceDescription>)
-  {
-    Object.assign(this, data);
-  }
-}
 
 let getMIDIDeviceListIsRunning: boolean = false;
 
@@ -342,6 +322,17 @@ export function isSysexString(data: Uint8Array): boolean
 {
   return data.length >= 3 && data[0] == 0xF0 && data[data.length-1] == 0xF7;
 }
+
+export function getChannelMessage(data: Uint8Array): [MessageType, number, number, number] 
+{
+  if (data.length < 1)
+    return [MessageType.Unknown, 0, 0, 0];
+  else if (data.length === 1)
+    return [data[0] & 0b11110000, data[0] & 0b00001111, 0, 0];
+  else if (data.length === 2)
+    return [data[0] & 0b11110000, data[0] & 0b00001111, data[1], 0];
+  else return [data[0] & 0b11110000, data[0] & 0b00001111, data[1], data[2]];
+}    
 
 /**
  * Map from manufacturerId, familyCode, and modelNumber to device name
