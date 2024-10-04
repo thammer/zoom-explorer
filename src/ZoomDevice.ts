@@ -1,12 +1,13 @@
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { DeviceID, IMIDIProxy, ListenerType, MessageType } from "./midiproxy.js";
-import { MIDIDeviceDescription } from "./miditools.js";
+import { getChannelMessage } from "./miditools.js";
 import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
-import { IMIDIDevice } from "./MIDIDeviceManager.js";
+import { IManagedMIDIDevice } from "./IManagedMIDIDevice.js";
+import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
@@ -102,7 +103,7 @@ export type EffectIDMap = Map<number, EffectParameterMap>;
  * 
  * 
  */
-export class ZoomDevice implements IMIDIDevice
+export class ZoomDevice implements IManagedMIDIDevice
 {
   private _midiDevice: MIDIDeviceDescription;
   private _timeoutMilliseconds: number;
@@ -499,7 +500,7 @@ export class ZoomDevice implements IMIDIDevice
 
   public logMutedTemporarilyForPollMessages(data: Uint8Array): boolean
   {
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    let [messageType, channel, data1, data2] = getChannelMessage(data); 
     const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
     return this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
   }
@@ -778,7 +779,7 @@ export class ZoomDevice implements IMIDIDevice
     let program = -1;
     let reply = await this.sendCommandAndGetReply(ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.bytes, (received) => {
       // expected reply is 2 optional bank messages (B0 00 00, B0 20 NN) and then one program change message (C0 NN)
-      let [messageType, channel, data1, data2] = this._midi.getChannelMessage(received);
+      let [messageType, channel, data1, data2] = getChannelMessage(received);
         if (messageType === MessageType.CC && data1 === 0x00) {
           if (bank === -1) bank = 0;
           bank = bank | (data2<<7);
@@ -1373,7 +1374,7 @@ export class ZoomDevice implements IMIDIDevice
     let effectSlot: number = -1;
     let paramNumber: number = -1;
     let paramValue: number = -1;
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    let [messageType, channel, data1, data2] = getChannelMessage(data); 
     if (messageType === MessageType.SysEx && data.length === 15 && data[4] === 0x64 && data[5] === 0x20) {
       // Parameter was edited on device (MS Plus series)
       effectSlot = data[7];
@@ -1632,14 +1633,14 @@ export class ZoomDevice implements IMIDIDevice
     for (let listener of this._listeners)
       listener(this, data);  
     
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    let [messageType, channel, data1, data2] = getChannelMessage(data); 
     if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
       this._autoRequestProgramChangeMuteLog = false; // Bank and program change message muted, don't skip logging anymore  
   }  
 
   private internalMIDIDataHandler(data: Uint8Array): void
   {
-    let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data); 
+    let [messageType, channel, data1, data2] = getChannelMessage(data); 
     
     // Skip log for auto requests of program change, to make the log less chatty
     const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
@@ -2030,7 +2031,7 @@ export class ZoomDevice implements IMIDIDevice
       let pcMessage = new Uint8Array(2); pcMessage[0] = 0xC0; pcMessage[1] = program & 0b01111111;
       reply = await this._midi.sendAndGetReply(this._midiDevice.outputID, pcMessage, this._midiDevice.inputID, (data: Uint8Array) => {
         // expected reply is 2 optional bank messages (B0 00 00, B0 20 NN) and then one program change message (C0 NN)
-        let [messageType, channel, data1, data2] = this._midi.getChannelMessage(data);
+        let [messageType, channel, data1, data2] = getChannelMessage(data);
         if (messageType === MessageType.CC && data1 === 0x00) {
           if (newBank === -1) newBank = 0;
           newBank = newBank | (data2<<7);
