@@ -348,6 +348,7 @@ let MIDIDeviceHexStringToName: { [key: string]: string; } =
   "00 20 29 61 00 00 00" : "Launch Control XL mk2",
   "00 01 79 04 00 01 00" : "Midi Fighter Spectra",
   "00 20 6B 06 00 06 01" : "MicroFreak",
+  "00 01 79 05 00 01 00" : "Midi Fighter Twister",
 }
 
 /**
