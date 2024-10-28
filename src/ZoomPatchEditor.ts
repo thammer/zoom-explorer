@@ -1,5 +1,5 @@
 import { getColorFromEffectID, supportsContentEditablePlaintextOnly } from "./htmltools.js";
-import { EffectParameterMap, ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
+import { ZoomDevice } from "./ZoomDevice.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
