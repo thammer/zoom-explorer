@@ -224,6 +224,26 @@ export function removeAllEventListeners(element: HTMLElement): HTMLElement
     return clonedElement;
 }
 
+/**
+ * Adds the given CSS style to the document.
+ * @param {string} styleString - a string containing valid CSS
+ * @returns {HTMLStyleElement} - the added style element
+ */
+export function addStyle(styleString: string) : HTMLStyleElement
+{
+  const style = document.createElement("style");
+  style.textContent = styleString;
+  document.head.append(style);
+  return style;
+}
+
+export function htmlToElement(html: string): HTMLElement
+{
+  let template = document.createElement("template");
+  template.innerHTML = html.trim();
+  return template.content.firstElementChild as HTMLElement;
+}
+
 export function getColorFromEffectID(effectID: number): string
 {
   let effectGroup = (effectID >> 24) & 0xFF;
