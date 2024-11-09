@@ -2170,15 +2170,15 @@ export class ZoomDevice implements IManagedMIDIDevice
     return "";
   }
 
-  public getEffectName(effectID: number): string
+  public getEffectNameAndNumParameters(effectID: number): [effectName: string | undefined, numParameters: number | undefined]
   {
     if (this.effectIDMap === undefined)
-      return "";
+      return [undefined, undefined];
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     if (effectMapping !== undefined) {
-      return effectMapping.name;
+      return [effectMapping.name, effectMapping.parameters.length];
     }
-    return "";
+    return [undefined, undefined];
   }
 
   public getParameterNameAndMaxValue(effectID: number, parameterNumber: number): [parameterName: string | undefined, maxValue: number | undefined]
