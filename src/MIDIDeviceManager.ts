@@ -21,7 +21,7 @@ export class MIDIDeviceManager
   // private _factories: Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
   private _factories: Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
   private _deviceList: Map<string, IManagedMIDIDevice[]> = new Map<string, IManagedMIDIDevice[]>();
-  private _midiDeviceList: MIDIDeviceDescription[] = [];
+  private _midiDeviceDescriptorList: MIDIDeviceDescription[] = [];
   private _disconnectListeners: DisconnectListenerType[] = new Array<DisconnectListenerType>();
   private _connectListeners: ConnectListenerType[] = new Array<ConnectListenerType>();
   private _sequentialRunner = new SequentialAsyncRunner();
@@ -68,7 +68,7 @@ export class MIDIDeviceManager
     let inputs: Map<string, DeviceInfo> = new Map<string, DeviceInfo>(this._midi.inputs);
     let outputs: Map<string, DeviceInfo> = new Map<string, DeviceInfo>(this._midi.outputs);
   
-    for (let device of this._midiDeviceList) {
+    for (let device of this._midiDeviceDescriptorList) {
       inputs.delete(device.inputID);
       outputs.delete(device.outputID);
     }
@@ -89,11 +89,11 @@ export class MIDIDeviceManager
     }
 
     for (let device of newDeviceDescriptors) {
-      if (this._midiDeviceList.includes(device)) {
+      if (this._midiDeviceDescriptorList.includes(device)) {
         console.error(`Device ${device.deviceName} (${device.inputName}, ${device.outputName}) already in list`);
       }
       else {
-        this._midiDeviceList.push(device);
+        this._midiDeviceDescriptorList.push(device);
       }
     }
 
@@ -149,7 +149,7 @@ export class MIDIDeviceManager
   }
 
   public get midiDeviceList(): MIDIDeviceDescription[] {
-    return this._midiDeviceList;
+    return this._midiDeviceDescriptorList;
   }
 
   public getDevices(typeID: string): IManagedMIDIDevice[]
@@ -198,7 +198,7 @@ export class MIDIDeviceManager
       listener(this, device, key);
   }
 
-  private getDeviceFromHandle(deviceHandle: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
+  public getDeviceFromHandle(deviceHandle: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
   {
     for (let [key, deviceList] of this._deviceList) {
       let device = deviceList.find( (device) => device.deviceInfo.inputID === deviceHandle || device.deviceInfo.outputID === deviceHandle);
@@ -208,18 +208,33 @@ export class MIDIDeviceManager
     return [undefined, undefined];
   }
   
-  private getDeviceName(deviceHandle: string, portType: PortType): string
+  public getPortName(deviceHandle: string, portType: PortType): string
   {
     if (!this._midi.isDeviceConnected(deviceHandle, portType)) {
-      console.log(`MIDIDeviceManager.getDeviceName() called for unconnected device ${deviceHandle}`);
+      console.log(`MIDIDeviceManager.getPortName() called for unconnected device ${deviceHandle}`);
       return "";
     }
     else 
       return this._midi.getDeviceInfo(deviceHandle, portType).name;
   }
 
+  public getDeviceName(deviceHandle: string, portType: PortType): string
+  {
+    let deviceDescriptor = this._midiDeviceDescriptorList.find( (device) => portType === "input" && device.inputID === deviceHandle || 
+      device.outputID === deviceHandle);
+    
+    return deviceDescriptor === undefined ? "" : deviceDescriptor.deviceName;
+  }
+
+  public getDeviceHandleFromDeviceName(deviceName: string, portType: PortType): string
+  {
+    let deviceDescriptor = this._midiDeviceDescriptorList.find( (device) => device.deviceName === deviceName);
+    
+    return deviceDescriptor === undefined ? "" : portType === "input" ? deviceDescriptor.inputID : deviceDescriptor.outputID;
+  }
+
   private midiConnectionHandler(deviceHandle: string, portType: PortType, state: string) {
-    let deviceName = this.getDeviceName(deviceHandle, portType);
+    let deviceName = this.getPortName(deviceHandle, portType);
     console.log(`MIDIDeviceManager: MIDI Connection event for device "${deviceName}" (${deviceHandle}), portType: ${portType}, state: ${state}`);
 
     if (state === "disconnected") {
@@ -235,7 +250,7 @@ export class MIDIDeviceManager
           console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected. Skipping close() as it was already closed`);
         }
 
-        this._midiDeviceList = this._midiDeviceList.filter( (device) => device.inputID !== deviceHandle && device.outputID !== deviceHandle);
+        this._midiDeviceDescriptorList = this._midiDeviceDescriptorList.filter( (device) => device.inputID !== deviceHandle && device.outputID !== deviceHandle);
         let deviceList = this._deviceList.get(deviceKey);
         if (deviceList !== undefined) {
           this._deviceList.set(deviceKey, deviceList.filter( (device) => device.deviceInfo.inputID !== deviceHandle && device.deviceInfo.outputID !== deviceHandle));

@@ -6,6 +6,8 @@
 
 export type DeviceID = string;
 
+export const ALL_MIDI_DEVICES = "ALL_MIDI_DEVICES";
+
 export type DeviceState = "connected" | "disconnected" | "unknown";
 
 export type DeviceInfo = 

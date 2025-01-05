@@ -323,7 +323,7 @@ export function isSysexString(data: Uint8Array): boolean
   return data.length >= 3 && data[0] == 0xF0 && data[data.length-1] == 0xF7;
 }
 
-export function getChannelMessage(data: Uint8Array): [MessageType, number, number, number] 
+export function getChannelMessage(data: Uint8Array): [messageType: MessageType, channel: number, data1: number, data2: number] 
 {
   if (data.length < 1)
     return [MessageType.Unknown, 0, 0, 0];

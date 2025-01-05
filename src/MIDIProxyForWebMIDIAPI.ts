@@ -1,5 +1,5 @@
 
-import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType } from "./midiproxy.js";
+import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType, ALL_MIDI_DEVICES } from "./midiproxy.js";
 import { bytesToHexString, getFunctionName } from "./tools.js";
 //import jzz from "jzz";
 
@@ -26,6 +26,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     super();
     this.navigator = navigator;
     this.midi = undefined;
+    this.midiMessageListenerMap.set(ALL_MIDI_DEVICES, new Array<ListenerType>());
   }
 
   async enable() : Promise<boolean>
@@ -297,17 +298,18 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     output.send(dataArray);
   }
 
-
   addListener(deviceHandle: DeviceID, listener: ListenerType): void
   {
     if (this.midi === undefined)
-      throw `Attempting to get add midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
+      throw `Attempting to add midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
 
-    let input = this.midi.inputs.get(deviceHandle);
-    if (input === undefined)
-    {
-      console.trace();
-      throw `No input found with ID "${deviceHandle}" in ${getFunctionName()}`;
+    if (deviceHandle !== ALL_MIDI_DEVICES) {
+      let input = this.midi.inputs.get(deviceHandle);
+      if (input === undefined)
+      {
+        console.trace();
+        throw `No input found with ID "${deviceHandle}" in ${getFunctionName()}`;
+      }
     }
 
     let listeners = this.midiMessageListenerMap.get(deviceHandle);
@@ -322,10 +324,12 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     if (this.midi === undefined)
       throw `Attempting to get midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
 
-    let input = this.midi.inputs.get(deviceHandle);
-    if (input === undefined)
-    {
-      console.log(`No input found with ID "${deviceHandle}". Removing listener anyway.`);
+    if (deviceHandle !== ALL_MIDI_DEVICES) {
+      let input = this.midi.inputs.get(deviceHandle);
+      if (input === undefined)
+      {
+        console.log(`No input found with ID "${deviceHandle}". Removing listener anyway.`);
+      }
     }
 
     let listeners = this.midiMessageListenerMap.get(deviceHandle);
@@ -387,7 +391,20 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
   onMIDIMessage(deviceHandle: DeviceID, input: MIDIInput, message:MIDIMessageEvent)
   {
-    let listeners = this.midiMessageListenerMap.get(deviceHandle);
+    // first, call listeners that listen for all midi devices
+    let listeners = this.midiMessageListenerMap.get(ALL_MIDI_DEVICES);
+    if (listeners !== undefined) {
+      for (let listener of listeners)
+        {
+          if (message.data !== null)
+            listener(deviceHandle, message.data);    
+          else
+            console.warn("message.data == null");  
+        }    
+    }
+
+    // then, call listeners that listen for this specific device
+    listeners = this.midiMessageListenerMap.get(deviceHandle);
     if (listeners === undefined)
       throw `Received MIDI message from device "${deviceHandle}" with no listener list`;
 
