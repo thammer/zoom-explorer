@@ -1685,6 +1685,13 @@ export class ZoomDevice implements IManagedMIDIDevice
           this.emitMemorySlotChangedEvent();  
       }
     }
+    else if (this.isMessageType(data, ZoomDevice.messageTypes.parameterValueAcceptedV2)) {
+      let effectSlot = data[7];
+      let parameterNumber = data[8];
+      let parameterValue = data[9] + (data[10] << 7);
+      if (log) console.log(`${performance.now().toFixed(1)} Received parameter update accepted for effect slot ${effectSlot}, ` +
+        `parameter number ${parameterNumber}, value ${parameterValue}, raw: ${bytesToHexString(data, " ")}`);
+    }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.nameCharacterV2)) {
       if (log) console.log(`${performance.now().toFixed(1)} Received name character index ${data[8]}, character: ${data[9]}, raw: ${bytesToHexString(data, " ")}`);
       // Name was edited on device (MS Plus series)
@@ -1867,13 +1874,6 @@ export class ZoomDevice implements IManagedMIDIDevice
       let changed = this.syncStateWithNewBankAndProgram(bank, program);
       if (changed)
         this.emitMemorySlotChangedEvent();  
-    }
-    else if (this.isMessageType(data, ZoomDevice.messageTypes.parameterValueAcceptedV2)) {
-      let effectSlot = data[7];
-      let parameterNumber = data[8];
-      let parameterValue = data[9] + (data[10] << 7);
-      if (log) console.log(`${performance.now().toFixed(1)} Received parameter update accepted for effect slot ${effectSlot}, ` +
-        `parameter number ${parameterNumber}, value ${parameterValue}, raw: ${bytesToHexString(data, " ")}`);
     }
     else {
       if (log) console.log(`${performance.now().toFixed(1)} Received unknown message raw: ${bytesToHexString(data, " ")}`);
