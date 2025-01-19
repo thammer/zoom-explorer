@@ -240,8 +240,15 @@ export class ZoomScreenCollection
     let screen = this.screens[effectSlot];
     let parameter = screen.parameters[parameterNumber];
 
-    let parameterIndex = parameterNumber - 2;
-    let valueString = effectMap.parameters[parameterIndex].values[value];
+    let valueString: string;
+
+    if (parameterNumber === 0) {
+      valueString = value > 0 ? "ON" : "OFF";
+    }
+    else {
+      let parameterIndex = parameterNumber - 2;
+      valueString = effectMap.parameters[parameterIndex].values[value];
+    }
 
     console.log(`Changing effect parameter value from "${parameter.valueString}" to "${valueString}" for effect ${effectMap.name}, parameter ${parameter.name}`);
     parameter.valueString = valueString;

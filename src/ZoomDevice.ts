@@ -375,7 +375,8 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._screenChangedListeners = [];
   }
 
-  private emitScreenChangedEvent() {
+  private emitScreenChangedEvent()
+  {
     for (let listener of this._screenChangedListeners)
       listener(this);
   }
@@ -673,7 +674,10 @@ export class ZoomDevice implements IManagedMIDIDevice
     }
 
     patch.effectSettings[effectSlot].parameters[parameterIndex] = value;
-    
+    this._currentEffectSlot = effectSlot;
+    this._currentEffectParameterNumber = parameterNumber;
+    this._currentEffectParameterValue = value;
+
     if (this._supportedCommands.get(ZoomDevice.messageTypes.parameterValueV2.str) === SupportType.Supported) {
       // FIXME: Optimize this. Use preallocated memory instead of allocating each time. Look at constructor.
       // This should be one buffer for the whole sysex message
@@ -718,8 +722,12 @@ export class ZoomDevice implements IManagedMIDIDevice
     }
 
     // FIXME: Consider not updating screens here, but rather on demand when the user requests it, in the currentScreenCollection getter
-    if (this._autoUpdateScreens && this.currentScreenCollection !== undefined && this.effectIDMap !== undefined)
+    if (this._autoUpdateScreens && this.currentScreenCollection !== undefined && this.effectIDMap !== undefined) {
       this.currentScreenCollection.setEffectParameterValue(this.currentPatch, this.effectIDMap, effectSlot, parameterNumber, value);
+      this.emitScreenChangedEvent();
+    }
+
+    this.emitEffectParameterChangedEvent();
   }
 
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
@@ -2138,6 +2146,10 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     if (this.effectIDMap === undefined)
       return [0, -1];
+
+    if (parameterNumber === 0) 
+      return [valueString === "OFF" ? 0 : 1, 1];
+
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
     if (effectMapping !== undefined) {
@@ -2158,6 +2170,10 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     if (this.effectIDMap === undefined)
       return "";
+
+    if (parameterNumber === 0)
+      return rawValue === 0 ? "OFF" : "ON";
+
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
     if (effectMapping !== undefined) {
@@ -2185,6 +2201,10 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     if (this.effectIDMap === undefined)
       return [undefined, undefined];
+
+    if (parameterNumber === 0)
+      return ["ON/OFF", 1];
+
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
     if (effectMapping !== undefined) {
