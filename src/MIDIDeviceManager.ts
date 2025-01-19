@@ -123,6 +123,13 @@ export class MIDIDeviceManager
       }
     }
 
+    // FIXME: Test that this works in ZoomExplorer, then remove this comment. 2025-01-18.
+    for (let [deviceKey, newDevicesForKey] of newDevices) {
+      for (let newDevice of newDevicesForKey) {
+        this.emitConnectEvent(newDevice, deviceKey!);                          
+      }
+    }
+
     // loop through factories and match up devices. 
     // for (let factory of this._factories) {
     //   let factoryKey = factory.factoryKey;
@@ -207,7 +214,17 @@ export class MIDIDeviceManager
     }
     return [undefined, undefined];
   }
-  
+ 
+  public getDeviceFromName(deviceName: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
+  {
+    for (let [key, deviceList] of this._deviceList) {
+      let device = deviceList.find( (device) => device.deviceInfo.deviceName === deviceName);
+      if (device !== undefined)
+        return [device, key];
+    }
+    return [undefined, undefined];
+  }
+
   public getPortName(deviceHandle: string, portType: PortType): string
   {
     if (!this._midi.isDeviceConnected(deviceHandle, portType)) {
@@ -274,14 +291,15 @@ export class MIDIDeviceManager
             if (newDevices.size > 1) {
               console.warn(`Multiple devices of multiple types created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
             }
-            for (let [deviceKey, newDevicesForKey] of newDevices) {
-              if (newDevicesForKey.length > 1) {
-                console.warn(`Multiple devices created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
-              }
-              for (let newDevice of newDevicesForKey) {
-                this.emitConnectEvent(newDevice, deviceKey!);                          
-              }
-            }
+            // Notifications moved to updateMIDIDEviceList()
+            // for (let [deviceKey, newDevicesForKey] of newDevices) {
+            //   if (newDevicesForKey.length > 1) {
+            //     console.warn(`Multiple devices created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
+            //   }
+            //   for (let newDevice of newDevicesForKey) {
+            //     this.emitConnectEvent(newDevice, deviceKey!);                          
+            //   }
+            // }
           }
         });
       }
