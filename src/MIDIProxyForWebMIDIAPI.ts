@@ -1,5 +1,6 @@
 
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType, ALL_MIDI_DEVICES } from "./midiproxy.js";
+import { MIDI_RECEIVE, MIDI_RECEIVE_TO_SEND, MIDI_SEND, perfmon } from "./PerformanceMonitor.js";
 import { bytesToHexString, getFunctionName } from "./tools.js";
 //import jzz from "jzz";
 
@@ -295,7 +296,13 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let dataArray = Array.from(data);
     if (this.loggingEnabled)
       console.log(`${performance.now().toFixed(1)} Sent: ${bytesToHexString(dataArray, " ")}`)
+
+    perfmon.exit(MIDI_RECEIVE_TO_SEND);
+    perfmon.enter(MIDI_SEND);
+ 
     output.send(dataArray);
+    
+    perfmon.exit(MIDI_SEND);
   }
 
   addListener(deviceHandle: DeviceID, listener: ListenerType): void
@@ -391,6 +398,9 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
   onMIDIMessage(deviceHandle: DeviceID, input: MIDIInput, message:MIDIMessageEvent)
   {
+    perfmon.enter(MIDI_RECEIVE);
+    perfmon.enter(MIDI_RECEIVE_TO_SEND);
+
     // first, call listeners that listen for all midi devices
     let listeners = this.midiMessageListenerMap.get(ALL_MIDI_DEVICES);
     if (listeners !== undefined) {
