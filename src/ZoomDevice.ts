@@ -2221,7 +2221,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._cancelMapping = true;
   }
 
-  public async mapParameters(): Promise<{ [key: string]: EffectParameterMap; } | undefined>
+  public async mapParameters(effectList: Map<number, string>, effectListName: string): Promise<{ [key: string]: EffectParameterMap; } | undefined>
   {
     this._disableMidiHandlers = true;
     
@@ -2259,7 +2259,6 @@ export class ZoomDevice implements IManagedMIDIDevice
     let error = false;
     
     let counter = 1;
-    let effectList: Map<number, string> = zoomEffectIDsMS50GPlus;
     let numEffects = effectList.size;
     
     for (let id of effectList.keys()) {
@@ -2318,7 +2317,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       let screen = screenCollection.screens[0].parameters;
 
       if (screen[1].name.toUpperCase() !== effectList.get(id)?.toUpperCase()) {
-        console.warn(`*** screen[1].name "${screen[1].name}" does not match zoomEffectIDsMS70CDRPlus.get(id) "${effectList.get(id)}" while verifying patch, skipping effect ***`);
+        console.warn(`*** screen[1].name "${screen[1].name}" does not match ${effectListName}.get(id) "${effectList.get(id)}" while verifying patch, skipping effect ***`);
         console.warn(`Screen: ${JSON.stringify(screen)}`);
         counter++;
         continue;

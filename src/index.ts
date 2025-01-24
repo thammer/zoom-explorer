@@ -9,6 +9,7 @@ import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, load
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
+import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -325,7 +326,9 @@ mapEffectsButton.addEventListener("click", async (event) => {
     await sleepForAWhile(600);
 
     mapEffectsButton.innerText = "Cancel";
-    mappings = await zoomDevice.mapParameters();
+    let effectList: Map<number, string> = zoomEffectIDsMS60BPlus;
+
+    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsMS60BPlus");
     mapEffectsButton.innerText = "Save mappings";
 
     infoDialog.show(`Mapping completed. Please click the "Save mappings" button and email the file to h@mmer.no together with the name of your pedal.`);
