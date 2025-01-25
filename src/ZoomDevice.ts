@@ -166,8 +166,9 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _currentPatch: ZoomPatch | undefined = undefined; // if undefined, need to parse _currentPatchData, then set _currentPatchData=undefined 
   private _currentTempo: number | undefined = undefined;
 
-  private static _effectIDMapForMSPlus: EffectIDMap | undefined = undefined;
-  private static _effectIDMapForMSOG: EffectIDMap | undefined = undefined; 
+  // private static _effectIDMapForMSPlus: EffectIDMap | undefined = undefined;
+  // private static _effectIDMapForMSOG: EffectIDMap | undefined = undefined; 
+  private static _effectIDMaps: Map<string, EffectIDMap> = new Map<string, EffectIDMap>();
   private _isMSOG: boolean = false; // Note: Try not to use this much, as we'd rather rely on probing
   private _numParametersPerPage = 0;
 
@@ -402,14 +403,11 @@ export class ZoomDevice implements IManagedMIDIDevice
       listener(this, tempo);
   }
 
-  public static setEffectIDMapForMSOG(effectIDMap: EffectIDMap)
+  public static setEffectIDMap(pedalnames: string[], effectIDMap: EffectIDMap)
   {
-    ZoomDevice._effectIDMapForMSOG = effectIDMap; 
-  }
-
-  public static setEffectIDMap(effectIDMap: EffectIDMap)
-  {
-    ZoomDevice._effectIDMapForMSPlus = effectIDMap; 
+    for (let pedalname of pedalnames) {
+      ZoomDevice._effectIDMaps.set(pedalname, effectIDMap); 
+    }
   }
 
   public parameterEditEnable() 
@@ -2130,7 +2128,12 @@ export class ZoomDevice implements IManagedMIDIDevice
 
   get effectIDMap(): EffectIDMap | undefined
   {
-    return this._isMSOG ? ZoomDevice._effectIDMapForMSOG : ZoomDevice._effectIDMapForMSPlus;
+    let map = ZoomDevice._effectIDMaps.get(this.deviceInfo.deviceName);
+    if (map === undefined) {
+      console.error(`No effect ID map found for device ${this.deviceInfo.deviceName}`);
+      return undefined;
+    }
+    return map;
   }
 
 

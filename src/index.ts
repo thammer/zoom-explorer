@@ -200,27 +200,27 @@ async function start()
 }
 
 async function downloadEffectMaps() {
+
   let startTime = performance.now();
-  let timeSpent = performance.now() - startTime;
-
   let obj = await downloadJSONResource("zoom-effect-mappings-ms50gp.json");
-
   console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
-  startTime = performance.now();
-
   let mapForMS50GPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-
   console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
-
-  obj = await downloadJSONResource("zoom-effect-mappings-ms70cdrp.json");
-
-  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  
   startTime = performance.now();
-
+  obj = await downloadJSONResource("zoom-effect-mappings-ms70cdrp.json");
+  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   let mapForMS70CDRPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-
   console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
-
+    
+  startTime = performance.now();
+  obj = await downloadJSONResource("zoom-effect-mappings-ms60bp.json");
+  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  let mapForMS60BPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+  
+  console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
+  
+  startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
 
   console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
@@ -230,7 +230,7 @@ async function downloadEffectMaps() {
 
   console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
 
-  ZoomDevice.setEffectIDMapForMSOG(mapForMSOG);
+  ZoomDevice.setEffectIDMap(["MS-50G", "MS-60B", "MS-70CDR"], mapForMSOG);
 
   // merge maps
   let parameterMap: Map<number, EffectParameterMap>;
@@ -239,7 +239,10 @@ async function downloadEffectMaps() {
     parameterMap.set(key, value);
   });
 
-  ZoomDevice.setEffectIDMap(parameterMap);
+  ZoomDevice.setEffectIDMap(["MS-50G+", "MS-70CDR+"], parameterMap);
+
+  ZoomDevice.setEffectIDMap(["MS-60B+"], mapForMS60BPlus);
+  
   //ZoomDevice.setEffectIDMap(mapForMS70CDRPlus);
 
   // mapForMSOG.forEach( (value, key) => {
