@@ -8,7 +8,7 @@ import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 import { IManagedMIDIDevice } from "./IManagedMIDIDevice.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
-import { shouldLog, LogLevel } from "./Logger.js";
+import { shouldLog, LogLevel, getLogLevel, setLogLevel } from "./Logger.js";
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
@@ -68,6 +68,7 @@ class ZoomMessageTypes
 export type ParameterValueMap = { 
   name: string, 
   values: Array<string>,
+  valuesUCNSP: null | Map<string, number>, // values in upper case and with no spaces, for fast lookup in getRawParameterValueFromString()
   max: number
 };
 
@@ -406,8 +407,29 @@ export class ZoomDevice implements IManagedMIDIDevice
 
   public static setEffectIDMap(pedalnames: string[], effectIDMap: EffectIDMap)
   {
+    ZoomDevice.addUCNSValuesToMap(effectIDMap);
+
     for (let pedalname of pedalnames) {
       ZoomDevice._effectIDMaps.set(pedalname, effectIDMap); 
+    }
+  }
+
+  /**
+   * Adds the valuesUCNSP to all parameter mappings for quick lookup in getRawParameterValueFromString
+   * @param effectIDMap 
+   */
+  private static addUCNSValuesToMap(effectIDMap: EffectIDMap)
+  {
+    for (const [id, effectMapping] of effectIDMap) {
+      for (let p = 0; p < effectMapping.parameters.length; p++) {
+        let parameterMapping = effectMapping.parameters[p];
+        if (parameterMapping.valuesUCNSP === undefined || parameterMapping.valuesUCNSP === null || parameterMapping.valuesUCNSP.size === 0) {
+          parameterMapping.valuesUCNSP = new Map<string, number>();
+          for (let index = 0; index < parameterMapping.values.length; index++) {
+            parameterMapping.valuesUCNSP.set(parameterMapping.values[index], index);  
+          }
+        }
+      }
     }
   }
 
@@ -657,15 +679,23 @@ export class ZoomDevice implements IManagedMIDIDevice
     }
   }
 
-  public setEffectParameterForCurrentPatch(effectSlot: number, parameterNumber: number, value: number)
+  public setEffectParameterForCurrentPatch(effectSlot: number, parameterNumber: number, value: number, force: boolean = false)
   {
     if (this.currentPatch === undefined) {
       shouldLog(LogLevel.Error) && console.error(`Unable to set effect parameter for current patch because currentPatch is undefined`);
       return;
     }
 
-    let patch = this.freezeCurrentPatch ? this.currentPatch.clone() : this.currentPatch;
     let parameterIndex = parameterNumber - 2;
+
+    if (!force && this.currentPatch !== null && this.currentPatch.effectSettings !== null && effectSlot < this.currentPatch.effectSettings.length &&
+      parameterIndex < this.currentPatch.effectSettings[effectSlot].parameters.length &&
+      this.currentPatch.effectSettings[effectSlot].parameters[parameterIndex] === value)
+    {
+      return; // no need to send updated value, since it's the same as the current value 
+    }
+
+    let patch = this.freezeCurrentPatch ? this.currentPatch.clone() : this.currentPatch;
 
     if (patch.effectSettings === null || effectSlot >= patch.effectSettings.length || parameterIndex >= patch.effectSettings[effectSlot].parameters.length) {
       shouldLog(LogLevel.Error) && console.error(`Unable to set effect parameter for current patch because effectSlot ${effectSlot} or parameterIndex ${parameterIndex} is out of range`);
@@ -1299,13 +1329,16 @@ export class ZoomDevice implements IManagedMIDIDevice
       return; // don't send program change requests while the patch list is being downloaded
 
     // Temporarily mute logging, so log isn't so chatty
-    let loggingEnabled = this._midi.loggingEnabled;
-    this._midi.loggingEnabled = false;
+    let logLevel = getLogLevel();
+    if (logLevel & LogLevel.Midi)
+      setLogLevel(logLevel & ~LogLevel.Midi);
+
     this._autoRequestProgramChangeMuteLog = true; // mute next bank change(s) and program change message, to make the log less chatty
 
     this.sendCommand(ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.bytes);
     
-    this._midi.loggingEnabled = loggingEnabled;
+    if (logLevel & LogLevel.Midi)
+      setLogLevel(logLevel);
   }
 
   private getSevenBitCRC(data: Uint8Array): Uint8Array 
@@ -1631,9 +1664,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   private handleMIDIDataFromZoom(data: Uint8Array): void
   {
     if (this._disableMidiHandlers) {
-      if (this._midi.loggingEnabled) {
-        shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Rcvd: ${bytesToHexString(data, " ")}`);
-      }
+      shouldLog(LogLevel.Midi) && console.log(`${performance.now().toFixed(1)} Rcvd: ${bytesToHexString(data, " ")}`);
       return;
     }
 
@@ -2108,7 +2139,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._maxNumEffects = 6; // FIXME: Support MS-60B and other pedals with different number of max effects
 
     if (this.loggingEnabled) {
-      let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replace(/ /g, "").padEnd(2, "00") > b[0].replace(/ /g, "").padEnd(2, "00") ? 1 : -1))
+      let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replaceAll(" ", "").padEnd(2, "00") > b[0].replaceAll(" ", "").padEnd(2, "00") ? 1 : -1))
       shouldLog(LogLevel.Info) && console.log("Probing summery:")
       for (let [command, supportType] of sortedMap) {
         shouldLog(LogLevel.Info) && console.log(`  ${command.padEnd(8)} -> ${supportType == SupportType.Supported ? "  Supported" : "Unsupported"}`)
@@ -2166,9 +2197,10 @@ export class ZoomDevice implements IManagedMIDIDevice
       if (parameterIndex < effectMapping.parameters.length) {
         let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
         valueString = ZoomPatch.noteUTF16ToHtml(valueString);
-        valueString = valueString.replace(/ /g, "").toUpperCase();
-        let rawValue = parameterMapping.values.findIndex(str => str.replace(/ /g, "").toUpperCase() === valueString);
-        if (rawValue >= 0)
+        valueString = valueString.replaceAll(" ", "").toUpperCase();
+        //let rawValue = parameterMapping.values.findIndex(str => str.replaceAll(" ", "").toUpperCase() === valueString);
+        let rawValue = parameterMapping.valuesUCNSP?.get(valueString);
+        if (rawValue !== undefined && rawValue >= 0)
           return [rawValue, parameterMapping.max];
       }
     }
@@ -2255,7 +2287,9 @@ export class ZoomDevice implements IManagedMIDIDevice
     shouldLog(LogLevel.Info) && console.log(`*** Mapping started at ${performance.now().toFixed(1)}, using current patch ${patch.name} ***`);
     let startTime = performance.now();
 
-    this._midi.loggingEnabled = false;
+    let logLevel = getLogLevel();
+    if (logLevel & LogLevel.Midi)
+      setLogLevel(logLevel & ~LogLevel.Midi);
 
     let mappings: { [key: string]: EffectParameterMap } = {};
 
@@ -2316,11 +2350,13 @@ export class ZoomDevice implements IManagedMIDIDevice
       let screenCollection = await this.downloadScreens(effectSlot, effectSlot);
       if (screenCollection === undefined) {
         shouldLog(LogLevel.Error) && console.error("*** Failed to download screens while verifying patch, aborting mapping ***");
+        setLogLevel(logLevel); // enable MIDI logging again
         return undefined;
       }
 
       if (screenCollection.screens.length != 1) {
         shouldLog(LogLevel.Error) && console.error(`*** screenCollection.screens.length ${screenCollection.screens.length} is out of range while verifying patch, aborting mapping ***`);
+        setLogLevel(logLevel); // enable MIDI logging again
         return undefined;
       }
 
@@ -2398,6 +2434,8 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     this._disableMidiHandlers = false;
 
+    setLogLevel(logLevel); // enable MIDI logging again
+
     return mappings;
 
     async function mapParameter(device: ZoomDevice, effectSlot: number, paramNumber: number): Promise<[ParameterValueMap | undefined, boolean]>
@@ -2474,7 +2512,7 @@ export class ZoomDevice implements IManagedMIDIDevice
             shouldLog(LogLevel.Warning) && console.warn(`Warning: paramNumber (${paramNumber}) >= screen.parameters.length (${screen.parameters.length}), using (patch) paramValue as textValue. Investigate.`);
             shouldLog(LogLevel.Warning) && console.warn(`           Unknown = ${paramValue} -> "${paramValue.toString()}"`);
             if (mappingsForParameterValue === undefined)
-              mappingsForParameterValue = { name: `Hidden-${hiddenParamCount++}`, values: new Array<string>(), max: 0 };
+              mappingsForParameterValue = { name: `Hidden-${hiddenParamCount++}`, values: new Array<string>(), max: 0, valuesUCNSP: null };
             mappingsForParameterValue.values.push(paramValue.toString());
             continue;
           }
@@ -2486,7 +2524,7 @@ export class ZoomDevice implements IManagedMIDIDevice
 
           if (log) shouldLog(LogLevel.Info) && console.log(`           ${parameter.name} = ${paramValue} -> "${valueString}"`);
           if (mappingsForParameterValue === undefined)
-            mappingsForParameterValue = { name: parameter.name, values: new Array<string>(), max: 0 };
+            mappingsForParameterValue = { name: parameter.name, values: new Array<string>(), max: 0, valuesUCNSP: null };
           mappingsForParameterValue.values.push(valueString);
           if (log) shouldLog(LogLevel.Info) && console.log(`  Control: ${mappingsForParameterValue.name} = ${paramValue} -> "${mappingsForParameterValue.values[paramValue]}"`);
         }
