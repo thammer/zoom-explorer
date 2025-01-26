@@ -1,4 +1,5 @@
 import { IManagedMIDIDevice } from "./IManagedMIDIDevice.js";
+import { shouldLog, LogLevel } from "./Logger.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { DeviceID, DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
 import { getMIDIDeviceList} from "./miditools.js";
@@ -60,11 +61,11 @@ export class MIDIDeviceManager
     this._concurrentRunsCounter++;
 
     if (this._concurrentRunsCounter > 40) {
-      console.error("Too many concurrent calls to updateMIDIDeviceList() - counter = " + this._concurrentRunsCounter);
+      shouldLog(LogLevel.Error) && console.error("Too many concurrent calls to updateMIDIDeviceList() - counter = " + this._concurrentRunsCounter);
       return undefined;
     }
 
-    console.log(`Starting updateMIDIDeviceList - counter = ${this._concurrentRunsCounter}`);
+    shouldLog(LogLevel.Info) && console.log(`Starting updateMIDIDeviceList - counter = ${this._concurrentRunsCounter}`);
     let inputs: Map<string, DeviceInfo> = new Map<string, DeviceInfo>(this._midi.inputs);
     let outputs: Map<string, DeviceInfo> = new Map<string, DeviceInfo>(this._midi.outputs);
   
@@ -75,7 +76,7 @@ export class MIDIDeviceManager
 
     if (inputs.size === 0 || outputs.size === 0) {
       this._concurrentRunsCounter--;
-      console.log(`Aborting updateMIDIDeviceList since number of inputs or outputs were 0 - counter = ${this._concurrentRunsCounter}`);
+      shouldLog(LogLevel.Info) && console.log(`Aborting updateMIDIDeviceList since number of inputs or outputs were 0 - counter = ${this._concurrentRunsCounter}`);
       return undefined;
     }
 
@@ -84,13 +85,13 @@ export class MIDIDeviceManager
 
     if (newDeviceDescriptors.length === 0) {
       this._concurrentRunsCounter--;
-      console.log(`Aborting updateMIDIDeviceList since no new devices were matched up - counter = ${this._concurrentRunsCounter}`);
+      shouldLog(LogLevel.Info) && console.log(`Aborting updateMIDIDeviceList since no new devices were matched up - counter = ${this._concurrentRunsCounter}`);
       return undefined;
     }
 
     for (let device of newDeviceDescriptors) {
       if (this._midiDeviceDescriptorList.includes(device)) {
-        console.error(`Device ${device.deviceName} (${device.inputName}, ${device.outputName}) already in list`);
+        shouldLog(LogLevel.Error) && console.error(`Device ${device.deviceName} (${device.inputName}, ${device.outputName}) already in list`);
       }
       else {
         this._midiDeviceDescriptorList.push(device);
@@ -151,7 +152,7 @@ export class MIDIDeviceManager
     // }
 
     this._concurrentRunsCounter--;
-    console.log(`Completed updateMIDIDeviceList  - counter = ${this._concurrentRunsCounter}`);
+    shouldLog(LogLevel.Info) && console.log(`Completed updateMIDIDeviceList  - counter = ${this._concurrentRunsCounter}`);
     return newDevices;
   }
 
@@ -228,7 +229,7 @@ export class MIDIDeviceManager
   public getPortName(deviceHandle: string, portType: PortType): string
   {
     if (!this._midi.isDeviceConnected(deviceHandle, portType)) {
-      console.log(`MIDIDeviceManager.getPortName() called for unconnected device ${deviceHandle}`);
+      shouldLog(LogLevel.Info) && console.log(`MIDIDeviceManager.getPortName() called for unconnected device ${deviceHandle}`);
       return "";
     }
     else 
@@ -252,19 +253,19 @@ export class MIDIDeviceManager
 
   private midiConnectionHandler(deviceHandle: string, portType: PortType, state: string) {
     let deviceName = this.getPortName(deviceHandle, portType);
-    console.log(`MIDIDeviceManager: MIDI Connection event for device "${deviceName}" (${deviceHandle}), portType: ${portType}, state: ${state}`);
+    shouldLog(LogLevel.Info) && console.log(`MIDIDeviceManager: MIDI Connection event for device "${deviceName}" (${deviceHandle}), portType: ${portType}, state: ${state}`);
 
     if (state === "disconnected") {
       let [disconnectedDevice, deviceKey] = this.getDeviceFromHandle(deviceHandle);  
       if (disconnectedDevice !== undefined && deviceKey !== undefined) {
         if (disconnectedDevice.isOpen) {
-          console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected because ${portType} "${deviceName}" (${deviceHandle}) was ${state}`);
+          shouldLog(LogLevel.Info) && console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected because ${portType} "${deviceName}" (${deviceHandle}) was ${state}`);
 
-          console.log(`Closing device ${deviceHandle} and removing from midiDeviceList`);
+          shouldLog(LogLevel.Info) && console.log(`Closing device ${deviceHandle} and removing from midiDeviceList`);
           disconnectedDevice.close();
         }
         else {
-          console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected. Skipping close() as it was already closed`);
+          shouldLog(LogLevel.Info) && console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected. Skipping close() as it was already closed`);
         }
 
         this._midiDeviceDescriptorList = this._midiDeviceDescriptorList.filter( (device) => device.inputID !== deviceHandle && device.outputID !== deviceHandle);
@@ -276,25 +277,25 @@ export class MIDIDeviceManager
       }
     }
     else if (state === "connected") {
-      console.log(`${portType} device "${deviceName}" (${deviceHandle}) connected`);
+      shouldLog(LogLevel.Info) && console.log(`${portType} device "${deviceName}" (${deviceHandle}) connected`);
       let [existingDevice, deviceKey] = this.getDeviceFromHandle(deviceHandle);        
       // let existingDevice: ZoomDevice | undefined = zoomDevices.find( (device) => device.deviceInfo.outputID === deviceHandle);
       if (existingDevice !== undefined) {
-        console.log(`Device "${deviceName}" (${deviceHandle}) is already in the device list for ${deviceKey}. This should only happen on startup.`);
+        shouldLog(LogLevel.Info) && console.log(`Device "${deviceName}" (${deviceHandle}) is already in the device list for ${deviceKey}. This should only happen on startup.`);
       }
       else {
-        console.log(`Device "${deviceName}" (${deviceHandle}) is not in the device list. Updating MIDI device list`);
+        shouldLog(LogLevel.Info) && console.log(`Device "${deviceName}" (${deviceHandle}) is not in the device list. Updating MIDI device list`);
         // let newDevices = await this.updateMIDIDeviceList();
         this.updateMIDIDeviceList().then((newDevices) => {
-          // console.log(`Device "${deviceName}" (${deviceHandle}) done updating MIDI device list`);
+          // shouldLog(LogLevel.Info) && console.log(`Device "${deviceName}" (${deviceHandle}) done updating MIDI device list`);
           if (newDevices !== undefined) {
             if (newDevices.size > 1) {
-              console.warn(`Multiple devices of multiple types created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
+              shouldLog(LogLevel.Warning) && console.warn(`Multiple devices of multiple types created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
             }
             // Notifications moved to updateMIDIDEviceList()
             // for (let [deviceKey, newDevicesForKey] of newDevices) {
             //   if (newDevicesForKey.length > 1) {
-            //     console.warn(`Multiple devices created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
+            //     shouldLog(LogLevel.Warning) && console.warn(`Multiple devices created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
             //   }
             //   for (let newDevice of newDevicesForKey) {
             //     this.emitConnectEvent(newDevice, deviceKey!);                          

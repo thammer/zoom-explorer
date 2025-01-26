@@ -1,3 +1,4 @@
+import { shouldLog, LogLevel } from "./Logger.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { DeviceID, DeviceInfo, MIDIProxy, IMIDIProxy, ListenerType, MessageType } from "./midiproxy.js";
 import { getExceptionErrorString, bytesToHexString } from "./tools.js";
@@ -21,7 +22,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
                                   timeoutMilliseconds: number = 100, logging: boolean = false) : Promise<MIDIDeviceDescription[]>
 {
   if (getMIDIDeviceListIsRunning) {
-    console.error(`getMIDIDeviceList() is already running. Last call was with inputs: ${inputs.size}, outputs: ${outputs.size}`);
+    shouldLog(LogLevel.Error) && console.error(`getMIDIDeviceList() is already running. Last call was with inputs: ${inputs.size}, outputs: ${outputs.size}`);
   }
 
   getMIDIDeviceListIsRunning = true;
@@ -49,7 +50,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         }
         catch(err)
         {
-          console.log("ERROR: " + getExceptionErrorString(err, `Trying to open device "${id}"`));
+          shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Trying to open device "${id}"`));
         }
 
       }
@@ -91,17 +92,17 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
             identityResponse: identityResponse,
           });
 
-          if (logging) console.log(`      Received sysex ID reply ${bytesToHexString(data, " ")} -> ${JSON.stringify(description)}`);
+          if (logging) shouldLog(LogLevel.Info) && console.log(`      Received sysex ID reply ${bytesToHexString(data, " ")} -> ${JSON.stringify(description)}`);
   
           midiDevices.push(description);
-          if (logging) console.log(`  Clearing timeout (${timeoutId})`);
+          if (logging) shouldLog(LogLevel.Info) && console.log(`  Clearing timeout (${timeoutId})`);
           clearTimeout(timeoutId);
           sendAndSetTimeout();
   
         }
         else
         {
-          if (logging) console.log(`      Received sysex unknown from input "${input.name}" for output ${currentOutput}` +
+          if (logging) shouldLog(LogLevel.Info) && console.log(`      Received sysex unknown from input "${input.name}" for output ${currentOutput}` +
             ` "${currentOutput?.name}": ${bytesToHexString(data, " ")}`)
         }
       };
@@ -127,16 +128,16 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         await done();
       else
       {
-        if (logging) console.log(`Requesting identity for output device ${currentOutput.id} "${currentOutput.name}"`)
+        if (logging) shouldLog(LogLevel.Info) && console.log(`Requesting identity for output device ${currentOutput.id} "${currentOutput.name}"`)
         let outputHandle = await midi.openOutput(currentOutput.id);
         openedOutputs.push(outputHandle);
         midi.send(currentOutput.id, new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]));
         let localTimeoutId = setTimeout( () =>
         {
-          if (logging) console.log(`      Timed out (${localTimeoutId}) for device ${currentOutput.id} "${currentOutput.name}"`);
+          if (logging) shouldLog(LogLevel.Info) && console.log(`      Timed out (${localTimeoutId}) for device ${currentOutput.id} "${currentOutput.name}"`);
           sendAndSetTimeout();
         }, timeoutMilliseconds);
-        if (logging) console.log(`  Set timeout (${localTimeoutId})`);
+        if (logging) shouldLog(LogLevel.Info) && console.log(`  Set timeout (${localTimeoutId})`);
         timeoutId = localTimeoutId;
       }
     }

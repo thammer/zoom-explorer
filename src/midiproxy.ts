@@ -4,6 +4,8 @@
  * @module MIDIProxy
  */
 
+import { shouldLog, LogLevel } from "./Logger.js";
+
 export type DeviceID = string;
 
 export const ALL_MIDI_DEVICES = "ALL_MIDI_DEVICES";
@@ -159,8 +161,9 @@ export abstract class MIDIProxy implements IMIDIProxy
   {
     return new Promise<Uint8Array | undefined> ( (resolve, reject) => {
       let timeoutId = setTimeout( () => {
-        if (this.loggingEnabled)
-          console.log(`sendAndGetReply() Timed out (${timeoutId}) for output device "${outputDevice}", input device "${inputDevice}"`);
+        if (this.loggingEnabled) {
+          shouldLog(LogLevel.Info) && console.log(`sendAndGetReply() Timed out (${timeoutId}) for output device "${outputDevice}", input device "${inputDevice}"`);
+        }
         this.removeListener(inputDevice, handleReply);
         resolve(undefined);
       }, timeoutMilliseconds);
@@ -170,8 +173,9 @@ export abstract class MIDIProxy implements IMIDIProxy
           this.removeListener(deviceHandle, handleReply);
           resolve(data);
         }
-        else if (this.loggingEnabled)
-          console.log(`sendAndGetReply received MIDI data of length ${data.length} that failed verifyReply`);
+        else if (this.loggingEnabled) {
+          shouldLog(LogLevel.Info) && console.log(`sendAndGetReply received MIDI data of length ${data.length} that failed verifyReply`);
+        }
       };
       this.addListener(inputDevice, handleReply);
       this.send(outputDevice, data);

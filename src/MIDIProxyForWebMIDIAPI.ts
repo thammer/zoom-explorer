@@ -1,4 +1,5 @@
 
+import { shouldLog, LogLevel } from "./Logger.js";
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType, ALL_MIDI_DEVICES } from "./midiproxy.js";
 import { MIDI_RECEIVE, MIDI_RECEIVE_TO_SEND, MIDI_SEND, perfmon } from "./PerformanceMonitor.js";
 import { bytesToHexString, getFunctionName } from "./tools.js";
@@ -38,7 +39,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       this.enabled = true;
       this.midi.onstatechange = (ev: Event) => {
         let event = ev as MIDIConnectionEvent;
-        // console.log(`*** ${event.port?.type} ${event.port?.state} ${event.port?.name} ${event.port?.connection}`);
+        // shouldLog(LogLevel.Info) && console.log(`*** ${event.port?.type} ${event.port?.state} ${event.port?.name} ${event.port?.connection}`);
         if (event.port === null)
           return;
 
@@ -51,7 +52,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
         if (!skipStateChange)
           this.onStateChange(event);
         // else
-        //   console.log(`*** Not emitting state change for ${event.port?.type} ${event.port?.state} ${event.port?.name} ${event.port?.connection}`);
+        //   shouldLog(LogLevel.Info) && console.log(`*** Not emitting state change for ${event.port?.type} ${event.port?.state} ${event.port?.name} ${event.port?.connection}`);
 
         if (event.port.state === "disconnected")
           if (event.port.type === "input")
@@ -69,7 +70,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     }
     catch(err)
     {
-      console.error("ERROR: Error while enabling Web MIDI API");
+      shouldLog(LogLevel.Error) && console.error("ERROR: Error while enabling Web MIDI API");
       throw err;
     }
   }
@@ -142,7 +143,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
     let input = this.midi.inputs.get(deviceHandle);
     if (input === undefined) {
-      console.log(`No input found with ID "${deviceHandle}", so there's nothing to close. Removing listeners anyway.`);
+      shouldLog(LogLevel.Info) && console.log(`No input found with ID "${deviceHandle}", so there's nothing to close. Removing listeners anyway.`);
     }
     else {
       await input.close();
@@ -212,7 +213,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
     let output = this.midi.outputs.get(deviceHandle);
     if (output === undefined) {
-      console.log(`No output found with ID "${deviceHandle}", so there's nothing to close`);
+      shouldLog(LogLevel.Info) && console.log(`No output found with ID "${deviceHandle}", so there's nothing to close`);
     }
     else {
       await output.close();
@@ -294,15 +295,16 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
     // FIXME: This shouldn't be necessary with the browser based Web MIDI API
     let dataArray = Array.from(data);
-    if (this.loggingEnabled)
-      console.log(`${performance.now().toFixed(1)} Sent: ${bytesToHexString(dataArray, " ")}`)
+    if (this.loggingEnabled) {
+      shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Sent: ${bytesToHexString(dataArray, " ")}`)
+    }
 
-    perfmon.exit(MIDI_RECEIVE_TO_SEND);
     perfmon.enter(MIDI_SEND);
  
     output.send(dataArray);
     
     perfmon.exit(MIDI_SEND);
+    perfmon.exit(MIDI_RECEIVE_TO_SEND);
   }
 
   addListener(deviceHandle: DeviceID, listener: ListenerType): void
@@ -335,7 +337,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       let input = this.midi.inputs.get(deviceHandle);
       if (input === undefined)
       {
-        console.log(`No input found with ID "${deviceHandle}". Removing listener anyway.`);
+        shouldLog(LogLevel.Info) && console.log(`No input found with ID "${deviceHandle}". Removing listener anyway.`);
       }
     }
 
@@ -375,7 +377,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let existingListener = this.connectionStateChangeListeners.find( (l) => l === listener);
     if (existingListener !== undefined)
     {
-      console.warn(`Attempting to add a connection listener twice`);
+      shouldLog(LogLevel.Warning) && console.warn(`Attempting to add a connection listener twice`);
     }
     else
     {
@@ -388,7 +390,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     let existingListener = this.connectionStateChangeListeners.find( (l) => l === listener);
     if (existingListener === undefined)
     {
-      console.warn(`Attempting to remove a connection listener that hasn't been added`);
+      shouldLog(LogLevel.Warning) && console.warn(`Attempting to remove a connection listener that hasn't been added`);
     }
     else
     {
@@ -409,7 +411,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
           if (message.data !== null)
             listener(deviceHandle, message.data);    
           else
-            console.warn("message.data == null");  
+            shouldLog(LogLevel.Warning) && console.warn("message.data == null");  
         }    
     }
 
@@ -423,7 +425,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       if (message.data !== null)
         listener(deviceHandle, message.data);    
       else
-        console.warn("message.data == null");  
+        shouldLog(LogLevel.Warning) && console.warn("message.data == null");  
     }
   }
 
@@ -447,7 +449,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
         listener(deviceHandle, portType, state);        
       }
       else
-        console.warn("event.port === null");
+        shouldLog(LogLevel.Warning) && console.warn("event.port === null");
     }
   }
 }

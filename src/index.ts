@@ -10,6 +10,7 @@ import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
+import { shouldLog, LogLevel } from "./Logger.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -45,8 +46,9 @@ function updateZoomDevicesTable(zoomDevices: ZoomDevice[]) {
     c = row.insertCell(-1); c.innerHTML = info.outputName;
     c = row.insertCell(-1); c.innerHTML = bytesToHexString(info.identityResponse, " ");
 
-    console.log(`  ${index + 1}: ${info.deviceName.padEnd(8)} OS v ${version} - input: ${info.inputName.padEnd(20)} output: ${info.outputName}`);
+    shouldLog(LogLevel.Info) && console.log(`  ${index + 1}: ${info.deviceName.padEnd(8)} OS v ${version} - input: ${info.inputName.padEnd(20)} output: ${info.outputName}`);
   };
+
 }
 
 /**
@@ -66,12 +68,12 @@ function sendZoomCommand(device: DeviceID, deviceId: number, command: number) : 
   let output = midi.getOutputInfo(device);
   if (output === undefined)
   {
-    console.warn(`WARNING: Not sending MIDI message to device ${device} as the device is unknown"`);
+    shouldLog(LogLevel.Warning) && console.warn(`WARNING: Not sending MIDI message to device ${device} as the device is unknown"`);
     return;
   }
   if (output.connection != "open")
   {
-    console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
+    shouldLog(LogLevel.Warning) && console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
     return;
   }
 
@@ -85,7 +87,7 @@ function sendZoomCommand(device: DeviceID, deviceId: number, command: number) : 
   catch (err) 
   {
     let message = getExceptionErrorString(err, `for device ${output.name}`);
-    console.error(message);
+    shouldLog(LogLevel.Error) && console.error(message);
   }
 }
 
@@ -100,12 +102,12 @@ function sendZoomCommandLong(device: DeviceID, deviceId: number, data: Uint8Arra
   let output = midi.getOutputInfo(device);
   if (output === undefined)
   {
-    console.warn(`WARNING: Not sending MIDI message to device ${device} as the device is unknown"`);
+    shouldLog(LogLevel.Warning) && console.warn(`WARNING: Not sending MIDI message to device ${device} as the device is unknown"`);
     return;
   }
   if (output.connection != "open")
   {
-    console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
+    shouldLog(LogLevel.Warning) && console.warn(`WARNING: Not sending MIDI message to device ${output.name} as the port is in state "${output.connection}"`);
     return;
   }
 
@@ -122,24 +124,24 @@ function sendZoomCommandLong(device: DeviceID, deviceId: number, data: Uint8Arra
   catch (err) 
   {
     let message = getExceptionErrorString(err, `for device ${output.name}`);
-    console.error(message);
+    shouldLog(LogLevel.Error) && console.error(message);
   }
 }
 
 async function start()
 {
   let success = await midi.enable().catch( (reason) => {
-    console.log(getExceptionErrorString(reason));
+    shouldLog(LogLevel.Info) && console.log(getExceptionErrorString(reason));
     return;
   });
 
   let midiDeviceList: MIDIDeviceDescription[] = await getMIDIDeviceList(midi, midi.inputs, midi.outputs, 100, true); 
 
-  console.log("Got MIDI Device list:");
+  shouldLog(LogLevel.Info) && console.log("Got MIDI Device list:");
   for (let i=0; i<midiDeviceList.length; i++)
   {
     let device = midiDeviceList[i];
-    console.log(`  ${JSON.stringify(device)}`)
+    shouldLog(LogLevel.Info) && console.log(`  ${JSON.stringify(device)}`)
   }
 
   let zoomMidiDevices = midiDeviceList.filter( (device) => device.manufacturerID[0] === 0x52);
@@ -180,7 +182,7 @@ async function start()
     handleMouseUp(zoomDevice, cell, initialValueString, x, y);
   });
 
-  // console.log("Call and response start");
+  // shouldLog(LogLevel.Info) && console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
   // let commandIndex = 0x51;
   // let device = zoomDevices[0];
@@ -188,14 +190,14 @@ async function start()
   //   let call = bytesToHexString([commandIndex]);
   //   let response = bytesToHexString(data, " ");
   //   callAndResponse.set(call, response);
-  //   console.log(`${call} -> ${response}`)
+  //   shouldLog(LogLevel.Info) && console.log(`${call} -> ${response}`)
   // });
   // let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   // testButton.addEventListener("click", (event) => {
   //   commandIndex++;
   //   sendZoomCommand(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], commandIndex);
   // });
-  // console.log("Call and response end");
+  // shouldLog(LogLevel.Info) && console.log("Call and response end");
 
 }
 
@@ -203,32 +205,32 @@ async function downloadEffectMaps() {
 
   let startTime = performance.now();
   let obj = await downloadJSONResource("zoom-effect-mappings-ms50gp.json");
-  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   let mapForMS50GPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-  console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
+  shouldLog(LogLevel.Info) && console.log(`mapForMS50GPlus.size = ${mapForMS50GPlus.size}`);
   
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-ms70cdrp.json");
-  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   let mapForMS70CDRPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
-  console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
+  shouldLog(LogLevel.Info) && console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
     
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-ms60bp.json");
-  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   let mapForMS60BPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
   
-  console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
+  shouldLog(LogLevel.Info) && console.log(`mapForMS60BPlus.size = ${mapForMS60BPlus.size}`);
   
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
 
-  console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   startTime = performance.now();
 
   let mapForMSOG: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
 
-  console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
+  shouldLog(LogLevel.Info) && console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
 
   ZoomDevice.setEffectIDMap(["MS-50G", "MS-60B", "MS-70CDR"], mapForMSOG);
 
@@ -247,11 +249,11 @@ async function downloadEffectMaps() {
 
   // mapForMSOG.forEach( (value, key) => {
   //   if (parameterMap.has(key) === true) {
-  //     console.warn(`Warning: Overriding effect ${parameterMap.get(key)!.name} for with MSOG effect "${value.name}" 0x${key.toString(16).padStart(8, "0")}`);
+  //     shouldLog(LogLevel.Warning) && console.warn(`Warning: Overriding effect ${parameterMap.get(key)!.name} for with MSOG effect "${value.name}" 0x${key.toString(16).padStart(8, "0")}`);
   //   }
   //   parameterMap.set(key, value);
   // })
-  console.log(`parameterMap.size = ${parameterMap.size}`);
+  shouldLog(LogLevel.Info) && console.log(`parameterMap.size = ${parameterMap.size}`);
 }
 
 function sleepForAWhile(timeoutMilliseconds: number)
@@ -636,7 +638,7 @@ function generateHTMLSysexString(current: Uint8Array, previous: Uint8Array, para
 
 function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number): void
 {
-  console.log(`Memory slot changed: ${memorySlot}`);
+  shouldLog(LogLevel.Info) && console.log(`Memory slot changed: ${memorySlot}`);
 
   let selected = getCellForMemorySlot(zoomDevice, "patchesTable", memorySlot);
 
@@ -653,7 +655,7 @@ function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number
 
 async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 {
-  console.log(`Screen changed`);
+  shouldLog(LogLevel.Info) && console.log(`Screen changed`);
   getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
 }
 
@@ -681,7 +683,7 @@ function handleCurrentPatchChanged(zoomDevice: ZoomDevice): void
 {
   // Handle updates to name. 
   // Don't know if we really need this for anything else.
-  console.log(`Current patch changed`);
+  shouldLog(LogLevel.Info) && console.log(`Current patch changed`);
   currentZoomPatch = zoomDevice.currentPatch !== undefined ? zoomDevice.currentPatch.clone() : undefined; // a bit unsure if it's correct to use currentZoomPatch for this.... See other uses in this file.
   previousEditPatch = currentZoomPatch;
   getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
@@ -689,7 +691,7 @@ function handleCurrentPatchChanged(zoomDevice: ZoomDevice): void
 
 function handlePatchChanged(zoomDevice: ZoomDevice, memorySlot: number): void 
 {
-  console.log(`Patch changed for memory slot ${memorySlot}`);
+  shouldLog(LogLevel.Info) && console.log(`Patch changed for memory slot ${memorySlot}`);
   updatePatchesTable(zoomDevice);
 }
 
@@ -744,10 +746,10 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       // currentZoomPatch = patch;
 
       if (eightBitData !== null && eightBitData.length > 5) {
-        console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
+        shouldLog(LogLevel.Info) && console.log(`messageLengthFromSysex = ${messageLengthFromSysex}, eightBitData.length = ${eightBitData.length}, patch.ptcfChunk.length = ${patch?.ptcfChunk?.length}`)
         let crc = crc32(eightBitData, 0, eightBitData.length - 1 - 5); // FIXME: note that 8 bit length is incorrect since it's 5 bytes too long, for the CRC we failed to ignore above
         crc = crc  ^ 0xFFFFFFFF;
-        console.log(`Patch CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]), " ")}`);
+        shouldLog(LogLevel.Info) && console.log(`Patch CRC (7-bit): ${bytesToHexString(new Uint8Array([crc & 0x7F, (crc >> 7) & 0x7F, (crc >> 14) & 0x7F, (crc >> 21) & 0x7F, (crc >> 28) & 0x0F]), " ")}`);
         
       }
       updatePatchInfoTable(patch);
@@ -782,7 +784,7 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       // Patch info
       let numPatches = data[5] + (data[6] << 7);
       let patchSize = data[7] + (data[8] << 7);
-      console.log(`Received patch info message (0x06). Number of patches: ${numPatches}, patch size: ${patchSize}`)
+      shouldLog(LogLevel.Info) && console.log(`Received patch info message (0x06). Number of patches: ${numPatches}, patch size: ${patchSize}`)
     }
     else if (data.length === 30 && data[4] === 0x43) {
       // Bank/patch info
@@ -790,8 +792,8 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       let patchSize = data[7] + (data[8] << 7);
       let unknown = data[9] + (data[10] << 7);
       let bankSize = data[11] + (data[12] << 7);
-      console.log(`Received patch info message (0x43). Number of patches: ${numPatches}, patch size: ${patchSize}, unknown: ${unknown}, bank size: ${bankSize}.`)
-      console.log(`                                    Unknown: ${bytesToHexString(data.slice(13, 30-1), " ")}.`);
+      shouldLog(LogLevel.Info) && console.log(`Received patch info message (0x43). Number of patches: ${numPatches}, patch size: ${patchSize}, unknown: ${unknown}, bank size: ${bankSize}.`)
+      shouldLog(LogLevel.Info) && console.log(`                                    Unknown: ${bytesToHexString(data.slice(13, 30-1), " ")}.`);
     }
     // else if (data.length > 10 && data[4] === 0x64 && data[5] === 0x01) {
     //   // Screen info
@@ -817,7 +819,7 @@ patchesTable.addEventListener("click", (event) => {
   lastSelected = cell;
 
   let patchNumber = getPatchNumber(cell) - 1;
-  console.log(`Patch number clicked: ${patchNumber}`);
+  shouldLog(LogLevel.Info) && console.log(`Patch number clicked: ${patchNumber}`);
 
   let device = zoomDevices[0];
 
@@ -868,7 +870,7 @@ downloadPatchesButton.addEventListener("click", async (event) => {
 //   let device = zoomDevices[0];
 //   midi.addListener(device.inputID, (deviceHandle, data) => {
 //     let response = toHexString(data, " ");
-//     console.log(`${sysexStringGetNextFile} -> ${response}`)
+//     shouldLog(LogLevel.Info) && console.log(`${sysexStringGetNextFile} -> ${response}`)
 //   });
 
 //   await sleepForAWhile(100);
@@ -1004,7 +1006,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   button.addEventListener("click", async (event) => {
       if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
         if (lastSelected === null) {
-          console.error("Cannot upload patch to memory slot since no memory slot was selected");
+          shouldLog(LogLevel.Error) && console.error("Cannot upload patch to memory slot since no memory slot was selected");
           return;
         }
         let memorySlot = getPatchNumber(lastSelected) - 1;
@@ -1042,7 +1044,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     else if (savePatch.msogDataBuffer !== null && savePatch.msogDataBuffer.length > 0) {
       let sysex = device.getSysexForCurrentPatch(patch);
       if (sysex === undefined) {
-        console.warn(`getSysexForCurrentPatch() failed for patch "${savePatch.name}"`);
+        shouldLog(LogLevel.Warning) && console.warn(`getSysexForCurrentPatch() failed for patch "${savePatch.name}"`);
         return;
       }
       let sysexString = bytesToHexString(sysex).toLowerCase();
@@ -1073,14 +1075,14 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let sysexString = bytesWithCharactersToString(data);
     let convertedData = hexStringToUint8Array(sysexString);
     if (!isSysex(convertedData)) {
-      console.error(`Unknown file format in file ${filename}`);
+      shouldLog(LogLevel.Error) && console.error(`Unknown file format in file ${filename}`);
     }
     else if (convertedData[1] != 0x52) {
-      console.error(`Sysex file is not for a Zoom device, filename: ${filename}, device ID: ${bytesToHexString([convertedData[1]])}`);
+      shouldLog(LogLevel.Error) && console.error(`Sysex file is not for a Zoom device, filename: ${filename}, device ID: ${bytesToHexString([convertedData[1]])}`);
     }
     else {
       if (convertedData.length < 5 || convertedData[3] != device.deviceInfo.familyCode[0]) {
-        console.log(`Sysex file with filename ${filename} is for Zoom device ID ${bytesToHexString([convertedData[3]])}, ` +
+        shouldLog(LogLevel.Info) && console.log(`Sysex file with filename ${filename} is for Zoom device ID ${bytesToHexString([convertedData[3]])}, ` +
           `but attached device has device ID: ${bytesToHexString([device.deviceInfo.familyCode[0]])}. Attempting to load patch anyway.`);
       }
 
@@ -1129,9 +1131,9 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       if (patch.prm2Unknown.length > 20)
         driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
       if (patch.prm2Unknown.length > 13 && patch.prm2Unknown[9] !== 0x80)
-        console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[9]: ${patch.prm2Unknown[9].toString(2).padStart(8, "0")} -Investigate`); 
+        shouldLog(LogLevel.Warning) && console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[9]: ${patch.prm2Unknown[9].toString(2).padStart(8, "0")} -Investigate`); 
       if (patch.prm2Unknown.length > 13 && (patch.prm2Unknown[10] & 0b00011111) !== 0b00001100)
-        console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[10]: ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} -Investigate`); 
+        shouldLog(LogLevel.Warning) && console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[10]: ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} -Investigate`); 
     };
     let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
       `                  Unknown: ${unknownString}`;
@@ -1242,31 +1244,31 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 
 function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, initialValueString: string): boolean
 {
-  console.log(`Patch edited e is "${event}`);
+  shouldLog(LogLevel.Info) && console.log(`Patch edited e is "${event}`);
   if (event.target === null)
     return false;
   if (currentZoomPatch === undefined) {
-    console.error("Attempting to edit patch when currentZoomPatch is undefined")
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when currentZoomPatch is undefined")
     return false;
   }
 
   let cell = event.target as HTMLTableCellElement;
   let [effectSlot, parameterNumber] = patchEditor.getEffectAndParameterNumber(cell.id);
-  console.log(`type = ${type}, cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
+  shouldLog(LogLevel.Info) && console.log(`type = ${type}, cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
 
   if (cell.id === "editPatchTableNameID") {
     if (type === "focus") {
-      console.log("focus");
+      shouldLog(LogLevel.Info) && console.log("focus");
       cell.innerText = currentZoomPatch.name !== null ? currentZoomPatch.name.replace(/ +$/, "") : ""; // use the full name, but remove spaces at the end
     }
     else if (type === "blur") {
-      console.log(`blur - cell.innerText = ${cell.innerText}`);
+      shouldLog(LogLevel.Info) && console.log(`blur - cell.innerText = ${cell.innerText}`);
       if (currentZoomPatch !== undefined) { 
         setPatchParameter(zoomDevice, currentZoomPatch, "name", cell.innerText, "name");
         cell.innerText = currentZoomPatch.nameTrimmed;
       }
     } else if (type === "input") {
-      console.log(`Name changed to "${cell.innerText}"`);
+      shouldLog(LogLevel.Info) && console.log(`Name changed to "${cell.innerText}"`);
       if (currentZoomPatch !== undefined) {
         currentZoomPatch.name = cell.innerText;
         currentZoomPatch.updatePatchPropertiesFromDerivedProperties();
@@ -1363,12 +1365,12 @@ function handlePatchEdited(zoomDevice: ZoomDevice, event: Event, type: string, i
 function handleMouseMoved(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, initialValueString: string, x: number, y: number)
 {
   if (currentZoomPatch === undefined) {
-    console.error("Attempting to edit patch when currentZoomPatch is undefined")
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when currentZoomPatch is undefined")
     return;
   }
 
   let [effectSlot, parameterNumber] = patchEditor.getEffectAndParameterNumber(cell.id);
-  console.log(`Mouse move (${x}, ${y}) for cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
+  shouldLog(LogLevel.Info) && console.log(`Mouse move (${x}, ${y}) for cell.id = ${cell.id}, effectSlot = ${effectSlot}, parameterNumber = ${parameterNumber}`);
 
   if (effectSlot !== undefined && parameterNumber !== undefined && currentZoomPatch !== undefined && 
     currentZoomPatch.effectSettings !== null && effectSlot < currentZoomPatch.effectSettings.length)
@@ -1396,7 +1398,7 @@ function handleMouseMoved(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, in
       let newValueString = zoomDevice.getStringFromRawParameterValue(effectID, parameterNumber, newRawValue);
       cell.innerHTML = newValueString;
       patchEditor.updateValueBar(cell, newRawValue, maxValue);
-      console.log(`Changing value for cell.id = ${cell.id} from ${currentValueString} (${currentRawValue}) to ${newValueString} (${newRawValue})`);
+      shouldLog(LogLevel.Info) && console.log(`Changing value for cell.id = ${cell.id} from ${currentValueString} (${currentRawValue}) to ${newValueString} (${newRawValue})`);
       setPatchParameter(zoomDevice, currentZoomPatch, "effectSettings", [effectSlot, "parameters", parameterNumber, newRawValue], "effectSettings");
     }
   } 
@@ -1454,7 +1456,7 @@ async function downloadJSONResource(filename: string): Promise<any>
 {
   let response = await fetch(`./${filename}`);
   if (!response.ok) {
-    console.error(`Fetching file ${filename} failed with HTTP error ${response.status}`);
+    shouldLog(LogLevel.Error) && console.error(`Fetching file ${filename} failed with HTTP error ${response.status}`);
     return undefined;
   }
   return await response.json();
@@ -1466,7 +1468,7 @@ function testBitMangling(data:Uint8Array, startBit: number, endBit: number, valu
   printBits(data);
 
   let value2 = getNumberFromBits(data, startBit, endBit);
-  console.log(`value = ${value}, value2 = ${value2}`);
+  shouldLog(LogLevel.Info) && console.log(`value = ${value}, value2 = ${value2}`);
 }
 
 function printBits(data: Uint8Array) {
@@ -1474,7 +1476,7 @@ function printBits(data: Uint8Array) {
   for (let i = 0; i < data.length; i++) {
     str += data[i].toString(2).padStart(8, "0") + " ";
   }
-  console.log(`Bits: ${str}`);
+  shouldLog(LogLevel.Info) && console.log(`Bits: ${str}`);
 }
 
 let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;

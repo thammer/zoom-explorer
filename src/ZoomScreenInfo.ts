@@ -1,3 +1,4 @@
+import { shouldLog, LogLevel } from "./Logger.js";
 import { numberToHexString } from "./tools.js";
 import { EffectParameterMap } from "./ZoomDevice.js";
 import { ZoomPatch } from "./ZoomPatch.js";
@@ -114,11 +115,11 @@ export class ZoomScreenCollection
         this.screens[screenNumber].parameters[parameterNumber] = new ZoomScreenParameter();
 
       if (invertByte !== 0) {
-        console.warn(`ZoomScreen.parseScreenData() the mysterious invertByte !== 0 for screen ${screenNumber}, parameter ${parameterNumber}, type ${type}, invertByte "${invertByte}", string: "${str}". Investigate.`);
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomScreen.parseScreenData() the mysterious invertByte !== 0 for screen ${screenNumber}, parameter ${parameterNumber}, type ${type}, invertByte "${invertByte}", string: "${str}". Investigate.`);
       }
 
       if (str === null) {
-        console.error(`ZoomScreen.parseScreenData() failed to read string for screen ${screenNumber}, parameter ${parameterNumber}, type ${type}, invertByte "${invertByte}"`);
+        shouldLog(LogLevel.Error) && console.error(`ZoomScreen.parseScreenData() failed to read string for screen ${screenNumber}, parameter ${parameterNumber}, type ${type}, invertByte "${invertByte}"`);
         break;
       }
       
@@ -146,7 +147,7 @@ export class ZoomScreenCollection
       }
 
       if (type !== 0 && type !== 1 && type !== 3 && type !== 7)
-        console.warn(`ZoomScreen.parseScreenData() type "${type}" is unknown for screen ${screenNumber}, parameter ${parameterNumber}, invert byte "${invertByte}", string: "${str}". Investigate.`);
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomScreen.parseScreenData() type "${type}" is unknown for screen ${screenNumber}, parameter ${parameterNumber}, invert byte "${invertByte}", string: "${str}". Investigate.`);
     }
 
     // If any screens are missing, insert empty screens
@@ -162,7 +163,7 @@ export class ZoomScreenCollection
   setFromPatchAndMap(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>) : ZoomScreenCollection | undefined
   {
     if (patch.effectSettings === null) {
-      console.error(`patch.effectSettings == null for patch ${patch.name}`);
+      shouldLog(LogLevel.Error) && console.error(`patch.effectSettings == null for patch ${patch.name}`);
       return undefined;
     }
 
@@ -170,12 +171,12 @@ export class ZoomScreenCollection
     for (let effectSlot = 0; effectSlot< numEffects; effectSlot++) {
       let effectSettings = patch.effectSettings[effectSlot];
       if (effectSettings.id === 0) {
-        console.log(`Ignoring effectSettings.id == 0 for effectSlot ${effectSlot} in patch ${patch.name}`);
+        shouldLog(LogLevel.Info) && console.log(`Ignoring effectSettings.id == 0 for effectSlot ${effectSlot} in patch ${patch.name}`);
         continue;
       }
       let effectMap = effectsMap.get(effectSettings.id);
       if (effectMap === undefined) {
-        console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
         return undefined;
       }
 
@@ -193,11 +194,11 @@ export class ZoomScreenCollection
 
       let numParameters = effectMap.parameters.length;
       if (effectMap.parameters.length < effectSettings.parameters.length) {
-        // console.log(`effectMap.parameters.length ${effectMap.parameters.length} < effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
+        // shouldLog(LogLevel.Info) && console.log(`effectMap.parameters.length ${effectMap.parameters.length} < effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
           // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
       } 
       else if (effectMap.parameters.length > effectSettings.parameters.length) {
-        console.warn(`effectMap.parameters.length ${effectMap.parameters.length} > effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
+        shouldLog(LogLevel.Warning) && console.warn(`effectMap.parameters.length ${effectMap.parameters.length} > effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
       }
 
       for (let paramIndex = 0; paramIndex < effectMap.parameters.length; paramIndex++) {
@@ -205,7 +206,7 @@ export class ZoomScreenCollection
         let parameter = new ZoomScreenParameter()
 
         if (value >= effectMap.parameters[paramIndex].values.length) {
-          console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
+          shouldLog(LogLevel.Error) && console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
           break;
         }
         parameter.name = effectMap.parameters[paramIndex].name;
@@ -221,19 +222,19 @@ export class ZoomScreenCollection
   setEffectParameterValue(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>, effectSlot: number, parameterNumber: number, value: number) : void
   {
     if (effectSlot >= this.screens.length || parameterNumber >= this.screens[effectSlot].parameters.length) {
-      console.error(`setEffectParameterValue() effectSlot ${effectSlot} or parameterNumber ${parameterNumber} out of range`);
+      shouldLog(LogLevel.Error) && console.error(`setEffectParameterValue() effectSlot ${effectSlot} or parameterNumber ${parameterNumber} out of range`);
       return;  
     }
 
     if (patch.effectSettings === null) {
-      console.error(`patch.effectSettings == null for patch ${patch.name}`);
+      shouldLog(LogLevel.Error) && console.error(`patch.effectSettings == null for patch ${patch.name}`);
       return;
     }
 
     let effectSettings = patch.effectSettings[effectSlot];
     let effectMap = effectsMap.get(effectSettings.id);
     if (effectMap === undefined) {
-      console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
       return;
     }
 
@@ -250,7 +251,7 @@ export class ZoomScreenCollection
       valueString = effectMap.parameters[parameterIndex].values[value];
     }
 
-    console.log(`Changing effect parameter value from "${parameter.valueString}" to "${valueString}" for effect ${effectMap.name}, parameter ${parameter.name}`);
+    shouldLog(LogLevel.Info) && console.log(`Changing effect parameter value from "${parameter.valueString}" to "${valueString}" for effect ${effectMap.name}, parameter ${parameter.name}`);
     parameter.valueString = valueString;
  }
  

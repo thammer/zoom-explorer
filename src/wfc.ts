@@ -1,3 +1,4 @@
+import { shouldLog, LogLevel } from "./Logger.js";
 import { bytesToHexString } from "./tools.js";
 
 export enum WFCFormatType
@@ -258,7 +259,7 @@ export async function encodeWFCToString(chunks: Map<string, Array<Uint8Array>>, 
         let hex = bytesToHexString(data);
         if (hex.length > 0xFFFF) {
           hex = hex.slice(0, 0xFFFF);
-          console.warn(`encodeWFP cannot encode more than ${0xFFFF/2} bytes in one chunk`);
+          shouldLog(LogLevel.Warning) && console.warn(`encodeWFP cannot encode more than ${0xFFFF/2} bytes in one chunk`);
         }
         let length = hex.length.toString(16).toUpperCase().padStart(4, "0");
         payload += id + length + hex;
@@ -302,11 +303,11 @@ export async function decodeWFCFromString(file: string) : Promise<Map<string, Ar
   let format = file[3] as WFCFormatType;
   let payloadSize = parseInt(file.slice(4, 8), 16);
   if (payloadSize + 8 > file.length) {
-    console.error(`File size stored in file plus 8 bytes (${payloadSize} + 8) is larger than actual file size (${file.length}). Is the file truncated? Bailing out.`);
+    shouldLog(LogLevel.Error) && console.error(`File size stored in file plus 8 bytes (${payloadSize} + 8) is larger than actual file size (${file.length}). Is the file truncated? Bailing out.`);
     return chunks;
   }
   else if (payloadSize + 8 < file.length) {
-    console.error(`File size stored in file plus 8 bytes (${payloadSize} + 8) is smaller than actual file size (${file.length}). Ignoring unknown data at the end of file.`);
+    shouldLog(LogLevel.Error) && console.error(`File size stored in file plus 8 bytes (${payloadSize} + 8) is smaller than actual file size (${file.length}). Ignoring unknown data at the end of file.`);
   }
   
   if (format === WFCFormatType.ASCII) {
@@ -346,7 +347,7 @@ export async function decodeWFCFromString(file: string) : Promise<Map<string, Ar
     }
   }
   else {
-    console.error(`Cannot decode format "${format}" from string. Bailing out.`)
+    shouldLog(LogLevel.Error) && console.error(`Cannot decode format "${format}" from string. Bailing out.`)
     return chunks;
   }
 

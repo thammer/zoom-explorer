@@ -1,3 +1,5 @@
+import { shouldLog, LogLevel } from "./Logger.js";
+
 export type ThrotlerCallbackType = () => void;
 
 /**
@@ -34,11 +36,11 @@ export class Throttler
     if (this.timeoutId === undefined) {
       this.timeoutId = setTimeout( () => {
         this.timeoutId = undefined;
-        console.log(`Throtler timed out (${this.timeoutId}) after "${timeoutMilliseconds} ms"`);
+        shouldLog(LogLevel.Info) && console.log(`Throtler timed out (${this.timeoutId}) after "${timeoutMilliseconds} ms"`);
         if (this.callback !== undefined) {
           let actualCallback = this.callback;
           this.callback = undefined;
-          console.log(`Throtler calling callback ${actualCallback}`);
+          shouldLog(LogLevel.Info) && console.log(`Throtler calling callback ${actualCallback}`);
           actualCallback();
         }
       }, timeoutMilliseconds);

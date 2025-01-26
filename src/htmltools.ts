@@ -2,6 +2,7 @@
  * @module A collection of useful html-related functions 
  */
 
+import { shouldLog, LogLevel } from "./Logger.js";
 import { ZoomDevice } from "./ZoomDevice";
 import { ZoomPatch } from "./ZoomPatch";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo";
@@ -35,7 +36,7 @@ export class ConfirmDialog
     });
 
     this.confirmEvent = (result: boolean) => {
-      console.log("Confirm event result: " + result);
+      shouldLog(LogLevel.Info) && console.log("Confirm event result: " + result);
     }
 
     this.confirmDialog.addEventListener("close", (e) => {
@@ -148,10 +149,10 @@ export async function loadDataFromFile(fileEnding: string, fileDescription: stri
         input.addEventListener("change", () => {
           if (input.files !== null && input.files.length > 0)
             filename = input.files[0].name;
-          console.log(`Selected filename: ${filename}`);
+          shouldLog(LogLevel.Info) && console.log(`Selected filename: ${filename}`);
           const fileReader = new FileReader();
           fileReader.onload = (e) => {
-            console.log("File loaded");
+            shouldLog(LogLevel.Info) && console.log("File loaded");
             if (fileReader.result != null) {
               let buffer = fileReader.result as ArrayBuffer;
               const data = new Uint8Array(buffer);
@@ -164,7 +165,7 @@ export async function loadDataFromFile(fileEnding: string, fileDescription: stri
         input.click();
       }
     } catch (err) {
-      console.log("Exception when attempting to load file " + filename + " " + err); 
+      shouldLog(LogLevel.Info) && console.log("Exception when attempting to load file " + filename + " " + err); 
       resolve([undefined, filename]);
     }
   });
@@ -196,7 +197,7 @@ export async function saveBlobToFile(blob: Blob, suggestedName: string, fileEndi
       dummy.click();
     }
   } catch (err) {
-    console.warn(err);
+    shouldLog(LogLevel.Warning) && console.warn(err);
   }
 }
 

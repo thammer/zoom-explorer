@@ -1,3 +1,5 @@
+import { shouldLog, LogLevel } from "./Logger.js";
+
 export function getFunctionName(stackLevel: number = 0): string
 {
   let error = new Error();
@@ -234,7 +236,7 @@ export function seven2eight(sevenBitBytes: Uint8Array, start: number = 0, end: n
   let remainder = (end - start + 1) % 8;
   if (remainder === 1)
   {
-    console.error(`remainder === 1. Illegal encoding for array of seven bit bytes of length ${sevenBitBytes.length} [${start}, ${end}]. Ignoring last seven bit byte`);
+    shouldLog(LogLevel.Error) && console.error(`remainder === 1. Illegal encoding for array of seven bit bytes of length ${sevenBitBytes.length} [${start}, ${end}]. Ignoring last seven bit byte`);
   }
   let eightBitBytes: Uint8Array = new Uint8Array( Math.floor((end - start + 1) / 8) * 7 + (remainder < 2 ? 0 : remainder - 1 ) );
 
@@ -314,21 +316,22 @@ export function eight2seven(eightBitBytes: Uint8Array, start: number = 0, end: n
 export function compareBuffers(newBuffer: Uint8Array | undefined | null, oldBuffer: Uint8Array | undefined | null): void
 {
     if (newBuffer === null || newBuffer  == undefined)
-      console.warn(`newBuffer = ${newBuffer}`);
+      shouldLog(LogLevel.Warning) && console.warn(`newBuffer = ${newBuffer}`);
     else if (oldBuffer === null || oldBuffer  == undefined)
-      console.warn(`oldBuffer = ${oldBuffer}`);
+      shouldLog(LogLevel.Warning) && console.warn(`oldBuffer = ${oldBuffer}`);
     else if (newBuffer.length !== oldBuffer.length)
-      console.warn("newBuffer.length (${buffer1}) !== oldBuffer.length (${buffer1})");
+      shouldLog(LogLevel.Warning) && console.warn("newBuffer.length (${buffer1}) !== oldBuffer.length (${buffer1})");
     else {
       let allEqual = true;
       for (let i=0; i<newBuffer.length; i++) {
         if (newBuffer[i] !== oldBuffer[i]) {
-          console.warn(`Buffers differs at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])}, oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])}`)
+          shouldLog(LogLevel.Warning) && console.warn(`Buffers differs at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])}, oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])}`)
           allEqual = false;
         }
       }
-      if (allEqual)
-        console.log("Buffers are identical");
+      if (allEqual) {
+        shouldLog(LogLevel.Info) && console.log("Buffers are identical");
+      }
     }
 }
 

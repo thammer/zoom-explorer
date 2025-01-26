@@ -1,3 +1,4 @@
+import { shouldLog, LogLevel } from "./Logger.js";
 import { compareBuffers, getNumberFromBits, partialArrayMatch, partialArrayStringMatch, setBitsFromNumber } from "./tools.js";
 
 /**
@@ -208,7 +209,7 @@ export class ZoomPatch
     for (let i=0; i<properties.length; i++) {
       let propertyName: string = properties[i];
       let property = (this as any)[propertyName];
-      // console.log(`Property name: "${propertyName}", : "${property?.constructor?.name}"`);
+      // shouldLog(LogLevel.Info) && console.log(`Property name: "${propertyName}", : "${property?.constructor?.name}"`);
       if (property === null)
         (patch as any)[propertyName] = null;
       else if (propertyName === "chunks") {
@@ -229,7 +230,7 @@ export class ZoomPatch
         (patch as any)[propertyName] = property; 
     }
 
-    console.log(`**** Cloned patch ${patch.name}`);
+    shouldLog(LogLevel.Info) && console.log(`**** Cloned patch ${patch.name}`);
     return patch;
   }
 
@@ -251,12 +252,12 @@ export class ZoomPatch
       enforceBufferLength = str.length;
 
     if (offset + enforceBufferLength > data.length) {
-      console.error(`Not enough space in data buffer for the given string ("${str}"). data.length = ${data.length}, offset = ${offset}, str.length = ${str.length}, enforceBufferLength = ${enforceBufferLength}`);
+      shouldLog(LogLevel.Error) && console.error(`Not enough space in data buffer for the given string ("${str}"). data.length = ${data.length}, offset = ${offset}, str.length = ${str.length}, enforceBufferLength = ${enforceBufferLength}`);
       return 0;
     }
 
     if (str.length > enforceBufferLength) {
-      console.error(`String length > enforceBufferLength. str.length = ${str.length}, enforceBufferLength = ${enforceBufferLength}`);
+      shouldLog(LogLevel.Error) && console.error(`String length > enforceBufferLength. str.length = ${str.length}, enforceBufferLength = ${enforceBufferLength}`);
       return 0;
     }
 
@@ -277,7 +278,7 @@ export class ZoomPatch
   writeInt32(data: Uint8Array, offset: number, int: number): number
   {
     if (offset + 4 > data.length) {
-      console.error(`Not enough space in data buffer to store 32 bit int ("${int}"). data.length = ${data.length}, offset = ${offset}, bytes needed = 4`);
+      shouldLog(LogLevel.Error) && console.error(`Not enough space in data buffer to store 32 bit int ("${int}"). data.length = ${data.length}, offset = ${offset}, bytes needed = 4`);
       return 0;
     }
     data[offset] = int & 0x000000FF;
@@ -307,14 +308,14 @@ export class ZoomPatch
   writeInt32Array(data: Uint8Array, offset: number, array: Uint32Array) : number
   {
     if (offset + array.length > data.length) {
-      console.error(`Not enough space in data buffer to store Int32 array. data.length = ${data.length}, offset = ${offset}, array.length = ${array.length}`);
+      shouldLog(LogLevel.Error) && console.error(`Not enough space in data buffer to store Int32 array. data.length = ${data.length}, offset = ${offset}, array.length = ${array.length}`);
       return 0;
     }
 
     for (let i=0; i<array.length; i++) {
       let result = this.writeInt32(data, offset, array[i]);
       if (result === 0) {
-        console.error(`Storing Int32 array failed. data.length = ${data.length}, offset = ${offset}, array.length = ${array.length}`);
+        shouldLog(LogLevel.Error) && console.error(`Storing Int32 array failed. data.length = ${data.length}, offset = ${offset}, array.length = ${array.length}`);
         return 0;
       }
       offset = result;
@@ -326,7 +327,7 @@ export class ZoomPatch
   writeSlice(data: Uint8Array, offset: number, slice: Uint8Array) : number
   {
     if (offset + slice.length > data.length) {
-      console.error(`Not enough space in data buffer to store slice. data.length = ${data.length}, offset = ${offset}, slice.length = ${slice.length}`);
+      shouldLog(LogLevel.Error) && console.error(`Not enough space in data buffer to store slice. data.length = ${data.length}, offset = ${offset}, slice.length = ${slice.length}`);
       return 0;
     }
 
@@ -345,42 +346,42 @@ export class ZoomPatch
     let initialOffset = offset;
 
     if (this.length === null) {
-      console.warn(`ZoomPatch.readPTCFChunks() this.length === null`)
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() this.length === null`)
       return offset;
     }
 
     while (offset - initialOffset < remainingPatchLength) {
 
       if (offset - initialOffset + 8 > remainingPatchLength) {
-        console.warn(`ZoomPatch.readPTCFChunks() individual chunk lengths do not match total PTCF chunk length`)
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() individual chunk lengths do not match total PTCF chunk length`)
         break;
       }
 
       chunkID = this.readString(patch, offset, 4); offset +=4;
 
       if (chunkID === null) {
-        console.warn(`ZoomPatch.readPTCFChunks() failed to read chunk ID from data`)
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() failed to read chunk ID from data`)
         break;
       }
   
       chunkLength = this.readInt32(patch, offset); offset += 4;
       if (chunkLength === null) {
-        console.warn(`ZoomPatch.readPTCFChunks() failed to read chunk length for chunk with ID "${chunkID}"`)
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() failed to read chunk length for chunk with ID "${chunkID}"`)
         break;
       }
       if (chunkLength < 0 || chunkLength > maxChunkLength) {
-        console.warn(`ZoomPatch.readPTCFChunks() Invalid chunk length (${chunkLength}) for chunk "${chunkID}", maxChunkLength = ${maxChunkLength}`)
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() Invalid chunk length (${chunkLength}) for chunk "${chunkID}", maxChunkLength = ${maxChunkLength}`)
         break;
       }
       if (offset - initialOffset + chunkLength > this.length) {
-        console.warn(`ZoomPatch.readPTCFChunks() offset (${offset}) - initialOffset (${initialOffset}) + chunk length (${chunkLength}) > total patch length (${this.length}) for chunk with ID "${chunkID}"`)
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() offset (${offset}) - initialOffset (${initialOffset}) + chunk length (${chunkLength}) > total patch length (${this.length}) for chunk with ID "${chunkID}"`)
         break;
       }
 
       chunkData = patch.slice(offset, offset + chunkLength); offset += chunkLength;
 
       if (this.chunks.has(chunkID)) {
-        console.warn(`ZoomPatch.readPTCFChunks() duplicate chunk ID "${chunkID}" in patch data`)
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() duplicate chunk ID "${chunkID}" in patch data`)
         break;
       }
 
@@ -395,7 +396,7 @@ export class ZoomPatch
     let ptcfChunkStart = offset;
 
     if (data.length - offset < 8) {
-      console.warn(`ZoomPatch.readPTCFChunks() got patch data with no space for chunks after offset - patch.length = ${data.length}, offset = ${offset}`)
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() got patch data with no space for chunks after offset - patch.length = ${data.length}, offset = ${offset}`)
       return offset;
     }
     
@@ -403,13 +404,13 @@ export class ZoomPatch
 
     this.PTCF = this.readString(data, offset, 4); offset +=4;
     if (this.PTCF !== "PTCF") {
-      console.warn(`ZoomPatch.readPTCFChunks() got patch data that doesn't start with ID "PTCF" - ID = ${this.PTCF}`)
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() got patch data that doesn't start with ID "PTCF" - ID = ${this.PTCF}`)
       return offset;
     }
 
     this.length = this.readInt32(data, offset); offset += 4;
     if (this.length === null || this.length > data.length - initialDataOffset) {
-      console.warn(`ZoomPatch.readPTCFChunks() PTCF chunk length (${this.length}) is greater than patch length (${data.length}) - offset (${offset})`)
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() PTCF chunk length (${this.length}) is greater than patch length (${data.length}) - offset (${offset})`)
       return offset;
     }
 
@@ -433,7 +434,7 @@ export class ZoomPatch
     offset = this.readPTCFChunks(data, offset, this.length - lengthOfPTCFIDAndLengthBytes - (offset - initialOffset));
 
     if (offset - initialOffset != this.length - lengthOfPTCFIDAndLengthBytes) {
-      console.warn(`ZoomPatch.readPTCF() offset mismatch after reading chunks. offset (${offset}) - initialOffset (${initialOffset}) != total PTCF chunk length (${this.length})`);
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() offset mismatch after reading chunks. offset (${offset}) - initialOffset (${initialOffset}) != total PTCF chunk length (${this.length})`);
     }
 
     let chunkData: Uint8Array | undefined;
@@ -443,7 +444,7 @@ export class ZoomPatch
     chunkID = "TXJ1";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -457,7 +458,7 @@ export class ZoomPatch
     chunkID = "TXE1";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -489,14 +490,14 @@ export class ZoomPatch
     chunkID = "EDTB";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
       this.EDTB = chunkID;
       this.edtbLength = chunkData.length;
       if (this.numEffects === null) {
-        console.warn(`ZoomPatch.readPTCF() this.numEffects === null, but EDTB chunk has length ${chunkData.length}`);
+        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() this.numEffects === null, but EDTB chunk has length ${chunkData.length}`);
       }
       else {
         this.edtbReversedBytes = new Array<Uint8Array>(this.numEffects);
@@ -528,7 +529,7 @@ export class ZoomPatch
     chunkID = "PRM2";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -566,7 +567,7 @@ export class ZoomPatch
     chunkID = "NAME";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -593,7 +594,7 @@ export class ZoomPatch
     this.updatePatchPropertiesFromDerivedProperties();
 
     if (this.PTCF === null) {
-      console.error(`Unable to build patch buffer for patch ${this.name}. PTCF == null`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. PTCF == null`);
       return undefined;
   }
 
@@ -602,7 +603,7 @@ export class ZoomPatch
     let txj1TotalLength = 0;
     if (this.TXJ1 !== null) {
       if (this.txj1Length === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXJ1 != null, txj1Length == null.`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXJ1 != null, txj1Length == null.`);
         return undefined;
       }
       txj1TotalLength = 4 + 4 + this.txj1Length;
@@ -613,7 +614,7 @@ export class ZoomPatch
     let txe1TotalLength = 0;
     if (this.TXE1 !== null) {
       if (this.txe1Length === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXE1 != null, txe1Length == null. `);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. TXE1 != null, txe1Length == null. `);
         return undefined;
       }
       txe1TotalLength = 4 + 4 + this.txe1Length;
@@ -623,7 +624,7 @@ export class ZoomPatch
     let edtbTotalLength = 0;
     if (this.EDTB !== null) {
       if (this.edtbLength === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. EDTB != null, edtbLength == null. `);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. EDTB != null, edtbLength == null. `);
         return undefined;
       }
       edtbTotalLength = 4 + 4 + this.edtbLength;
@@ -634,7 +635,7 @@ export class ZoomPatch
     let prm2TotalLength = 0;
     if (this.PRM2 !== null) {
       if (this.prm2Length === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. PRM2 != null, prm2Length == null. `);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. PRM2 != null, prm2Length == null. `);
         return undefined;
       }
       prm2TotalLength = 4 + 4 + this.prm2Length;
@@ -647,14 +648,14 @@ export class ZoomPatch
     let nameTotalLength = 0;
     if (this.NAME !== null) {
       if (this.nameLength === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. NAME != null, nameLength == null. `);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. NAME != null, nameLength == null. `);
         return undefined;
       }
       nameTotalLength = 4 + 4 + this.nameLength;
     } 
 
     if (this.ids === null || this.numEffects === null || this.ids.length !== this.numEffects) {
-      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. ids = ${this.ids}, numEffects = ${this.numEffects}, ids.length = ${this.ids?.length}, ids.length != numEffects `);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. ids = ${this.ids}, numEffects = ${this.numEffects}, ids.length = ${this.ids?.length}, ids.length != numEffects `);
       return undefined;
     }
 
@@ -676,17 +677,17 @@ export class ZoomPatch
     // Toplevel data in the PTCF chunk
 
     if (this.version === null || this.target === null || this.ptcfUnknown === null || this.ptcfShortName === null) {
-      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. version = ${this.version}, target = ${this.target}, ptchUnknown = ${this.ptcfUnknown}, ptchShortName = ${this.ptcfShortName}`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. version = ${this.version}, target = ${this.target}, ptchUnknown = ${this.ptcfUnknown}, ptchShortName = ${this.ptcfShortName}`);
       return undefined;
     }
 
     if (this.ptcfUnknown.length !== 6 ) {
-      console.error(`Unable to build patch buffer. Unexpected length of unknown ptcf byte sequence for patch ${this.name}. Length is ${this.ptcfUnknown.lastIndexOf} but expected 6.`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Unexpected length of unknown ptcf byte sequence for patch ${this.name}. Length is ${this.ptcfUnknown.lastIndexOf} but expected 6.`);
       return undefined;
     }
 
     if (this.ptcfShortName.length !== 10 ) {
-      console.error(`Unable to build patch buffer. Unexpected length of short name for patch "${this.name}". Length is ${this.ptcfShortName.lastIndexOf} but expected 10.`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Unexpected length of short name for patch "${this.name}". Length is ${this.ptcfShortName.lastIndexOf} but expected 10.`);
       return undefined;
     }
 
@@ -700,24 +701,25 @@ export class ZoomPatch
     offset = result = this.writeInt32Array(ptcfChunk, offset, this.ids); success &&= (result !== 0);
 
     if (!success) {
-      console.error(`Unable to build patch buffer for patch "${this.name}". Patch buffer size incorrect.`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". Patch buffer size incorrect.`);
       return undefined;
     }
 
     let expectedOffset = 4 + 4;
     expectedOffset += ptcfToplevelDataLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
     // TXJ1 chunk
 
-    if (this.TXJ1 === null) 
-      console.log(`Skipping empty TXJ1 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    if (this.TXJ1 === null) {
+      shouldLog(LogLevel.Info) && console.log(`Skipping empty TXJ1 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    }
     else {
       if (this.txj1Length === null || (this.txj1Length > 0 && this.txj1DescriptionJapanese === null)) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txj1Length = ${this.txj1Length}, txj1DescriptionJapanese = ${this.txj1DescriptionJapanese}`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txj1Length = ${this.txj1Length}, txj1DescriptionJapanese = ${this.txj1DescriptionJapanese}`);
         return undefined;
       }
   
@@ -725,7 +727,7 @@ export class ZoomPatch
       offset = result = this.writeInt32(ptcfChunk, offset, this.txj1Length); success &&= (result !== 0);
       if (this.txj1DescriptionJapanese !== null) {
         if (this.txj1DescriptionJapanese.length !== this.txj1Length) {
-          console.error(`Inconsistent patch data. this.txj1DescriptionJapanese.length = ${this.txj1DescriptionJapanese.length}, this.txj1Length = ${this.txj1Length}`)
+          shouldLog(LogLevel.Error) && console.error(`Inconsistent patch data. this.txj1DescriptionJapanese.length = ${this.txj1DescriptionJapanese.length}, this.txj1Length = ${this.txj1Length}`)
           return undefined;
         }
         offset = result = this.writeSlice(ptcfChunk, offset, this.txj1DescriptionJapanese); success &&= (result !== 0);  
@@ -734,17 +736,18 @@ export class ZoomPatch
 
     expectedOffset += txj1TotalLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
     // TXE1 chunk
 
-    if (this.TXE1 === null) 
-      console.log(`Skipping empty TXE1 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    if (this.TXE1 === null) {
+      shouldLog(LogLevel.Info) && console.log(`Skipping empty TXE1 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    }
     else {
       if (this.txe1Length === null || (this.txe1Length > 0 && this.txe1DescriptionEnglish === null)) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txe1Length = ${this.txe1Length}, txe1DescriptionJapanese = ${this.txe1DescriptionEnglish}`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. txe1Length = ${this.txe1Length}, txe1DescriptionJapanese = ${this.txe1DescriptionEnglish}`);
         return undefined;
       }
   
@@ -752,7 +755,7 @@ export class ZoomPatch
       offset = result = this.writeInt32(ptcfChunk, offset, this.txe1Length); success &&= (result !== 0);
       if (this.txe1DescriptionEnglish !== null) {
         if (this.txe1DescriptionEnglish.length !== this.txe1Length) {
-          console.error(`Inconsistent patch data. this.txe1DescriptionEnglish.length = ${this.txe1DescriptionEnglish.length}, this.txe1Length = ${this.txe1Length}`)
+          shouldLog(LogLevel.Error) && console.error(`Inconsistent patch data. this.txe1DescriptionEnglish.length = ${this.txe1DescriptionEnglish.length}, this.txe1Length = ${this.txe1Length}`)
           return undefined;
         }
         offset = result = this.writeString(ptcfChunk, offset, this.txe1DescriptionEnglish); success &&= (result !== 0);  
@@ -761,29 +764,29 @@ export class ZoomPatch
 
     expectedOffset += txe1TotalLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
     // EDTB Chunk
 
     if (this.EDTB === null) {
-      console.error(`Unable to build patch buffer for patch "${this.name}". EDTB chunk is missing."`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". EDTB chunk is missing."`);
       return undefined;
     } 
 
     if (this.edtbReversedBytes === null) {
-      console.error(`Unable to build patch buffer for patch "${this.name}". edtbReversedBytes = null.`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". edtbReversedBytes = null.`);
       return undefined;
     }
 
     if (this.edtbLength === null) {
-      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. edtbLength = ${this.edtbLength}`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. edtbLength = ${this.edtbLength}`);
       return undefined;
     }
 
     if (this.effectSettings === null) {
-      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. effectSettings = ${this.effectSettings}`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. effectSettings = ${this.effectSettings}`);
       return undefined;
     }
 
@@ -793,7 +796,7 @@ export class ZoomPatch
     for (let i=0; i<this.numEffects; i++) {
       let reversedBytes = new Uint8Array(24);
       if (this.edtbReversedBytes[i].length !== reversedBytes.length) {
-        console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of edtbReversedBytes[${i}]. edtbReversedBytes[${i}] = ${this.edtbReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of edtbReversedBytes[${i}]. edtbReversedBytes[${i}] = ${this.edtbReversedBytes[i].length}, expected ${reversedBytes.length}.`);
         return undefined;
       }
       reversedBytes.set(this.edtbReversedBytes[i], 0);
@@ -823,17 +826,18 @@ export class ZoomPatch
 
     expectedOffset += edtbTotalLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
     // PRM2 chunk
 
-    if (this.PRM2 === null) 
-      console.log(`Skipping empty PRM2 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    if (this.PRM2 === null) {
+      shouldLog(LogLevel.Info) && console.log(`Skipping empty PRM2 chunk when attempting to build patch buffer for patch "${this.name}"`);
+    }
     else {
       if (this.prm2Length === null || this.prm2Unknown === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Unknown}`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Unknown}`);
         return undefined;
       }
 
@@ -858,17 +862,18 @@ export class ZoomPatch
     
     expectedOffset += prm2TotalLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
     // NAME chunk
 
-    if (this.NAME === null) 
-      console.log(`Skipping empty NAME chunk when attempting to build patch buffer for patch "${this.name}"`);
+    if (this.NAME === null) {
+      shouldLog(LogLevel.Info) && console.log(`Skipping empty NAME chunk when attempting to build patch buffer for patch "${this.name}"`);
+    }
     else {
       if (this.nameLength === null || this.nameName === null) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName = ${this.nameName}`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName = ${this.nameName}`);
         return undefined;
       }
        
@@ -876,12 +881,12 @@ export class ZoomPatch
       let enforceLength = 32;
 
       if (this.nameName.length !== this.nameLength) {
-        console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName.length = ${this.nameName.length}, nameName = "${this.nameName}"`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName.length = ${this.nameName.length}, nameName = "${this.nameName}"`);
         return undefined;
       }
 
       if (this.nameName.length !== enforceLength) {
-        console.error(`Unable to build patch buffer for patch ${this.name}. Expected nameLength to be ${enforceLength}. nameLength = ${this.nameLength}"`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. Expected nameLength to be ${enforceLength}. nameLength = ${this.nameLength}"`);
         return undefined;
       }
      
@@ -892,7 +897,7 @@ export class ZoomPatch
 
     expectedOffset += nameTotalLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
@@ -907,30 +912,30 @@ export class ZoomPatch
     this.updatePatchPropertiesFromDerivedProperties();
 
     if (this.MSOG === null) {
-      console.error(`Unable to build patch buffer for patch ${this.name}. MSOG == null`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. MSOG == null`);
       return undefined;
     }
 
     // calculate size
 
     if (this.msogEffectsReversedBytes === null || this.msogNumEffects === null || this.msogUnknown1 === null || this.msogName === null || this.msogUnknown2 === null) {
-      console.error(`Unable to build patch buffer for patch ${this.name}. this.msogEffectsReversedBytes = ${this.msogEffectsReversedBytes}` + 
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. this.msogEffectsReversedBytes = ${this.msogEffectsReversedBytes}` + 
         `, this.msogNumEffects = ${this.msogNumEffects}, this.msogUnknown1 = ${this.msogUnknown1}, this.msogName = ${this.msogName}, this.msogUnknown2 = ${this.msogUnknown2}`);
       return undefined;
     }
 
     if (this.msogUnknown1.length !== 3) {
-      console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogUnknown1.length !== 3`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogUnknown1.length !== 3`);
       return undefined;
     }
 
     if (this.msogName.length !== 10) {
-      console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogName.length !== 10`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogName.length !== 10`);
       return undefined;
     }
 
     if (this.msogUnknown2.length !== 1) {
-      console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogUnknown2.length !== 1`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. Inconsistent patch data. this.msogUnknown2.length !== 1`);
       return undefined;
     }
 
@@ -939,11 +944,11 @@ export class ZoomPatch
     let msogTotalLength = this.maxNumEffects * effectSectionLength + this.msogUnknown1.length + this.msogName.length + this.msogUnknown2.length;
 
     if (this.msogDataBuffer !== null && msogTotalLength !== this.msogDataBuffer.length) {
-      console.warn(`Mismatched buffer sizes when building patch buffer for patch ${this.name}. msogTotalLength !== this.msogDataBuffer.length. msogTotalLength = ${msogTotalLength}, this.msogDataBuffer.length = ${this.msogDataBuffer.length}`);
+      shouldLog(LogLevel.Warning) && console.warn(`Mismatched buffer sizes when building patch buffer for patch ${this.name}. msogTotalLength !== this.msogDataBuffer.length. msogTotalLength = ${msogTotalLength}, this.msogDataBuffer.length = ${this.msogDataBuffer.length}`);
     }
 
     if (this.effectSettings === null) {
-      console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. effectSettings = ${this.effectSettings}`);
+      shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. effectSettings = ${this.effectSettings}`);
       return undefined;
     }
 
@@ -956,7 +961,7 @@ export class ZoomPatch
     for (let i=0; i<this.maxNumEffects; i++) { 
       let reversedBytes = new Uint8Array(effectSectionLength);
       if (this.msogEffectsReversedBytes[i].length !== reversedBytes.length) {
-        console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}] = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}] = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
         return undefined;
       }
       reversedBytes.set(this.msogEffectsReversedBytes[i], 0);
@@ -988,7 +993,7 @@ export class ZoomPatch
       
       // let reversedBytes = new Uint8Array(effectSectionLength);
       // if (this.msogEffectsReversedBytes[i].length !== reversedBytes.length) {
-      //   console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}].length = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
+      //   shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of msogEffectsReversedBytes[${i}]. msogEffectsReversedBytes[${i}].length = ${this.msogEffectsReversedBytes[i].length}, expected ${reversedBytes.length}.`);
       //   return undefined;
       // }
       // reversedBytes.set(this.msogEffectsReversedBytes[i], 0);
@@ -999,7 +1004,7 @@ export class ZoomPatch
     let expectedOffset = 0;
     expectedOffset += this.maxNumEffects * effectSectionLength; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
@@ -1024,7 +1029,7 @@ export class ZoomPatch
 
     expectedOffset += this.msogUnknown1.length; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
@@ -1032,7 +1037,7 @@ export class ZoomPatch
 
     expectedOffset += this.msogName.length; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
@@ -1040,7 +1045,7 @@ export class ZoomPatch
 
     expectedOffset += this.msogUnknown2.length; 
     if (offset !== expectedOffset) {
-      console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
+      shouldLog(LogLevel.Error) && console.error(`Unexpected offset when attempting to build patch buffer for patch "${this.name}". offset = ${offset}, expected offset = ${expectedOffset}`);
       return undefined;
     }
 
