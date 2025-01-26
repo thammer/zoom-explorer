@@ -1,4 +1,5 @@
 import { getColorFromEffectID, supportsContentEditablePlaintextOnly } from "./htmltools.js";
+import { LogLevel, shouldLog } from "./Logger.js";
 import { ZoomDevice } from "./ZoomDevice.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
@@ -243,7 +244,7 @@ export class ZoomPatchEditor
                 (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
     }
 
-    console.log(`ZoomPatchEditor.update() - ${debugCounter++}`);	
+    shouldLog(LogLevel.Info) && console.log(`ZoomPatchEditor.update() - ${debugCounter++}`);	
 
     if (patch !== undefined) {
       this.patchNumberCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`;
