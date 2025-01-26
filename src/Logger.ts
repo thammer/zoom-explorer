@@ -15,6 +15,11 @@ export function setLogLevel(level: LogLevel): void
   logLevel = level; 
 }
 
+export function getLogLevel(): LogLevel 
+{ 
+  return logLevel; 
+}
+
 export function shouldLog(level: LogLevel): boolean 
 { 
   return (level & logLevel) === level;

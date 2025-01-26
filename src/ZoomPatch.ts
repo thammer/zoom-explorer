@@ -63,7 +63,7 @@ export class ZoomPatch
     else
       this.name = "";
   
-    this.descriptionEnglish = this.txe1DescriptionEnglish !== null ? this.txe1DescriptionEnglish.replace(/\x00/g, "") : "";
+    this.descriptionEnglish = this.txe1DescriptionEnglish !== null ? this.txe1DescriptionEnglish.replaceAll("\x00", "") : "";
 
     this.tempo = this.prm2Tempo !== null ? this.prm2Tempo : this.msogTempo !== null ? this.msogTempo : 0;
 
@@ -577,7 +577,7 @@ export class ZoomPatch
         this.nameName = this.readString(chunkData, chunkOffset, this.nameLength); chunkOffset += this.nameLength; 
         // FIXME: Perhaps we shouldn't remove the 0x00's here, to keep true to the original data??
         if (this.nameName != null)
-          this.nameName = this.nameName.replace(/\x00/g, ""); // The last four characters could be 0x00
+          this.nameName = this.nameName.replaceAll("\x00", ""); // The last four characters could be 0x00
         // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
         this.maxNameLength = this.nameLength == 32 ? this.nameLength - 4 : this.nameLength; // this.maxNameLength was set above, for ptcfShortName, but we update it here since a NAME chunk was found
       }
@@ -1127,7 +1127,7 @@ export class ZoomPatch
     this.maxNameLength = 10;
     this.msogName = this.readString(data, offset, 10); offset += 10; 
     if (this.msogName != null)
-      this.msogName = this.msogName.replace(/\x00/g, ""); // Safety guard against characters being 0
+      this.msogName = this.msogName.replaceAll("\x00", ""); // Safety guard against characters being 0
 
     this.msogUnknown2 = data.slice(offset, offset + 1); offset += 1;
 
@@ -1155,11 +1155,24 @@ export class ZoomPatch
     return zoomPatch;
   }
 
+  public static noteByteCodeToHtmlSlow(valueString: string): string
+  {
+    // https://www.alt-codes.net/music_note_alt_codes.php
+    // https://www.fileformat.info/info/unicode/char/1D15E/index.htm
+    return valueString.replaceAll(/\x16/g, "&#119138;").replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
+  }
+
   public static noteByteCodeToHtml(valueString: string): string
   {
     // https://www.alt-codes.net/music_note_alt_codes.php
     // https://www.fileformat.info/info/unicode/char/1D15E/index.htm
-    return valueString.replace(/\x16/g, "&#119138;").replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
+    return valueString.length == 0 ? valueString :
+      valueString[0] === "\x16" ? "&#119138;" + valueString.slice(1) :
+      valueString[0] === "\x17" ? "&#119137;" + valueString.slice(1) :
+      valueString[0] === "\x18" ? "&#119136;" + valueString.slice(1) :
+      valueString[0] === "\x19" ? "&#119135;" + valueString.slice(1) :
+      valueString[0] === "\x1A" ? "&#119134;" + valueString.slice(1) :
+      valueString;
   }
 
   public static noteHtmlToByteCode(valueString: string): string
@@ -1171,8 +1184,24 @@ export class ZoomPatch
     return valueString.replace(/&#119138;/g, "\x16").replace(/&#119137;/g, "\x17").replace(/&#119136;/g, "\x18").replace(/&#119135;/g, "\x19").replace(/&#119134;/g, "\x1A");
   }
 
-  public static noteUTF16ToHtml(valueString: string): string
+  public static noteUTF16ToHtmlSlow(valueString: string): string
   {
     return valueString.replace(/\uD834\uDD62/g, "&#119138;").replace(/\uD834\uDD61/g, "&#119137;").replace(/\uD834\uDD60/g, "&#119136;").replace(/\uD834\uDD5F/g, "&#119135;").replace(/\uD834\uDD5E/g, "&#119134;");
+  }
+
+  public static noteUTF16ToHtml(valueString: string): string
+  {
+    return valueString.length <= 1 ? valueString :
+      valueString[1] === "\uDD62" ? "&#119138;" + valueString.slice(2) :
+      valueString[1] === "\uDD61" ? "&#119137;" + valueString.slice(2) :
+      valueString[1] === "\uDD60" ? "&#119136;" + valueString.slice(2) :
+      valueString[1] === "\uDD5F" ? "&#119135;" + valueString.slice(2) :
+      valueString[1] === "\uDD5E" ? "&#119134;" + valueString.slice(2) :
+      valueString;
+  }
+
+  public static isNoteHtml(valueString: string): boolean
+  { // See KnobView.startsWithHtmlCharacter()
+    return valueString.length >= 9 && valueString[0] === "&";
   }
 }

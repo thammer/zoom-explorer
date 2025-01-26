@@ -4,8 +4,6 @@
 
 import { shouldLog, LogLevel } from "./Logger.js";
 import { ZoomDevice } from "./ZoomDevice";
-import { ZoomPatch } from "./ZoomPatch";
-import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo";
 
 export class ConfirmDialog
 {

@@ -58,7 +58,7 @@ export function bytesToHexString(bytes: Iterable<number> | ArrayLike<number>, se
  */
 export function hexStringToUint8Array(str: string, separator: string = '') : Uint8Array
 {
-  str = str.replace(new RegExp(`/${separator}/g`), "").replace(/ /g, "").replace(/0x/g, "");
+  str = str.replace(new RegExp(`/${separator}/g`), "").replaceAll(" ", "").replaceAll("0x", "");
   let dataArray = str.match(/.{1,2}/g)?.map((hex) => parseInt(hex, 16));
   return dataArray != undefined ? Uint8Array.from(dataArray) : new Uint8Array();
 } 

@@ -432,9 +432,17 @@ export class ZoomPatchEditor
           // Map Zoom's byte codes to HTML/unicode characters. This is also done in ZoomDevice.ts
           // let valueString = screen.parameters[parameterNumber].valueString.replace(/\x16/g, "&#119138;").replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
           let valueString = screen.parameters[parameterNumber].valueString;
-          valueString = ZoomPatch.noteByteCodeToHtml(valueString);
-
-          td.innerHTML = boldStart + valueString + boldEnd;
+          // valueString = ZoomPatch.noteByteCodeToHtml(valueString);
+          
+          // td.innerHTML = boldStart + valueString + boldEnd;
+          // textXontent is much faster than using innerHtml
+          if (ZoomPatch.isNoteHtml(valueString)) {
+            td.innerHTML = boldStart + valueString + boldEnd;
+          } 
+          else {
+            td.textContent = valueString; 
+            td.style.fontWeight = valueChanged ? "bold" : "normal"; 
+          }
 
           td.id = this.encodeEffectAndParameterNumber(effectSlot, parameterNumber);
 

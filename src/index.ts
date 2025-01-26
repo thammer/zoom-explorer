@@ -570,7 +570,7 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
 }
 
 function html2Uint8Array(html: string) {
-  let sysexString = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp;, and newlines
+  let sysexString = html.replace(/<[^>]*>/g, " ").replaceAll("&nbsp;", " ").replace(/\r|\n/g, " "); // remove html tags, &nbsp;, and newlines
   let sysexData = Uint8Array.from(sysexString.split(" ").filter(value => value.length === 2).map(value => parseInt(value, 16)));
   return sysexData;
 }

@@ -123,7 +123,7 @@ export class ZoomScreenCollection
         break;
       }
       
-      str = str.replace(/\x00/g, ""); // strip trailing \x00
+      str = str.replaceAll("\x00", ""); // strip trailing \x00
 
       // Observed types are 0, 1, 3, 7
 
