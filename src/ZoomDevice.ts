@@ -702,7 +702,12 @@ export class ZoomDevice implements IManagedMIDIDevice
       return;
     }
 
-    patch.effectSettings[effectSlot].parameters[parameterIndex] = value;
+    if (parameterNumber === 0) {
+      patch.effectSettings[effectSlot].enabled = value !== 0;
+    }
+    else {
+      patch.effectSettings[effectSlot].parameters[parameterIndex] = value;
+    }
     this._currentEffectSlot = effectSlot;
     this._currentEffectParameterNumber = parameterNumber;
     this._currentEffectParameterValue = value;
@@ -2188,8 +2193,10 @@ export class ZoomDevice implements IManagedMIDIDevice
     if (this.effectIDMap === undefined)
       return [0, -1];
 
-    if (parameterNumber === 0) 
-      return [valueString === "OFF" ? 0 : 1, 1];
+    if (parameterNumber === 0) {
+      // return [valueString === "OFF" ? 0 : 1, 1];
+      return [valueString === "0" ? 0 : 1, 1];
+    }
 
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
@@ -2213,8 +2220,10 @@ export class ZoomDevice implements IManagedMIDIDevice
     if (this.effectIDMap === undefined)
       return "";
 
-    if (parameterNumber === 0)
-      return rawValue === 0 ? "OFF" : "ON";
+    if (parameterNumber === 0) {
+      // return rawValue === 0 ? "OFF" : "ON";
+      return rawValue === 0 ? "0" : "1";
+    }
 
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
