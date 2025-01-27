@@ -11,6 +11,7 @@ import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import { shouldLog, LogLevel } from "./Logger.js";
+import { extendMSOGMapWithMS60BEffects } from "./ZoomEffectMaps.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -231,6 +232,9 @@ async function downloadEffectMaps() {
   let mapForMSOG: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
 
   shouldLog(LogLevel.Info) && console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
+
+  extendMSOGMapWithMS60BEffects(mapForMSOG);
+  shouldLog(LogLevel.Info) && console.log(`mapForMSOG.size (after extending with MS-60B IDs) = ${mapForMSOG.size}`);
 
   ZoomDevice.setEffectIDMap(["MS-50G", "MS-60B", "MS-70CDR"], mapForMSOG);
 
