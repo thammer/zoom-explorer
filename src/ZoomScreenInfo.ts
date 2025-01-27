@@ -244,7 +244,8 @@ export class ZoomScreenCollection
     let valueString: string;
 
     if (parameterNumber === 0) {
-      valueString = value > 0 ? "ON" : "OFF";
+      //valueString = value > 0 ? "ON" : "OFF";
+      valueString = value > 0 ? "1" : "0";
     }
     else {
       let parameterIndex = parameterNumber - 2;
