@@ -311,3 +311,17 @@ export function getPatchNumber(cell: HTMLTableCellElement) : number
     return -1;
   return parseInt(text);
 }
+
+export function startsWithHtmlCharacter(valueString: string): boolean
+{ // See ZoomPatch.isNoteHtml()
+  return valueString.length >= 2 && valueString[0] === "&";
+}
+
+export function setHtmlFast(element: Element, valueString: string): void
+{
+  if (startsWithHtmlCharacter(valueString)) {
+    element.innerHTML = valueString;
+  } else {
+    element.textContent = valueString;
+  }
+}

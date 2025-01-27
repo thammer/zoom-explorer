@@ -1191,7 +1191,7 @@ export class ZoomPatch
 
   public static noteUTF16ToHtml(valueString: string): string
   {
-    return valueString.length <= 1 ? valueString :
+    return (valueString.length <= 1 || valueString[0] !== "\uD834") ? valueString :
       valueString[1] === "\uDD62" ? "&#119138;" + valueString.slice(2) :
       valueString[1] === "\uDD61" ? "&#119137;" + valueString.slice(2) :
       valueString[1] === "\uDD60" ? "&#119136;" + valueString.slice(2) :
@@ -1201,7 +1201,7 @@ export class ZoomPatch
   }
 
   public static isNoteHtml(valueString: string): boolean
-  { // See KnobView.startsWithHtmlCharacter()
+  { // See htmltools startsWithHtmlCharacter()
     return valueString.length >= 9 && valueString[0] === "&";
   }
 }
