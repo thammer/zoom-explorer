@@ -1609,6 +1609,9 @@ export class ZoomDevice implements IManagedMIDIDevice
    */
   private syncStateWithNewBankAndProgram(bank: number, program: number, forceUpdate: boolean = false): boolean
   {
+    if (this._patchList.length === 0)
+      return false; // we don't have the patch list, so there's nothing to sync with
+
     let memorySlot = program;
     if (this._patchesPerBank !== -1 && bank != -1)
       memorySlot += bank * this._patchesPerBank;
