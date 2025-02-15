@@ -70,7 +70,8 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
           let isInput: boolean = true;
           let isOutput: boolean = true;
           let manufacturerID: [number] | [number, number, number] = data[5] != 0 ? [ data[5] ] : [ data[5], data[6], data[7] ];
-          let manufacturerName: string = MIDIManufacturerIDToName[bytesToHexString(manufacturerID, " ")] ?? "unknown";
+          let manufacturerName: string = MIDIManufacturerIDToName[bytesToHexString(manufacturerID, " ")] ?? 
+            (data[5] != 0 ? data[5].toString().padStart(2, "0") : `${data[5].toString().padStart(2, "0")} ${data[6].toString().padStart(2, "0")} ${data[7].toString().padStart(2, "0")}`);
           let familyCode: [number, number] = [ data[6+dataOffset], data[7+dataOffset]];
           let modelNumber: [number, number] = [data[8+dataOffset], data[9+dataOffset]];
           let deviceName: string = getDeviceName(manufacturerID, familyCode, modelNumber);
@@ -213,13 +214,13 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
       // Next, we'll see if any of the remaining devices can be paired using the Device Name
 
       let unpairedInputs = [...inputs.values()].filter( (input) =>
-        input.connection === "open" && midiDevices.find( (device) => 
+        midiDevices.find( (device) => 
           device.inputName == input.name
         ) == undefined // include only inputs that are not already in the midiDevices
       );
 
       let unpairedOutputs = [...outputs.values()].filter( (output) => 
-        output.connection === "open" && midiDevices.find( (device) => 
+        midiDevices.find( (device) => 
           device.outputName == output.name
         ) == undefined // include only outputs that are not already in the midiDevices
       );
@@ -253,6 +254,35 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         }
       }
 
+      // match up devices with names that are similar
+
+      for (let similarity = 1; similarity <= 4; similarity++) {        
+        for (let inputIndex = 0; inputIndex < unpairedInputs.length; inputIndex++) {
+          let input = unpairedInputs[inputIndex];
+          if (input === undefined) 
+            continue;
+          let outputIndex = unpairedOutputs.findIndex( (output) => output === undefined ? false : levenshteinDistance(input.name, output.name) < similarity );
+          if (outputIndex != -1) 
+          { // We found an input and an output with a similar name
+            shouldLog(LogLevel.Info) && console.log(`Found input and output with similar names (Levenshtein index = ${similarity}): ${input.name} <--> ${unpairedOutputs[outputIndex].name}`);
+            let output = unpairedOutputs[outputIndex];
+            let description = new MIDIDeviceDescription({ 
+              inputID: input.id,
+              inputName: input.name,
+              outputID: output.id,
+              outputName: output.name,
+              deviceName: input.name,
+              isInput: true,
+              isOutput: true,
+            });
+            midiDevices.push(description);
+            delete unpairedOutputs[outputIndex];
+            delete unpairedInputs[inputIndex];
+          }
+        }
+
+      }
+  
       // add output devices with no inputs
       // add input devices with no outputs
       // 
@@ -273,6 +303,28 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
 // {
 //   return Array.from(id, num => ('0' + (num & 0xFF).toString(16)).slice(-2)).join(" ").toUpperCase();
 // }
+
+
+/**
+ * Calculates the Levenshtein Distance between two strings.
+ * The Levenshtein Distance is a measure of the minimum number of single-character edits (insertions, deletions or substitutions) required to change one word into the other.
+ * @param s1 The first string.
+ * @param s2 The second string.
+ * @returns The Levenshtein Distance between s1 and s2.
+ */
+function levenshteinDistance(s1: string, s2: string) : number
+{
+  let costs: number[][] = [];
+  for (let i = 0; i <= s1.length; i++) costs[i] = [i];
+  for (let j = 1; j <= s2.length; j++) costs[0][j] = j;
+  for (let i = 1; i <= s1.length; i++) {
+    for (let j = 1; j <= s2.length; j++) {
+      let match = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      costs[i][j] = Math.min(costs[i - 1][j] + 1, costs[i][j - 1] + 1, costs[i - 1][j - 1] + match);
+    }
+  }
+  return costs[s1.length][s2.length];
+}
 
 function manufacturerIDsAreEqual(id1: [number] | [number, number, number], id2: [number] | [number, number, number])
 {
@@ -328,11 +380,9 @@ export function getChannelMessage(data: Uint8Array): [messageType: MessageType, 
 {
   if (data.length < 1)
     return [MessageType.Unknown, 0, 0, 0];
-  else if (data.length === 1)
-    return [data[0] & 0b11110000, data[0] & 0b00001111, 0, 0];
-  else if (data.length === 2)
-    return [data[0] & 0b11110000, data[0] & 0b00001111, data[1], 0];
-  else return [data[0] & 0b11110000, data[0] & 0b00001111, data[1], data[2]];
+  else if (data[0] >= MessageType.SysEx)
+    return [data[0], -1, data.length > 1 ? data[1] : -1, data.length > 2 ? data[2] : -1];
+  else return [data[0] & 0b11110000, data[0] & 0b00001111, data.length > 1 ? data[1] : -1, data.length > 2 ? data[2] : -1];
 }    
 
 /**
