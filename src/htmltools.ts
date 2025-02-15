@@ -322,6 +322,7 @@ export function setHtmlFast(element: Element, valueString: string): void
   if (startsWithHtmlCharacter(valueString)) {
     element.innerHTML = valueString;
   } else {
-    element.textContent = valueString;
+    if (element.textContent !== valueString)
+      element.textContent = valueString;
   }
 }
