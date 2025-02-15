@@ -1,7 +1,7 @@
 
 import { shouldLog, LogLevel } from "./Logger.js";
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType, ALL_MIDI_DEVICES } from "./midiproxy.js";
-import { MIDI_RECEIVE, MIDI_RECEIVE_TO_SEND, MIDI_SEND, perfmon } from "./PerformanceMonitor.js";
+import { MIDI_RECEIVE, MIDI_RECEIVE_TO_SEND, MIDI_SEND, MIDI_TIMESTAMP_TO_RECEIVE, perfmon } from "./PerformanceMonitor.js";
 import { bytesToHexString, getFunctionName } from "./tools.js";
 //import jzz from "jzz";
 
@@ -129,8 +129,13 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       this.midiMessageListenerMap.set(id, new Array<ListenerType>());
 
     input.onmidimessage = (message) => {
-      if (input !== undefined)
+      if (input !== undefined) {
+        perfmon.exitWithExplicitLastTimeInside(MIDI_TIMESTAMP_TO_RECEIVE, message.timeStamp);
+        perfmon.enter(MIDI_RECEIVE);
+        perfmon.enter(MIDI_RECEIVE_TO_SEND);
+
         this.onMIDIMessage(id, input, message);
+      }
     };
 
     return input.id;
@@ -398,8 +403,12 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
   onMIDIMessage(deviceHandle: DeviceID, input: MIDIInput, message:MIDIMessageEvent)
   {
-    perfmon.enter(MIDI_RECEIVE);
-    perfmon.enter(MIDI_RECEIVE_TO_SEND);
+    if (message.data === null) {
+      shouldLog(LogLevel.Warning) && console.warn("message.data == null");
+      return;
+    }
+
+    // shouldLog(LogLevel.Midi) && console.log(`${performance.now().toFixed(4)} ${message.timeStamp.toFixed(4)} Rcvd: ${bytesToHexString(message.data, " ")}`)
 
     // first, call listeners that listen for all midi devices
     let listeners = this.midiMessageListenerMap.get(ALL_MIDI_DEVICES);

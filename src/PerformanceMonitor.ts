@@ -18,6 +18,7 @@ Requirements:
 export const MIDI_SEND = 0;
 export const MIDI_RECEIVE = 1;
 export const MIDI_RECEIVE_TO_SEND = 2;
+export const MIDI_TIMESTAMP_TO_RECEIVE = 3;
 
 const NUM_COUNTERS = 100;
 
@@ -138,6 +139,26 @@ export class PerformanceMonitor
 
     let now = performance.now();
     let diff = now - info.lastTime;
+
+    info.insideSum += diff;
+    info.insideMin = Math.min(info.insideMin, diff);
+    info.insideMax = Math.max(info.insideMax, diff);
+    info.insideLatest = diff;
+
+    info.insideCount++;
+  }
+
+  public exitWithExplicitLastTimeInside(counter: number, lastTime: number)
+  {
+    if (!this.enabled)
+      return;
+
+    let info = this.counters[counter];
+    info.lastTime = lastTime;
+
+    let now = performance.now();
+    let diff = now - info.lastTime;
+    diff = diff >= 0 ? diff : 0;
 
     info.insideSum += diff;
     info.insideMin = Math.min(info.insideMin, diff);
