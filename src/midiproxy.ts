@@ -39,7 +39,21 @@ export enum MessageType {
   ChanPress =   0b11010000,
   PitchBend =   0b11100000,
   SysEx =       0b11110000,
-  SysExEnd =    0b11110111
+  TimeCode =    0b11110001,
+  SongPos =     0b11110010,
+  SongSelect =  0b11110011,
+  Undefined1 =  0b11110100,
+  Undefined2 =  0b11110101,
+  TuneRequest = 0b11110110,
+  SysExEnd =    0b11110111,
+  Clock =       0b11111000,
+  Undefined3 =  0b11111001,
+  Start =       0b11111010,
+  Continue =    0b11111011,
+  Stop =        0b11111100,
+  Undefined4 =  0b11111101,
+  ActiveSense = 0b11111110,
+  Reset       = 0b11111111
 }
 
 export interface IMIDIProxy 
