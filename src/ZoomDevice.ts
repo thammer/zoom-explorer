@@ -175,8 +175,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _numParametersPerPage = 0;
 
   public freezeCurrentPatch: boolean = false; // set to true for debugging, but might slow down execution, so it's not recommended for production
-  public loggingEnabled: boolean = true;
-
+  
   constructor(midi: IMIDIProxy, midiDevice: MIDIDeviceDescription, timeoutMilliseconds: number = 500)
   {
     this._midiDevice = midiDevice;
@@ -1322,9 +1321,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       }, this._autoRequestProgramChangeIntervalMilliseconds);
       shouldLog(LogLevel.Info) && console.log(`Starting auto-request program change timer for ZoomDevice ${this._zoomDeviceID}`);	
       this._autoRequestProgramChangeTimerStarted = true;
-      if (this.loggingEnabled) {
-        shouldLog(LogLevel.Info) && console.log(`Started regular polling of program change (timer ID ${this._autoRequestProgramChangeTimerID}). Muting logging of program and bank requests and the bank and program change message.`);
-      }
+      shouldLog(LogLevel.Info) && console.log(`Started regular polling of program change (timer ID ${this._autoRequestProgramChangeTimerID}). Muting logging of program and bank requests and the bank and program change message.`);
     }
   }
 
@@ -1694,7 +1691,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     const messageIsPCOrBankChange = messageType === MessageType.PC || (messageType === MessageType.CC && (data1 === 0x00 || data1 == 0x20));
     const tempSkipLog = this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
 
-    let log = this.loggingEnabled && ! this.logMutedTemporarilyForPollMessages(data); 
+    let log = !this.logMutedTemporarilyForPollMessages(data); 
     if (this._patchListDownloadInProgress) {
       if (log) shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Received: ${bytesToHexString(data, " ")}`);
         
@@ -1996,9 +1993,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     let expectedReply: string;
     let reply: Uint8Array | undefined;
 
-    if (this.loggingEnabled) {
-      shouldLog(LogLevel.Info) && console.log(`Probing started for device ${this.deviceInfo.deviceName}`);
-    }
+    shouldLog(LogLevel.Info) && console.log(`Probing started for device ${this.deviceInfo.deviceName}`);
 
     // Some of the probes will fail if parameter edit is not enabled
     this.parameterEditEnable();
@@ -2146,28 +2141,26 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._numParametersPerPage = this._isMSOG ? 3 : 4;
     this._maxNumEffects = 6; // FIXME: Support MS-60B and other pedals with different number of max effects
 
-    if (this.loggingEnabled) {
+    if (shouldLog(LogLevel.Info)) {
       let sortedMap = new Map([...this._supportedCommands.entries()].sort( (a, b) => a[0].replaceAll(" ", "").padEnd(2, "00") > b[0].replaceAll(" ", "").padEnd(2, "00") ? 1 : -1))
-      shouldLog(LogLevel.Info) && console.log("Probing summery:")
+      console.log("Probing summery:")
       for (let [command, supportType] of sortedMap) {
-        shouldLog(LogLevel.Info) && console.log(`  ${command.padEnd(8)} -> ${supportType == SupportType.Supported ? "  Supported" : "Unsupported"}`)
+        console.log(`  ${command.padEnd(8)} -> ${supportType == SupportType.Supported ? "  Supported" : "Unsupported"}`)
       }
-      shouldLog(LogLevel.Info) && console.log(`  Number of patches:       ${this._numPatches}`);
-      shouldLog(LogLevel.Info) && console.log(`  Patch length:            ${this._patchLength}`);
-      shouldLog(LogLevel.Info) && console.log(`  Patches per bank:        ${this._patchesPerBank == -1 ? "Unknown" : this._patchesPerBank}`);
-      shouldLog(LogLevel.Info) && console.log(`  CRC bytes v1 mem patch:  ${this._patchDumpForMemoryLocationV1CRCBytes}`);
-      shouldLog(LogLevel.Info) && console.log(`  PTCF format support:     ${this._ptcfPatchFormatSupported}`);
-      shouldLog(LogLevel.Info) && console.log(`  Bank + prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
-      shouldLog(LogLevel.Info) && console.log(`  Num parameters per page: ${this._numParametersPerPage}`);
-      shouldLog(LogLevel.Info) && console.log(`  Is MSOG device:          ${this._isMSOG}`);
+      console.log(`  Number of patches:       ${this._numPatches}`);
+      console.log(`  Patch length:            ${this._patchLength}`);
+      console.log(`  Patches per bank:        ${this._patchesPerBank == -1 ? "Unknown" : this._patchesPerBank}`);
+      console.log(`  CRC bytes v1 mem patch:  ${this._patchDumpForMemoryLocationV1CRCBytes}`);
+      console.log(`  PTCF format support:     ${this._ptcfPatchFormatSupported}`);
+      console.log(`  Bank + prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
+      console.log(`  Num parameters per page: ${this._numParametersPerPage}`);
+      console.log(`  Is MSOG device:          ${this._isMSOG}`);
       
     }
 
     this.parameterEditDisable();
 
-    if (this.loggingEnabled) {
-      shouldLog(LogLevel.Info) && console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
-    }
+    shouldLog(LogLevel.Info) && console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
 
     this._disableMidiHandlers = false;
   }
