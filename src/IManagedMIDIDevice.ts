@@ -1,6 +1,8 @@
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription";
+import { MessageType } from "./midiproxy";
 
 export type MIDIDataListenerType = (device: IManagedMIDIDevice, data: Uint8Array) => void;
+export type MIDIDeviceOpenCloseListenerType = (device: IManagedMIDIDevice, open: boolean) => void;
 
 export interface IManagedMIDIDevice
 {
@@ -13,4 +15,10 @@ export interface IManagedMIDIDevice
   addListener(listener: MIDIDataListenerType): void
   removeListener(listener: MIDIDataListenerType): void
   removeAllListeners(): void
+
+  addOpenCloseListener(listener: MIDIDeviceOpenCloseListenerType): void
+  removeOpenCloseListener(listener: MIDIDeviceOpenCloseListenerType): void
+  removeAllOpenCloseListeners(): void
+
+  setMuteState(messageType: MessageType, mute: boolean): void
 }

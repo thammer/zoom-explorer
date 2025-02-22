@@ -90,6 +90,9 @@ export interface IMIDIProxy
 
   addConnectionListener(listener: ConnectionListenerType): void;
   removeConnectionListener(listener: ConnectionListenerType): void;
+
+  setMuteState(deviceHandle: DeviceID, messageType: MessageType, mute: boolean): void;
+  getMuteStates(deviceHandle: DeviceID): Map<MessageType, boolean> | undefined;
 }
 
 /**
@@ -100,10 +103,13 @@ export abstract class MIDIProxy implements IMIDIProxy
   protected messageBuffer2: Uint8Array;
   protected messageBuffer3: Uint8Array;
 
+  protected messageMutes: Map<DeviceID, Map<MessageType, boolean>>;
+
   constructor()
   {
     this.messageBuffer2 = new Uint8Array([0, 0]); 
     this.messageBuffer3 = new Uint8Array([0, 0, 0]); 
+    this.messageMutes = new Map<DeviceID, Map<MessageType, boolean>>();
   }
 
   abstract readonly inputs: Map<DeviceID, DeviceInfo>; 
@@ -188,8 +194,31 @@ export abstract class MIDIProxy implements IMIDIProxy
       this.addListener(inputDevice, handleReply);
       this.send(outputDevice, data);
     });
-
     // leftover code to compare two datasets:
     // replyStart.length === 0 || data.length >= replyStart.length && data.slice(0, replyStart.length).every((element, index) => element === replyStart[index])
   }
+  public setMuteState(deviceHandle: DeviceID, messageType: MessageType, mute: boolean): void
+  {
+    let deviceMutes = this.messageMutes.get(deviceHandle);
+    if (deviceMutes === undefined) {
+      deviceMutes = new Map<MessageType, boolean>();
+      this.messageMutes.set(deviceHandle, deviceMutes);
+    }
+    deviceMutes.set(messageType, mute);
+  }
+
+  public getMuteStates(deviceHandle: DeviceID): Map<MessageType, boolean> | undefined
+  {
+    return this.messageMutes.get(deviceHandle);
+  }
+  
+  // public getMuteState(deviceHandle: DeviceID, messageType: MessageType): boolean
+  // {
+  //   let deviceMutes = this.messageMutes.get(deviceHandle);
+  //   if (deviceMutes === undefined)
+  //     return false;
+  //   let mute = deviceMutes.get(messageType);
+  //   return mute ?? false;
+  // }
+
 }

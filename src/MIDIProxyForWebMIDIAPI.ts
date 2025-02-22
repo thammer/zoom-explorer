@@ -1,6 +1,7 @@
 
 import { shouldLog, LogLevel } from "./Logger.js";
 import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, DeviceState, PortType, ALL_MIDI_DEVICES } from "./midiproxy.js";
+import { getChannelMessage } from "./miditools.js";
 import { MIDI_RECEIVE, MIDI_RECEIVE_TO_SEND, MIDI_SEND, MIDI_TIMESTAMP_TO_RECEIVE, perfmon } from "./PerformanceMonitor.js";
 import { bytesToHexString, getFunctionName } from "./tools.js";
 //import jzz from "jzz";
@@ -312,10 +313,10 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
   addListener(deviceHandle: DeviceID, listener: ListenerType): void
   {
-    if (this.midi === undefined)
-      throw `Attempting to add midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
-
     if (deviceHandle !== ALL_MIDI_DEVICES) {
+      if (this.midi === undefined)
+        throw `Attempting to add midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
+
       let input = this.midi.inputs.get(deviceHandle);
       if (input === undefined)
       {
@@ -333,10 +334,10 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
 
   removeListener(deviceHandle: DeviceID, listener: ListenerType): void
   {
-    if (this.midi === undefined)
-      throw `Attempting to get midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
-
     if (deviceHandle !== ALL_MIDI_DEVICES) {
+      if (this.midi === undefined)
+        throw `Attempting to get midi event listener for device "${deviceHandle}" without first enabling Web MIDI`;
+
       let input = this.midi.inputs.get(deviceHandle);
       if (input === undefined)
       {
@@ -405,6 +406,19 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
   {
     if (message.data === null) {
       shouldLog(LogLevel.Warning) && console.warn("message.data == null");
+      return;
+    }
+  
+    let mute = false;
+    let muteStates = this.getMuteStates(deviceHandle);
+    if (muteStates !== undefined) {
+      let [messageType, channel, data1, data2] = getChannelMessage(message.data); 
+      mute = muteStates.get(messageType) ?? false;
+      // if (mute) {
+      //   console.warn(`Muting message ${messageType} for device ${deviceHandle}`);
+      // }
+    }
+    if (mute) {
       return;
     }
 

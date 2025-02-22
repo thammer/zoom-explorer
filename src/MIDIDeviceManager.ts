@@ -1,7 +1,7 @@
-import { IManagedMIDIDevice } from "./IManagedMIDIDevice.js";
+import { IManagedMIDIDevice} from "./IManagedMIDIDevice.js";
 import { shouldLog, LogLevel } from "./Logger.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
-import { DeviceID, DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
+import { DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
 import { getMIDIDeviceList} from "./miditools.js";
 import { SequentialAsyncRunner } from "./SequentialAsyncRunner.js";
 
@@ -9,6 +9,7 @@ export type MatchDeviceFunctionType = (device: MIDIDeviceDescription) => boolean
 export type FactoryFuntionType = (midi: IMIDIProxy, midiDevice: MIDIDeviceDescription) => IManagedMIDIDevice;
 export type DisconnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string) => void;
 export type ConnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string) => void;
+export type OpenCloseListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string, open: boolean) => void;
 
 /**
  * Maintains a list of MIDI devices.
@@ -25,6 +26,7 @@ export class MIDIDeviceManager
   private _midiDeviceDescriptorList: MIDIDeviceDescription[] = [];
   private _disconnectListeners: DisconnectListenerType[] = new Array<DisconnectListenerType>();
   private _connectListeners: ConnectListenerType[] = new Array<ConnectListenerType>();
+  private _openCloseListeners: OpenCloseListenerType[] = new Array<OpenCloseListenerType>();
   private _sequentialRunner = new SequentialAsyncRunner();
   private _concurrentRunsCounter = 0;
 
@@ -107,6 +109,7 @@ export class MIDIDeviceManager
         let createObject = factory.createObject;
         if (matchDevice(device)) {
           let newDevice = createObject(this._midi, device);
+          newDevice.addOpenCloseListener((device: IManagedMIDIDevice, open: boolean) => this.emitOpenCloseEvent(device, factoryKey, open));
           let existingDevices = this._deviceList.get(factoryKey);
           if (existingDevices === undefined)
             this._deviceList.set(factoryKey, [newDevice]);
@@ -201,10 +204,32 @@ export class MIDIDeviceManager
     this._connectListeners = [];
   }
 
-  private emitConnectEvent(device: IManagedMIDIDevice, key: string) {
+  private emitConnectEvent(device: IManagedMIDIDevice, key: string)
+  {
     for (let listener of this._connectListeners)
       listener(this, device, key);
   }
+
+  public addOpenCloseListener(listener: OpenCloseListenerType): void
+  {
+    this._openCloseListeners.push(listener);
+  }
+
+  public removeOpenCloseListener(listener: OpenCloseListenerType): void
+  {
+    this._openCloseListeners = this._openCloseListeners.filter( (l) => l !== listener);
+  }
+
+  public removeAllOpenCloseListeners(): void
+  {
+    this._openCloseListeners = [];
+  }
+
+  protected emitOpenCloseEvent(device: IManagedMIDIDevice, key: string, open: boolean)
+  {
+    this._openCloseListeners.forEach( (listener) => listener(this, device, key, open) );
+  }
+
 
   public getDeviceFromHandle(deviceHandle: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
   {

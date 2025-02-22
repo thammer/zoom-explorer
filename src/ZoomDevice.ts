@@ -6,7 +6,7 @@ import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
-import { IManagedMIDIDevice } from "./IManagedMIDIDevice.js";
+import { IManagedMIDIDevice, MIDIDeviceOpenCloseListenerType } from "./IManagedMIDIDevice.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel, getLogLevel, setLogLevel } from "./Logger.js";
 
@@ -126,6 +126,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _cancelMapping: boolean = false;
 
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
+  private _openCloseListeners: MIDIDeviceOpenCloseListenerType[] = new Array<MIDIDeviceOpenCloseListenerType>();
   private _memorySlotChangedListeners: MemorySlotChangedListenerType[] = new Array<MemorySlotChangedListenerType>();
   private _effectParameterChangedListeners: EffectParameterChangedListenerType[] = new Array<EffectParameterChangedListenerType>();
   private _effectSlotChangedListeners: EffectSlotChangedListenerType[] = new Array<EffectSlotChangedListenerType>();
@@ -212,6 +213,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     this.startAutoRequestProgramChangeIfNeeded();
     if (this.autoRequestCurrentPatch)
       await this.downloadCurrentPatch();
+    this.emitOpenCloseEvent(true);
   }
 
   public async close()
@@ -245,6 +247,32 @@ export class ZoomDevice implements IManagedMIDIDevice
     await this._midi.closeOutput(this._midiDevice.outputID);
     
     shouldLog(LogLevel.Info) && console.log(`Closed ZoomDevice ${this._zoomDeviceID}`);
+    this.emitOpenCloseEvent(false);
+  }
+
+  public setMuteState(messageType: MessageType, mute: boolean): void
+  {
+    this._midi.setMuteState(this._midiDevice.inputID, messageType, mute);
+  }
+
+  public addOpenCloseListener(listener: MIDIDeviceOpenCloseListenerType): void
+  {
+    this._openCloseListeners.push(listener);
+  }
+  
+  public removeOpenCloseListener(listener: MIDIDeviceOpenCloseListenerType): void
+  {
+    this._openCloseListeners = this._openCloseListeners.filter( (l) => l !== listener);
+  }
+
+  public removeAllOpenCloseListeners(): void
+  {
+    this._openCloseListeners = [];
+  }
+
+  protected emitOpenCloseEvent(open: boolean)
+  {
+    this._openCloseListeners.forEach( (listener) => listener(this, open) );
   }
 
   public addListener(listener: ZoomDeviceListenerType): void
@@ -2207,7 +2235,7 @@ export class ZoomDevice implements IManagedMIDIDevice
           return [rawValue, parameterMapping.max];
       }
     }
-    shouldLog(LogLevel.Info) && console.log(`No mapping for effect ${effectID}, parameter ${parameterNumber}, value ${valueString}`);
+    shouldLog(LogLevel.Info) && console.log(`No mapping for effect ${effectID.toString(16).padStart(8, "0")}, parameter ${parameterNumber}, value ${valueString}`);
     return [0, -1];
   }
 
