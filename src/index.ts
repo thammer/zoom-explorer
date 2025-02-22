@@ -12,6 +12,7 @@ import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import { shouldLog, LogLevel } from "./Logger.js";
 import { extendMSOGMapWithMS60BEffects } from "./ZoomEffectMaps.js";
+import zoomEffectIDsAllZDL7 from "./zoom-effect-ids-allzdl7.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -280,10 +281,10 @@ mapEffectsButton.addEventListener("click", async (event) => {
   let zoomDevice = zoomDevices[0];
 
   let text = `
-    <p>You're about to start mapping all parameters for all effects on your pedal</p>
+    <p>You're about to start mapping all parameters for all effects on your pedal.</p>
 
-    <p>This is only relevant for the MS+ series of pedals, so if you have any other pedals, this mapping probably won't work. 
-    Also, mapping has already been done for the MS-50G+ and MS-70CDR+ pedals, so there's no need to map these again.</p>
+    <p>This is only relevant for the G- and B-series pedals (from the AllZDL7 list), so if you have any other pedals, this mapping probably won't work. 
+    Also, mapping has already been done for the MS-50G+, MS-60B+, and MS-70CDR+ pedals, so there's no need to map these again.</p>
 
     <p>The mapping process will generate a mapping file that is needed for the patch editor to work for your pedal.
     This mapping file will be added to future releases of ZoomExplorer.</p>
@@ -335,9 +336,9 @@ mapEffectsButton.addEventListener("click", async (event) => {
     await sleepForAWhile(600);
 
     mapEffectsButton.innerText = "Cancel";
-    let effectList: Map<number, string> = zoomEffectIDsMS60BPlus;
+    let effectList: Map<number, string> = zoomEffectIDsAllZDL7;
 
-    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsMS60BPlus");
+    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsAllZDL7");
     mapEffectsButton.innerText = "Save mappings";
 
     infoDialog.show(`Mapping completed. Please click the "Save mappings" button and email the file to h@mmer.no together with the name of your pedal.`);
