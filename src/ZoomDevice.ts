@@ -204,7 +204,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       shouldLog(LogLevel.Warning) && console.warn(`Attempting to open ZoomDevice ${this._zoomDeviceIdString} which is already open`);
       return;
     }
-    shouldLog(LogLevel.Info) && console.log(`Opening ZoomDevice ${this._midiDevice.deviceName}`);
+    shouldLog(LogLevel.Info) && console.log(`Opening ZoomDevice ${this.deviceName}`);
     this._isOpen = true;
     await this._midi.openInput(this._midiDevice.inputID);
     await this._midi.openOutput(this._midiDevice.outputID);
@@ -222,7 +222,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       shouldLog(LogLevel.Warning) && console.warn(`Attempting to close ZoomDevice ${this._zoomDeviceIdString} which is not open`);
       return;
     }
-    shouldLog(LogLevel.Info) && console.log(`Closing ZoomDevice ${this._midiDevice.deviceName}`);
+    shouldLog(LogLevel.Info) && console.log(`Closing ZoomDevice ${this.deviceName}`);
 
     this.removeAllListeners();
     this.removeAllCurrentPatchChangedListeners();
@@ -894,7 +894,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   public async downloadScreens(startScreen: number = 0, endScreen: number = 12): Promise<ZoomScreenCollection | undefined>
   {
     if (!(this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)) {
-      shouldLog(LogLevel.Warning) && console.warn(`Attempting to get screens when the command is not supported by the device (${this._midiDevice.deviceName})`);
+      shouldLog(LogLevel.Warning) && console.warn(`Attempting to get screens when the command is not supported by the device (${this.deviceName})`);
       return undefined;
     }
 
@@ -912,7 +912,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     reply = await this.sendCommandAndGetReply(command, 
       received => this.zoomCommandMatch(received, ZoomDevice.messageTypes.screensForCurrentPatch.bytes));
     if (reply === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`Didn't get a reply when asking for screens for current patch for the device (${this._midiDevice.deviceName})`);
+      shouldLog(LogLevel.Warning) && console.warn(`Didn't get a reply when asking for screens for current patch for the device (${this.deviceName})`);
       return undefined;
     }
 
@@ -925,7 +925,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   public requestScreens(): void
   {
     if (!(this._supportedCommands.get(ZoomDevice.messageTypes.requestScreensForCurrentPatch.str) === SupportType.Supported)) {
-      shouldLog(LogLevel.Warning) && console.warn(`Attempting to get screens when the command is not supported by the device (${this._midiDevice.deviceName})`);
+      shouldLog(LogLevel.Warning) && console.warn(`Attempting to get screens when the command is not supported by the device (${this.deviceName})`);
       return undefined;
     }
 
@@ -1144,7 +1144,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     for (let i=0; i<maxNumPatches; i++) {
       let patch = await this.downloadPatchFromMemorySlot(i)
       if (patch === undefined) {
-        shouldLog(LogLevel.Info) && console.log(`Got no reply for patch number ${i} while attempting to download patches from device ${this._midiDevice.deviceName}`);
+        shouldLog(LogLevel.Info) && console.log(`Got no reply for patch number ${i} while attempting to download patches from device ${this.deviceName}`);
         this._patchList.splice(i);
         this._numPatches = i;
         break;
@@ -1159,6 +1159,16 @@ export class ZoomDevice implements IManagedMIDIDevice
   public get deviceInfo() : MIDIDeviceDescription
   {
     return this._midiDevice;
+  }
+  
+  public get deviceName(): string
+  {
+    return this._midiDevice.deviceNameUnique;
+  }
+
+  public set deviceName(value: string)
+  {
+    this._midiDevice.deviceNameUnique = value;
   }
 
   public get isOpen(): boolean
@@ -1956,7 +1966,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   public async updateScreens(sync: boolean = false): Promise<ZoomScreenCollection | undefined>
   {
     if (this.currentPatch === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`Can't update screens for device ${this.deviceInfo.deviceName} because currentPatch is undefined`);
+      shouldLog(LogLevel.Warning) && console.warn(`Can't update screens for device ${this.deviceName} because currentPatch is undefined`);
       return undefined;
     }
 
@@ -2021,7 +2031,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     let expectedReply: string;
     let reply: Uint8Array | undefined;
 
-    shouldLog(LogLevel.Info) && console.log(`Probing started for device ${this.deviceInfo.deviceName}`);
+    shouldLog(LogLevel.Info) && console.log(`Probing started for device ${this.deviceName}`);
 
     // Some of the probes will fail if parameter edit is not enabled
     this.parameterEditEnable();
@@ -2188,7 +2198,7 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     this.parameterEditDisable();
 
-    shouldLog(LogLevel.Info) && console.log(`Probing ended for device ${this.deviceInfo.deviceName}`);
+    shouldLog(LogLevel.Info) && console.log(`Probing ended for device ${this.deviceName}`);
 
     this._disableMidiHandlers = false;
   }

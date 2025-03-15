@@ -37,18 +37,19 @@ function updateZoomDevicesTable(zoomDevices: ZoomDevice[]) {
 
   for (let index = 0; index < zoomDevices.length; index++) {
     let info = zoomDevices[index].deviceInfo;
+    let deviceName = zoomDevices[index].deviceName;
     let version = ZoomDevice.getZoomVersionNumber(info.versionNumber);
 
     let row = midiDevicesTable.insertRow(1);
     let c;
-    c = row.insertCell(-1); c.innerHTML = info.deviceName;
+    c = row.insertCell(-1); c.innerHTML = deviceName;
     c = row.insertCell(-1); c.innerHTML = bytesToHexString([info.familyCode[0]]);
     c = row.insertCell(-1); c.innerHTML = version.toString();
     c = row.insertCell(-1); c.innerHTML = info.inputName;
     c = row.insertCell(-1); c.innerHTML = info.outputName;
     c = row.insertCell(-1); c.innerHTML = bytesToHexString(info.identityResponse, " ");
 
-    shouldLog(LogLevel.Info) && console.log(`  ${index + 1}: ${info.deviceName.padEnd(8)} OS v ${version} - input: ${info.inputName.padEnd(20)} output: ${info.outputName}`);
+    shouldLog(LogLevel.Info) && console.log(`  ${index + 1}: ${deviceName.padEnd(8)} OS v ${version} - input: ${info.inputName.padEnd(20)} output: ${info.outputName}`);
   };
 
 }
@@ -346,7 +347,7 @@ mapEffectsButton.addEventListener("click", async (event) => {
   else {
     let json = JSON.stringify(mappings, null, 2);
     const blob = new Blob([json]);
-    let filename = zoomDevice.deviceInfo.deviceName + "-mappings.txt";
+    let filename = zoomDevice.deviceName + "-mappings.txt";
     await saveBlobToFile(blob, filename, ".txt", "Mappings json");
     mapEffectsButton.innerText = origonalMapEffectsLabel;
     mappings = undefined;
@@ -383,7 +384,7 @@ function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array,
   let row = table.insertRow(1);
   let c;
   c = row.insertCell(-1); c.innerHTML = messageCounter.toString();
-  c = row.insertCell(-1); c.innerHTML = device.deviceName;
+  c = row.insertCell(-1); c.innerHTML = device.deviceName; // FIXME: This doesn't work with unique device names.
   c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[0]]); c.style.color = color[command - 8];
   c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[1]]);
   c = row.insertCell(-1); c.innerHTML = bytesToHexString([data[2]]); c.id = "value"; c.style.backgroundSize = (data[2] / 127 * 100) + "%";
@@ -540,6 +541,7 @@ function updateSysexMonitorTable(device: MIDIDeviceDescription, data: Uint8Array
   }
 
   let headerSpan = getChildWithIDThatStartsWith(headerCell.children, "sysexHeader") as HTMLSpanElement;
+  // FIXME: This doesn't use unique deviceNames. Consider having a uniqueDeviceName in the device properties
   headerSpan.innerHTML = `<b>Message #${dataset.messageNumber} from ${dataset.device.deviceName} [${bytesToHexString([dataset.device.familyCode[0]])}]` +
   ` type "${dataTypeString}" [${dataType1} ${dataType2}] length ${sysexLength}</b> &nbsp;&nbsp;`;
 

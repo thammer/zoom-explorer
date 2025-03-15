@@ -8,6 +8,8 @@ export interface IManagedMIDIDevice
 {
   get isOpen(): boolean;
   get deviceInfo(): MIDIDeviceDescription;
+  get deviceName(): string; // should always be unique
+  set deviceName(name: string); 
 
   open(): Promise<void>;
   close(): Promise<void>;

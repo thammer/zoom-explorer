@@ -1,15 +1,17 @@
 import { IManagedMIDIDevice} from "./IManagedMIDIDevice.js";
 import { shouldLog, LogLevel } from "./Logger.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
-import { DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
+import { DeviceID, DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
 import { getMIDIDeviceList} from "./miditools.js";
 import { SequentialAsyncRunner } from "./SequentialAsyncRunner.js";
 
+export type FactoryKey = string;
+
 export type MatchDeviceFunctionType = (device: MIDIDeviceDescription) => boolean; 
 export type FactoryFuntionType = (midi: IMIDIProxy, midiDevice: MIDIDeviceDescription) => IManagedMIDIDevice;
-export type DisconnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string) => void;
-export type ConnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string) => void;
-export type OpenCloseListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, key: string, open: boolean) => void;
+export type DisconnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, factoryKey: FactoryKey) => void;
+export type ConnectListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, factoryKey: FactoryKey) => void;
+export type OpenCloseListenerType = (deviceManager: MIDIDeviceManager, device: IManagedMIDIDevice, factoryKey: FactoryKey, open: boolean) => void;
 
 /**
  * Maintains a list of MIDI devices.
@@ -21,8 +23,8 @@ export class MIDIDeviceManager
 {
   private _midi: IMIDIProxy;
   // private _factories: Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Map<string, {matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
-  private _factories: Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Array<{factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
-  private _deviceList: Map<string, IManagedMIDIDevice[]> = new Map<string, IManagedMIDIDevice[]>();
+  private _factories: Array<{factoryKey: FactoryKey, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}> = new Array<{factoryKey: FactoryKey, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType}>();
+  private _deviceList: Map<FactoryKey, IManagedMIDIDevice[]> = new Map<FactoryKey, IManagedMIDIDevice[]>();
   private _midiDeviceDescriptorList: MIDIDeviceDescription[] = [];
   private _disconnectListeners: DisconnectListenerType[] = new Array<DisconnectListenerType>();
   private _connectListeners: ConnectListenerType[] = new Array<ConnectListenerType>();
@@ -42,23 +44,23 @@ export class MIDIDeviceManager
    * Adds a factory function for a specific device type. Factory functions are traversed in the order they are added, so if
    * you want one factory to have precedence over another you need to add it first.
    *
-   * @param {string} factoryKey - The unique identifier for the device type. For instance "ZoomDevice".
+   * @param {FactoryKey} factoryKey - The unique identifier for the device type. For instance "ZoomDevice".
    * @param {MatchDeviceFunctionType} matchDevice - The function to match the device.
    * @param {FactoryFuntionType} createObject - The function to create the device object.
    * @return {void}
    */
-  public addFactoryFunction(factoryKey: string, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType): void
+  public addFactoryFunction(factoryKey: FactoryKey, matchDevice: MatchDeviceFunctionType, createObject: FactoryFuntionType): void
   { 
     // this._factories.set(key, {matchDevice: matchDevice, createObject: createObject});
     this._factories.push({factoryKey: factoryKey, matchDevice: matchDevice, createObject: createObject});
   }
   
-  async updateMIDIDeviceList(): Promise<Map<string, IManagedMIDIDevice[]> | undefined>
+  public async updateMIDIDeviceList(): Promise<Map<FactoryKey, IManagedMIDIDevice[]> | undefined>
   {
     return await this._sequentialRunner.run(this.updateMIDIDeviceListSerial.bind(this));
   }
 
-  async updateMIDIDeviceListSerial(): Promise<Map<string, IManagedMIDIDevice[]> | undefined>
+  private async updateMIDIDeviceListSerial(): Promise<Map<FactoryKey, IManagedMIDIDevice[]> | undefined>
   {
     this._concurrentRunsCounter++;
 
@@ -68,8 +70,8 @@ export class MIDIDeviceManager
     }
 
     shouldLog(LogLevel.Info) && console.log(`Starting updateMIDIDeviceList - counter = ${this._concurrentRunsCounter}`);
-    let inputs: Map<string, DeviceInfo> = new Map<string, DeviceInfo>(this._midi.inputs);
-    let outputs: Map<string, DeviceInfo> = new Map<string, DeviceInfo>(this._midi.outputs);
+    let inputs: Map<DeviceID, DeviceInfo> = new Map<DeviceID, DeviceInfo>(this._midi.inputs);
+    let outputs: Map<DeviceID, DeviceInfo> = new Map<DeviceID, DeviceInfo>(this._midi.outputs);
   
     for (let device of this._midiDeviceDescriptorList) {
       inputs.delete(device.inputID);
@@ -96,11 +98,25 @@ export class MIDIDeviceManager
         shouldLog(LogLevel.Error) && console.error(`Device ${device.deviceName} (${device.inputName}, ${device.outputName}) already in list`);
       }
       else {
+        // Enforce unique device names by prepending " #<number>
+        let devicesWithSameDeviceName = this._midiDeviceDescriptorList.filter((d: MIDIDeviceDescription) => d.deviceName === device.deviceName);
+        let numDevicesWithSameDeviceName = devicesWithSameDeviceName.length;
+        if (numDevicesWithSameDeviceName > 0) {
+          for (let i=0; i<=numDevicesWithSameDeviceName; i++) {
+            let append = i === 0 ? "" : ` #${i + 1}`;
+            let suggestedNewName = device.deviceName + append;
+            if (!devicesWithSameDeviceName.find((d:MIDIDeviceDescription) => d.deviceNameUnique === suggestedNewName)) {
+              shouldLog(LogLevel.Error) && console.error(`${devicesWithSameDeviceName.length} devices with same device name ${device.deviceName}. New unique device name is "${suggestedNewName}"`);
+              device.deviceNameUnique = suggestedNewName;
+            } 
+          }
+        }
+        
         this._midiDeviceDescriptorList.push(device);
       }
     }
 
-    let newDevices: Map<string, IManagedMIDIDevice[]> = new Map<string, IManagedMIDIDevice[]>();
+    let newDevices: Map<FactoryKey, IManagedMIDIDevice[]> = new Map<FactoryKey, IManagedMIDIDevice[]>();
 
     for (let device of newDeviceDescriptors) {
       for (let factory of this._factories) {
@@ -110,6 +126,17 @@ export class MIDIDeviceManager
         if (matchDevice(device)) {
           let newDevice = createObject(this._midi, device);
           newDevice.addOpenCloseListener((device: IManagedMIDIDevice, open: boolean) => this.emitOpenCloseEvent(device, factoryKey, open));
+
+          // // Enforce unique device names by prepending " #<number>
+          // let deviceNameBase = device.deviceName.replace(/ #\d+$/, ""); // strip away trailing " #<number>"
+          // let numWithSameDeviceName = this._midiDeviceDescriptorList.filter((d: MIDIDeviceDescription) => {
+          //   return d.deviceName.replace(/ #\d+$/, "") === deviceNameBase}).length;
+          // if (numWithSameDeviceName > 1) {
+          //   let newDeviceNumber = numWithSameDeviceName;
+          //   shouldLog(LogLevel.Error) && console.error(`${numWithSameDeviceName} devices with same device name ${device.deviceName}. Prepending #${newDeviceNumber} to device name.`);
+          //   newDevice.deviceName += ` #${newDeviceNumber}`;
+          // }
+  
           let existingDevices = this._deviceList.get(factoryKey);
           if (existingDevices === undefined)
             this._deviceList.set(factoryKey, [newDevice]);
@@ -163,9 +190,9 @@ export class MIDIDeviceManager
     return this._midiDeviceDescriptorList;
   }
 
-  public getDevices(typeID: string): IManagedMIDIDevice[]
+  public getDevices(factoryKey: FactoryKey): IManagedMIDIDevice[]
   {
-    let device = this._deviceList.get(typeID);
+    let device = this._deviceList.get(factoryKey);
     return device ?? [];
   }
 
@@ -184,9 +211,9 @@ export class MIDIDeviceManager
     this._disconnectListeners = [];
   }
 
-  private emitDisconnectEvent(device: IManagedMIDIDevice, key: string) {
+  private emitDisconnectEvent(device: IManagedMIDIDevice, factoryKey: FactoryKey) {
     for (let listener of this._disconnectListeners)
-      listener(this, device, key);
+      listener(this, device, factoryKey);
   }
 
   public addConnectListener(listener: ConnectListenerType): void
@@ -204,10 +231,10 @@ export class MIDIDeviceManager
     this._connectListeners = [];
   }
 
-  private emitConnectEvent(device: IManagedMIDIDevice, key: string)
+  private emitConnectEvent(device: IManagedMIDIDevice, factoryKey: FactoryKey)
   {
     for (let listener of this._connectListeners)
-      listener(this, device, key);
+      listener(this, device, factoryKey);
   }
 
   public addOpenCloseListener(listener: OpenCloseListenerType): void
@@ -225,28 +252,28 @@ export class MIDIDeviceManager
     this._openCloseListeners = [];
   }
 
-  protected emitOpenCloseEvent(device: IManagedMIDIDevice, key: string, open: boolean)
+  protected emitOpenCloseEvent(device: IManagedMIDIDevice, factoryKey: FactoryKey, open: boolean)
   {
-    this._openCloseListeners.forEach( (listener) => listener(this, device, key, open) );
+    this._openCloseListeners.forEach( (listener) => listener(this, device, factoryKey, open) );
   }
 
 
-  public getDeviceFromHandle(deviceHandle: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
+  public getDeviceFromHandle(deviceHandle: string): [device: IManagedMIDIDevice | undefined, factoryKey: FactoryKey | undefined]
   {
-    for (let [key, deviceList] of this._deviceList) {
+    for (let [factoryKey, deviceList] of this._deviceList) {
       let device = deviceList.find( (device) => device.deviceInfo.inputID === deviceHandle || device.deviceInfo.outputID === deviceHandle);
       if (device !== undefined)
-        return [device, key];
+        return [device, factoryKey];
     }
     return [undefined, undefined];
   }
  
-  public getDeviceFromName(deviceName: string): [device: IManagedMIDIDevice | undefined, key: string | undefined]
+  public getDeviceFromName(deviceName: string): [device: IManagedMIDIDevice | undefined, factoryKey: FactoryKey | undefined]
   {
-    for (let [key, deviceList] of this._deviceList) {
-      let device = deviceList.find( (device) => device.deviceInfo.deviceName === deviceName);
+    for (let [factoryKey, deviceList] of this._deviceList) {
+      let device = deviceList.find( (device) => device.deviceName === deviceName);
       if (device !== undefined)
-        return [device, key];
+        return [device, factoryKey];
     }
     return [undefined, undefined];
   }
@@ -263,17 +290,36 @@ export class MIDIDeviceManager
 
   public getDeviceName(deviceHandle: string, portType: PortType): string
   {
-    let deviceDescriptor = this._midiDeviceDescriptorList.find( (device) => portType === "input" && device.inputID === deviceHandle || 
-      device.outputID === deviceHandle);
+    for (let [factoryKey, deviceList] of this._deviceList) {
+      let device = deviceList.find( (device) => portType === "input" && device.deviceInfo.inputID === deviceHandle || 
+        device.deviceInfo.outputID === deviceHandle);
+      if (device !== undefined)
+        return device.deviceName;
+    }
+
+    return "";
+
+    // let deviceDescriptor = this._midiDeviceDescriptorList.find( (device) => portType === "input" && device.inputID === deviceHandle || 
+    //   device.outputID === deviceHandle);
     
-    return deviceDescriptor === undefined ? "" : deviceDescriptor.deviceName;
+    // return deviceDescriptor === undefined ? "" : deviceDescriptor.deviceName;
   }
 
   public getDeviceHandleFromDeviceName(deviceName: string, portType: PortType): string
   {
-    let deviceDescriptor = this._midiDeviceDescriptorList.find( (device) => device.deviceName === deviceName);
-    
-    return deviceDescriptor === undefined ? "" : portType === "input" ? deviceDescriptor.inputID : deviceDescriptor.outputID;
+    // FIXME: Consider havind a uniqueDeviceName in the descriptor list
+    // But how to assign that?? It should be assigned by the app perhaps, to do fingerprinting, 
+    // or by the device factory perhaps. Yes that feels more correct...
+
+    for (let [factoryKey, deviceList] of this._deviceList) {
+      let device = deviceList.find( (device) => device.deviceName === deviceName);
+      if (device !== undefined)
+        return portType === "input" ? device.deviceInfo.inputID : device.deviceInfo.outputID;
+    }
+
+    return "";
+    // let deviceDescriptor = this._midiDeviceDescriptorList.find( (device) => device.deviceName === deviceName);    
+    // return deviceDescriptor === undefined ? "" : portType === "input" ? deviceDescriptor.inputID : deviceDescriptor.outputID;
   }
 
   private midiConnectionHandler(deviceHandle: string, portType: PortType, state: string) {
@@ -281,24 +327,24 @@ export class MIDIDeviceManager
     shouldLog(LogLevel.Info) && console.log(`MIDIDeviceManager: MIDI Connection event for device "${deviceName}" (${deviceHandle}), portType: ${portType}, state: ${state}`);
 
     if (state === "disconnected") {
-      let [disconnectedDevice, deviceKey] = this.getDeviceFromHandle(deviceHandle);  
-      if (disconnectedDevice !== undefined && deviceKey !== undefined) {
+      let [disconnectedDevice, factoryKey] = this.getDeviceFromHandle(deviceHandle);  
+      if (disconnectedDevice !== undefined && factoryKey !== undefined) {
         if (disconnectedDevice.isOpen) {
-          shouldLog(LogLevel.Info) && console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected because ${portType} "${deviceName}" (${deviceHandle}) was ${state}`);
+          shouldLog(LogLevel.Info) && console.log(`Device ${disconnectedDevice.deviceName} disconnected because ${portType} "${deviceName}" (${deviceHandle}) was ${state}`);
 
           shouldLog(LogLevel.Info) && console.log(`Closing device ${deviceHandle} and removing from midiDeviceList`);
           disconnectedDevice.close();
         }
         else {
-          shouldLog(LogLevel.Info) && console.log(`Device ${disconnectedDevice.deviceInfo.deviceName} disconnected. Skipping close() as it was already closed`);
+          shouldLog(LogLevel.Info) && console.log(`Device ${disconnectedDevice.deviceName} disconnected. Skipping close() as it was already closed`);
         }
 
         this._midiDeviceDescriptorList = this._midiDeviceDescriptorList.filter( (device) => device.inputID !== deviceHandle && device.outputID !== deviceHandle);
-        let deviceList = this._deviceList.get(deviceKey);
+        let deviceList = this._deviceList.get(factoryKey);
         if (deviceList !== undefined) {
-          this._deviceList.set(deviceKey, deviceList.filter( (device) => device.deviceInfo.inputID !== deviceHandle && device.deviceInfo.outputID !== deviceHandle));
+          this._deviceList.set(factoryKey, deviceList.filter( (device) => device.deviceInfo.inputID !== deviceHandle && device.deviceInfo.outputID !== deviceHandle));
         }
-        this.emitDisconnectEvent(disconnectedDevice, deviceKey);
+        this.emitDisconnectEvent(disconnectedDevice, factoryKey);
       }
     }
     else if (state === "connected") {
@@ -316,6 +362,9 @@ export class MIDIDeviceManager
           if (newDevices !== undefined) {
             if (newDevices.size > 1) {
               shouldLog(LogLevel.Warning) && console.warn(`Multiple devices of multiple types created when device "${deviceName}" (${deviceHandle}) was connected. This is weird. Investigate.`);
+            }
+            if (newDevices.size > 0) {
+              
             }
             // Notifications moved to updateMIDIDEviceList()
             // for (let [deviceKey, newDevicesForKey] of newDevices) {

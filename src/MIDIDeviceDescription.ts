@@ -13,6 +13,7 @@ export class MIDIDeviceDescription
   public readonly deviceName: string = "unknown"; // deduced from manufacturerID, familyCode and modelNumber
   public readonly versionNumber: [number, number, number, number] = [0, 0, 0, 0];
   public readonly identityResponse: Uint8Array = new Uint8Array();
+  public deviceNameUnique: string = "unknown"; // can be set by the application to any unique device name
 
   constructor(data: Partial<MIDIDeviceDescription>)
   {
