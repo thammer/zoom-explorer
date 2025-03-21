@@ -1200,6 +1200,18 @@ export class ZoomPatch
       valueString;
   }
 
+  // Note: Untested function
+  public static noteUTF16ToByteCode(valueString: string): string
+  {
+    return (valueString.length <= 1 || valueString[0] !== "\uD834") ? valueString :
+      valueString[1] === "\uDD62" ? "\x16" + valueString.slice(2) :
+      valueString[1] === "\uDD61" ? "\x17" + valueString.slice(2) :
+      valueString[1] === "\uDD60" ? "\x18" + valueString.slice(2) :
+      valueString[1] === "\uDD5F" ? "\x19" + valueString.slice(2) :
+      valueString[1] === "\uDD5E" ? "\x1A" + valueString.slice(2) :
+      valueString;
+  }
+
   public static isNoteHtml(valueString: string): boolean
   { // See htmltools startsWithHtmlCharacter()
     return valueString.length >= 9 && valueString[0] === "&";

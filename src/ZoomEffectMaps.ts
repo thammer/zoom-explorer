@@ -1,5 +1,5 @@
 import { shouldLog, LogLevel } from "./Logger.js";
-import { EffectParameterMap } from "./ZoomDevice.js";
+import { EffectIDMap, EffectParameterMap } from "./ZoomDevice.js";
 
 /**
  * Add some extra IDs for MS-60B effects.
@@ -56,3 +56,103 @@ export function extendMSOGMapWithMS60BEffects(mapForMSOG: Map<number, EffectPara
     }
 }
 
+function isPositiveInteger(str: string): boolean
+{
+  return /^\d+$/.test(str);
+}
+
+function isNumerical(str: string): boolean
+{
+  return !isNaN(Number(str));
+}
+
+export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
+{
+  for (const [id, effect] of map) {
+    let effectName = effect.name;
+    let parameters = effect.parameters;
+    for (let parameterNumber = 0; parameterNumber < parameters.length; parameterNumber++) {
+      let parameter = parameters[parameterNumber];
+      let parameterName = parameter.name;
+      let values = parameter.values;
+      let valueAsNumber: number;
+      let lastValueAsNumber: number;
+      let delta = 0;
+      if (values.length == 0 || !isNumerical(values[0])) {
+        parameter.maxNumerical = undefined;
+        continue;
+      }
+
+      valueAsNumber = Number.parseInt(values[0]);
+      parameter.maxNumerical = 0;
+      lastValueAsNumber = valueAsNumber;
+
+      for (let valueNumber = 1; valueNumber < values.length; valueNumber++) {
+        let valueAsString = values[valueNumber];
+        if (!isNumerical(valueAsString)) {
+          break;
+        }
+        parameter.maxNumerical = valueNumber;
+        valueAsNumber = Number.parseFloat(valueAsString);
+        if (valueNumber === 1)
+          delta = valueAsNumber - lastValueAsNumber;
+
+        if (valueAsNumber - lastValueAsNumber !== delta) {
+          // console.info(`Values for parameter ${parameterName} effect ${effectName} ID ${id} are not evenly spaced. Previous delta ${delta}, current delta ${valueAsNumber - lastValueAsNumber}`);
+          delta = valueAsNumber - lastValueAsNumber;
+        }
+        lastValueAsNumber = valueAsNumber;
+      }
+      if (parameter.maxNumerical !== undefined && parameter.maxNumerical !== parameter.max) {
+        console.log(`${effectName.padEnd(12)} ${parameterName.padEnd(10)} ${parameter.maxNumerical.toString().padEnd(5)}: ${parameter.values[parameter.maxNumerical].padEnd(5)} -> ${parameter.values[parameter.maxNumerical + 1]}`);
+      }
+    }
+  }
+}
+
+
+
+// Currently unused
+// function earlyAttemptAtExtendMapWithMinMaxNumericalValues(map: EffectIDMap): void
+// {
+//   for (const [id, effect] of map) {
+//     let effectName = effect.name;
+//     let parameters = effect.parameters;
+//     for (let parameterNumber = 0; parameterNumber < parameters.length; parameterNumber++) {
+//       let parameter = parameters[parameterNumber];
+//       let parameterName = parameter.name;
+//       let values = parameter.values;
+//       let valueAsNumber: number;
+//       let lastValueAsNumber: number;
+//       let delta = 0;
+//       if (values.length == 0 || !isPositiveInteger(values[0])) {
+//         parameter.minNumericalValue = undefined;
+//         parameter.maxNumericalValue = undefined;
+//         continue;
+//       }
+
+//       valueAsNumber = Number.parseInt(values[0]);
+//       parameter.minNumericalValue = valueAsNumber;
+//       parameter.maxNumericalValue = valueAsNumber;
+//       lastValueAsNumber = valueAsNumber;
+
+//       for (let valueNumber = 1; valueNumber < values.length; valueNumber++) {
+//         let valueAsString = values[valueNumber];
+//         if (!isPositiveInteger(valueAsString)) {
+//           break;
+//         }
+//         valueAsNumber = Number.parseInt(valueAsString);
+//         if (valueNumber === 1)
+//           delta = valueAsNumber - lastValueAsNumber;
+
+//         if (valueAsNumber - lastValueAsNumber !== delta) {
+//           console.warn(`Values for parameter ${parameterName} effect ${effectName} ID ${id} are not evenly spaced`);
+//           parameter.minNumericalValue = undefined;
+//           parameter.maxNumericalValue = undefined;
+//           break;
+//         }
+//         lastValueAsNumber = valueAsNumber;
+//       }
+//     }
+//   }
+// }

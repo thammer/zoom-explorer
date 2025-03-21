@@ -69,7 +69,10 @@ export type ParameterValueMap = {
   name: string, 
   values: Array<string>,
   valuesUCNSP: null | Map<string, number>, // values in upper case and with no spaces, for fast lookup in getRawParameterValueFromString()
-  max: number
+  max: number, // Counting the values from 0, this is the max value (could be viewed as the max value index)
+  maxNumerical?: number, // the max value index before the values stop to be numbers (for example "time" that goes from milliseconds (numbers)  to note values (strings))
+  // minNumericalValue?: number, // Currently unused
+  // maxNumericalValue?: number // currently unused
 };
 
 export type EffectParameterMap = {
@@ -77,6 +80,13 @@ export type EffectParameterMap = {
   parameters: Array<ParameterValueMap>
 };
 
+/**
+ * Map of effect IDs to their parameter maps.
+ * 
+ * Effect IDs are the numeric IDs used by the Zoom device to identify effects.
+ * 
+ * Parameter maps are objects that map parameter names to their possible values.
+ */
 export type EffectIDMap = Map<number, EffectParameterMap>;
 
 /**
@@ -453,7 +463,8 @@ export class ZoomDevice implements IManagedMIDIDevice
         if (parameterMapping.valuesUCNSP === undefined || parameterMapping.valuesUCNSP === null || parameterMapping.valuesUCNSP.size === 0) {
           parameterMapping.valuesUCNSP = new Map<string, number>();
           for (let index = 0; index < parameterMapping.values.length; index++) {
-            parameterMapping.valuesUCNSP.set(parameterMapping.values[index], index);  
+            let valueUCNSP = parameterMapping.values[index].replaceAll(" ", "").toUpperCase();
+            parameterMapping.valuesUCNSP.set(valueUCNSP, index);  
           }
         }
       }
@@ -2282,23 +2293,24 @@ export class ZoomDevice implements IManagedMIDIDevice
     return [undefined, undefined];
   }
 
-  public getParameterNameAndMaxValue(effectID: number, parameterNumber: number): [parameterName: string | undefined, maxValue: number | undefined]
+  public getParameterNameAndMaxValue(effectID: number, parameterNumber: number): [parameterName: string | undefined, maxValue: number | undefined, maxNumerical: number | undefined]
   {
     if (this.effectIDMap === undefined)
-      return [undefined, undefined];
+      return [undefined, undefined, undefined];
 
     if (parameterNumber === 0)
-      return ["ON/OFF", 1];
+      return ["ON/OFF", 1, undefined];
 
     let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    if (effectMapping === undefined)
+      return [undefined, undefined, undefined];
+    
     let parameterIndex = parameterNumber - 2;
-    if (effectMapping !== undefined) {
-      if (parameterIndex < effectMapping.parameters.length) {
-        let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
-        return [parameterMapping.name, parameterMapping.max];
-      }
-    }
-    return [undefined, undefined];
+    if (parameterIndex >= effectMapping.parameters.length)
+      return [undefined, undefined, undefined];
+
+    let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
+    return [parameterMapping.name, parameterMapping.max, parameterMapping.maxNumerical];
   }
 
   public cancelMapping()
