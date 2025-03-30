@@ -247,6 +247,20 @@
       } 
       table.editEffectTable th {
           text-align: center;
+          line-height: 0.1em;
+      }
+      table.editEffectTable th > div {
+          display:flex;
+          flex-direction: row;
+          line-height: 1em;
+          padding: 0;
+          margin: 0em ;
+      }
+      table.editEffectTable .editEffectTableEffectName {
+          margin-left: auto;
+          margin-right: auto;
+          margin-top: auto;
+          margin-bottom: auto;
       }
       table.editEffectTable td {
           text-align: center;
@@ -276,7 +290,54 @@
           border-bottom-right-radius: 6px;
       }
 
-    .sendSysexButton {
+      table.editEffectTable .effectOnOffButton {
+          float: right;
+          font-size: 1.2em;
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 450,
+          'GRAD' 0,
+          'opsz' 24;
+          color: black;
+          padding: 1px;
+          margin: 0px 1px 0px 1px;
+          border: 0;
+          background: transparent;
+          border-radius: 2em;
+      }
+      table.editEffectTable .effectOnOffButton.on {
+          opacity: 0.7;
+      }
+      table.editEffectTable .effectOnOffButton:hover {
+          background-color: #DDDDDD;
+      }
+      table.editEffectTable .effectOnOffButton:active {
+          background-color: #EEEEEE;
+      }
+
+      table.editEffectTable .effectActionButton {
+        float: right;
+        font-size: 1.2em;
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 450,
+        'GRAD' 0,
+        'opsz' 24;
+        color: black;
+        padding: 1px;
+        margin: 0px 1px 0px 1px;
+        border: 1px solid #333333;
+        border-radius: 3px;
+        background-color: #EEEEEEAA;
+        visibility: hidden;
+      }
+      table.editEffectTable .effectActionButton:hover {
+          background-color: #DDDDDD;
+      }
+      table.editEffectTable .effectActionButton:active {
+          background-color: #EEEEEE;
+      }
+      .sendSysexButton {
         float: right;
         padding: 1px 4px 1px 4px;
       }
@@ -381,8 +442,16 @@
                         <td>
                           <table class="editEffectTable editEffectSlot">
                             <tr>
-                                <th colspan="4">Low-pass Filter</th>
-                            </tr>
+                              <th colspan="4">
+                                <div>
+                                    <button class="material-symbols-outlined effectOnOffButton">radio_button_unchecked</button>
+                                    <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
+                                    <span class="editEffectTableEffectName">LPF</span>
+                                    <button class="material-symbols-outlined effectActionButton">play_arrow</button>
+                                    <button class="material-symbols-outlined effectActionButton">delete</button>
+                                </div>
+                            </th>
+                          </tr>
                             <tr>
                               <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
                             </tr>

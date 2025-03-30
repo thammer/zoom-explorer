@@ -1,4 +1,4 @@
-import { getColorFromEffectID, supportsContentEditablePlaintextOnly } from "./htmltools.js";
+import { getColorFromEffectID, htmlToElement, supportsContentEditablePlaintextOnly } from "./htmltools.js";
 import { LogLevel, shouldLog } from "./Logger.js";
 import { ZoomDevice } from "./ZoomDevice.js";
 import { ZoomPatch } from "./ZoomPatch.js";
@@ -7,6 +7,7 @@ import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
 export type EditPatchTextEditedListenerType = (event: Event, type: string, initialValueString: string) => boolean;
 export type EditPatchMouseEventListenerType = (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => void;
+export type EditPatchEffectSlotOnOffListenerType = (effectSlot: number, on: boolean) => void;
 
 let debugCounter = 0;
 
@@ -15,6 +16,7 @@ export class ZoomPatchEditor
   private textEditedCallback: EditPatchTextEditedListenerType | undefined = undefined;
   private mouseMovedCallback: EditPatchMouseEventListenerType | undefined = undefined;
   private mouseUpCallback: EditPatchMouseEventListenerType | undefined = undefined;
+  private effectSlotOnOffCallback: EditPatchEffectSlotOnOffListenerType | undefined = undefined;
 
   private undoOnEscape = "";
   private muteBlurOnEscape = false;
@@ -115,6 +117,11 @@ export class ZoomPatchEditor
   setMouseUpCallback(mouseUpCallback: EditPatchMouseEventListenerType) 
   { 
     this.mouseUpCallback = mouseUpCallback;
+  }
+
+  setEffectSlotOnOffCallback(effectSlotOnOffCallback: EditPatchEffectSlotOnOffListenerType) 
+  { 
+    this.effectSlotOnOffCallback = effectSlotOnOffCallback;
   }
 
   getEffectAndParameterNumber(str: string): [effectSlot: number | undefined, parameterNumber: number | undefined] {
@@ -307,6 +314,8 @@ export class ZoomPatchEditor
 
       let effectTable: HTMLTableElement;
       let effectHeader: HTMLTableCellElement;
+      let effectSlotName: HTMLSpanElement;
+      let effectOnOffButton: HTMLButtonElement;
 
       if (cellWithEffectTable.children.length < 1) {
         effectTable = document.createElement("table");
@@ -314,13 +323,31 @@ export class ZoomPatchEditor
         effectTable.className="editEffectTable";
         let tr = document.createElement("tr") as HTMLTableRowElement;
         effectTable.appendChild(tr);
-        effectHeader = document.createElement("th") as HTMLTableCellElement;
+
+        let html = `
+          <th colspan="4">
+              <div>
+                  <button class="material-symbols-outlined effectOnOffButton">circle</button>
+                  <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
+                  <span class="editEffectTableEffectName"></span>
+                  <button class="material-symbols-outlined effectActionButton">play_arrow</button>
+                  <button class="material-symbols-outlined effectActionButton">delete</button>
+              </div>
+          </th>
+        `;
+        effectHeader = htmlToElement(html) as HTMLTableCellElement;
         tr.appendChild(effectHeader);  
+
+        effectOnOffButton = effectHeader.children[0].children[0] as HTMLButtonElement;
+        effectOnOffButton.dataset.effectSlot = effectSlot.toString();
+        effectOnOffButton.addEventListener("click", (event) => this.onEffectOnOffButtonClick(event));
       }
       else {
         effectTable = cellWithEffectTable.children[0] as HTMLTableElement;
         effectHeader = effectTable.children[0].children[0] as HTMLTableCellElement;
       }
+      effectSlotName = effectHeader.children[0].children[2] as HTMLSpanElement;
+      effectOnOffButton = effectHeader.children[0].children[0] as HTMLButtonElement;
 
       let paramNameRow: HTMLTableRowElement | undefined = undefined;
       let paramValueRow: HTMLTableRowElement | undefined = undefined;
@@ -401,10 +428,18 @@ export class ZoomPatchEditor
       if (patch !== undefined && patch.currentEffectSlot === effectSlot)
         effectTableClass += " editEffectSlot";
       if (screen.parameters.length > 0 && screen.parameters[0].valueString === "0")
+      {
         effectTableClass += " editEffectOff";
+        effectOnOffButton.classList.remove("on");
+        effectOnOffButton.textContent = "radio_button_unchecked";
+      }
+      else {
+        effectOnOffButton.classList.add("on");
+        effectOnOffButton.textContent = "radio_button_checked";
+      }
 
       effectTable.className = effectTableClass;
-      effectHeader.textContent = screen.parameters.length > 1 ? screen.parameters[1].name : "BPM";
+      effectSlotName.textContent = screen.parameters.length > 1 ? screen.parameters[1].name : "BPM";
 
       for (let cellPairNumber=0; cellPairNumber<numCellsPairsToFill; cellPairNumber++) {
         let parameterNumber = cellPairNumber + 2;
@@ -460,6 +495,15 @@ export class ZoomPatchEditor
           td.textContent = " ";
       }
     }
+  }
+  onEffectOnOffButtonClick(event: MouseEvent): any
+  {
+    let button = event.target as HTMLButtonElement;
+    if (button.dataset.effectSlot === undefined)
+      return; // this should never happen
+    let effectSlot = Number.parseInt(button.dataset.effectSlot);
+    if (this.effectSlotOnOffCallback !== undefined)
+      this.effectSlotOnOffCallback(effectSlot, !button.classList.contains("on"));
   }
 
   updateValueBar(cell: HTMLTableCellElement, rawValue: number, maxValue: number)

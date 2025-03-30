@@ -185,6 +185,12 @@ async function start()
     handleMouseUp(zoomDevice, cell, initialValueString, x, y);
   });
 
+  patchEditor.setEffectSlotOnOffCallback((effectSlot: number, on: boolean) => {
+    handleEffectSlotOnOff(zoomDevice, effectSlot, on);
+  })
+
+
+
   // shouldLog(LogLevel.Info) && console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
   // let commandIndex = 0x51;
@@ -1411,7 +1417,28 @@ function handleMouseMoved(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, in
   } 
 }
 
-function handleMouseUp(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) {
+function handleMouseUp(zoomDevice: ZoomDevice, cell: HTMLTableCellElement, initialValueString: string, x: number, y: number)
+{
+}
+
+function handleEffectSlotOnOff(zoomDevice: ZoomDevice, effectSlot: number, on: boolean) {
+  if (currentZoomPatch === undefined) {
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when currentZoomPatch is undefined")
+    return;
+  }
+
+  if (currentZoomPatch.effectSettings !== null && effectSlot < currentZoomPatch.effectSettings.length)
+  {
+    shouldLog(LogLevel.Info) && console.log(`Changing on/off state for effect slot ${effectSlot} to ${on}`);
+
+    let parameterValue = on ? 1 : 0;
+    let parameterNumber = 0;
+    currentZoomPatch.effectSettings[effectSlot].enabled = on;
+    currentZoomPatch.updatePatchPropertiesFromDerivedProperties();
+    zoomDevice.setEffectParameterForCurrentPatch(effectSlot, parameterNumber, parameterValue);
+
+    updatePatchInfoTable(currentZoomPatch);
+  }
 }
 
 
