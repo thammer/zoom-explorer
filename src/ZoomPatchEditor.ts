@@ -288,13 +288,17 @@ export class ZoomPatchEditor
         numVisibleScreens += 1;
       
     // Remove superfluous td elements (effects) so we have one td element for each effect
-    while (this.effectsRow.lastChild !== null && this.effectsRow.children.length > numVisibleScreens)
-      this.effectsRow.removeChild(this.effectsRow.lastChild);
+    while (this.effectsRow.firstChild !== null && this.effectsRow.children.length > numVisibleScreens) {
+      this.effectsRow.removeChild(this.effectsRow.firstChild);
+    }
 
     // Add missing td elements (effects) so we have one td element (cell) for each effect. Each effect is a table within this td element.
     while (this.effectsRow.children.length < numVisibleScreens) {
       let td = document.createElement("td") as HTMLTableCellElement;
-      this.effectsRow.appendChild(td);
+      if (this.effectsRow.children.length < 1)
+        this.effectsRow.appendChild(td);
+      else
+      this.effectsRow.insertBefore(td, this.effectsRow.firstChild);
     }
 
     let maxNumParameters = 0;
@@ -336,7 +340,7 @@ export class ZoomPatchEditor
           </th>
         `;
         effectHeader = htmlToElement(html) as HTMLTableCellElement;
-        tr.appendChild(effectHeader);  
+        tr.appendChild(effectHeader);
 
         effectOnOffButton = effectHeader.children[0].children[0] as HTMLButtonElement;
         effectOnOffButton.dataset.effectSlot = effectSlot.toString();
