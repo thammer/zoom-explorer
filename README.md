@@ -66,8 +66,15 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 13          |     7  | *    |         | F0 52 00 6E 64 13 F7 | Get current patch (replies with 64 12) |
 | 64 20 00       |     15 | *    | *       | F0 52 00 6E 64 20 00 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Update (edit) parameter |
 | 64 20 00 5F    |     15 | ?    | *       | F0 52 00 6E 64 20 00 5F \<character index\> \<ASCII character\>  00 00 00 00 F7 | Name edited (backspace) |
+| 64 20 00 64 00 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 00 \<volume\> 00 00 00 00 F7 | Patch volume |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
+| 64 20 00 64 07 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 07 \<effect slot\> 00 00 00 00 F7 | Insert new effect in effect slot |
+| 64 20 00 64 08 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<effect slot\> 00 00 00 00 F7 | Delete (or replace with empty?) effect in effect slot |
+| 64 20 00 64 09 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
+| 64 20 00 64 0C |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
+| 64 20 00 64 0D |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
+| 64 20 00 64 0E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
 | 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<Auto-save\> 00 00 00 00 F7 | Auto-save off/on (00 - 01)|
 | 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<Contrast\> 00 00 00 00 F7 | Screen contrast (00 - 0C) |
 | 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<ECO mode\> 00 00 00 00 F7 | ECO mode off/on (00 - 01) |
