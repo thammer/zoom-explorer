@@ -1130,25 +1130,44 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     unknownString = "";
     let tempoString = "";
     let editEffectSlotString = "";
-    let driveString = "";
-    if (patch.prm2Unknown !== null) {
-      for (let i = 0; i < patch.prm2Unknown.length; i++) {
+    let preampString = "";
+    if (patch.prm2Buffer !== null) {
+      for (let i = 0; i < patch.prm2Buffer.length; i++) {
         if ((i > 0) && (i % 32 == 0))
           unknownString += "<br/>                           ";
-        unknownString += `${patch.prm2Unknown[i].toString(16).toUpperCase().padStart(2, "0")} `;
+        unknownString += `${patch.prm2Buffer[i].toString(16).toUpperCase().padStart(2, "0")} `;
       }
-      if (patch.prm2Unknown.length > 2)
+      if (patch.prm2Buffer.length > 2)
         tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
-      if (patch.prm2Unknown.length > 12)
-        editEffectSlotString = `${patch.prm2EditEffectSlot}  bits: ${patch.prm2Unknown[9].toString(2).padStart(8, "0")} ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} ${patch.prm2Unknown[11].toString(2).padStart(8, "0")} ${patch.prm2Unknown[12].toString(2).padStart(8, "0")} `;
-      if (patch.prm2Unknown.length > 20)
-        driveString = `${patch.prm2Unknown[20].toString(2).padStart(8, "0")}`;
-      if (patch.prm2Unknown.length > 13 && patch.prm2Unknown[9] !== 0x80)
-        shouldLog(LogLevel.Warning) && console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[9]: ${patch.prm2Unknown[9].toString(2).padStart(8, "0")} -Investigate`); 
-      if (patch.prm2Unknown.length > 13 && (patch.prm2Unknown[10] & 0b00011111) !== 0b00001100)
-        shouldLog(LogLevel.Warning) && console.warn(`Patch ${patch.name}. Unknown PRM2 bits for prm2Unknown[10]: ${patch.prm2Unknown[10].toString(2).padStart(8, "0")} -Investigate`); 
+      if (patch.prm2Buffer.length > 20)
+        preampString = `${patch.prm2Buffer[20].toString(2).padStart(8, "0")}`;
+      if (patch.prm2Byte2Lower6Bits !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte2Lower6Bits: ${patch.prm2Byte2Lower6Bits?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte3Upper4Bits !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte3Upper4Bits: ${patch.prm2Byte3Upper4Bits?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte9Lower5Bits !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte9Lower5Bits: ${patch.prm2Byte9Lower5Bits?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte10Bit5 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte10Bit5: ${patch.prm2Byte10Bit5?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte13 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte13: ${patch.prm2Byte13?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte14 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte14: ${patch.prm2Byte14?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte20Bit1And8 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte20Bit1And8: ${patch.prm2Byte20Bit1And8?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte21Lower4Bits !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte21Lower4Bits: ${patch.prm2Byte21Lower4Bits?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte22Bits3To7 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte22Bits3To7: ${patch.prm2Byte22Bits3To7?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte23Upper3Bits !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte23Upper3Bits: ${patch.prm2Byte23Upper3Bits?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte24 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte24: ${patch.prm2Byte24?.toString(2).padStart(8, "0")}`);
     };
-    let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Edit effect slot: ${editEffectSlotString}  First slot with drive: ${driveString}<br/>` + 
+    let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Patch volume: ${patch.prm2PatchVolume}  ` +
+      `Edit effect slot: ${patch.prm2EditEffectSlot}<br/>` +
+      `                  Invalid effect slot: ${patch.prm2InvalidEffectSlot?.toString(2).padStart(6, "0")}  ` +
+      `Preamp slot: ${patch.prm2PreampSlot?.toString(2).padStart(6, "0")}  BPM slot: ${patch.prm2BPMSlot?.toString(2).padStart(6, "0")}  LineSel slot: ${patch.prm2LineSelSlot?.toString(2).padStart(6, "0")}<br/>` +
       `                  Unknown: ${unknownString}`;
     patchInfoString += (patchInfoString.length === 0 ? "" : "<br/>") + prm2String;
   }
@@ -1214,7 +1233,6 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       msogString += `  Edit effect slot: ${patch.msogEditEffectSlot.toString()}.`;
     if (patch.msogDSPFullBits != null)
       msogString += `  DSP Full: ${patch.msogDSPFullBits.toString(2).padStart(6, "0")}.`;
-    let driveString = "";
     if (patch.msogUnknown1 !== null) {
       let msogUnknown1_0_str = "EEDDDDDD";
       let msogUnknown1_1_str = "TTTMMM" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
@@ -1505,13 +1523,33 @@ function testBitMangling(data:Uint8Array, startBit: number, endBit: number, valu
   shouldLog(LogLevel.Info) && console.log(`value = ${value}, value2 = ${value2}`);
 }
 
-function printBits(data: Uint8Array) {
+function printBits(data: Uint8Array)
+{
   let str = "";
   for (let i = 0; i < data.length; i++) {
     str += data[i].toString(2).padStart(8, "0") + " ";
   }
   shouldLog(LogLevel.Info) && console.log(`Bits: ${str}`);
 }
+
+function testEffectSlotPattern()
+{
+  for (let totalNumberOfSlots = 6; totalNumberOfSlots >= 1; totalNumberOfSlots--) {
+    for (let selectedEffectSlot = totalNumberOfSlots - 1; selectedEffectSlot >= 0; selectedEffectSlot--) {
+      let bits = ZoomPatch.effectSlotToPrm2BitPattern(selectedEffectSlot, totalNumberOfSlots);
+      let str = bits.toString(2).padStart(16, "0");
+      let formattedStr = "";
+      for (let i = 0; i < str.length; i++) {
+        if (i % 4 === 0) {
+          formattedStr += " ";
+        }
+        formattedStr += str.charAt(i);
+      }
+      console.log(`${totalNumberOfSlots} ${selectedEffectSlot} ${formattedStr}`);
+    }   
+  }
+}
+
 
 let previousEditScreenCollection: ZoomScreenCollection | undefined = undefined;
 let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefined;
@@ -1538,5 +1576,6 @@ let data = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 64, 1, 1
 let bitpos = data.length * 8 - 1;
 testBitMangling(data, bitpos, bitpos, 1);
 
+testEffectSlotPattern();
 
 start();

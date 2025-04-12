@@ -313,26 +313,35 @@ export function eight2seven(eightBitBytes: Uint8Array, start: number = 0, end: n
   return sevenBitBytes;
 }
 
-export function compareBuffers(newBuffer: Uint8Array | undefined | null, oldBuffer: Uint8Array | undefined | null): void
+export function compareBuffers(newBuffer: Uint8Array | undefined | null, oldBuffer: Uint8Array | undefined | null, doLogging: boolean = false): boolean
 {
-    if (newBuffer === null || newBuffer  == undefined)
-      shouldLog(LogLevel.Warning) && console.warn(`newBuffer = ${newBuffer}`);
-    else if (oldBuffer === null || oldBuffer  == undefined)
-      shouldLog(LogLevel.Warning) && console.warn(`oldBuffer = ${oldBuffer}`);
-    else if (newBuffer.length !== oldBuffer.length)
-      shouldLog(LogLevel.Warning) && console.warn("newBuffer.length (${buffer1}) !== oldBuffer.length (${buffer1})");
-    else {
-      let allEqual = true;
-      for (let i=0; i<newBuffer.length; i++) {
-        if (newBuffer[i] !== oldBuffer[i]) {
-          shouldLog(LogLevel.Warning) && console.warn(`Buffers differs at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])}, oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])}`)
-          allEqual = false;
-        }
-      }
-      if (allEqual) {
-        shouldLog(LogLevel.Info) && console.log("Buffers are identical");
+  if (newBuffer === null || newBuffer  == undefined) {
+    doLogging && shouldLog(LogLevel.Warning) && console.warn(`newBuffer = ${newBuffer}`);
+    return false;
+  }
+  else if (oldBuffer === null || oldBuffer  == undefined) {
+    doLogging && shouldLog(LogLevel.Warning) && console.warn(`oldBuffer = ${oldBuffer}`);
+    return false;
+  }
+  else if (newBuffer.length !== oldBuffer.length) {
+    doLogging && shouldLog(LogLevel.Warning) && console.warn("newBuffer.length (${buffer1}) !== oldBuffer.length (${buffer1})");
+    return false;
+  }
+  else {
+    let allEqual = true;
+    for (let i=0; i<newBuffer.length; i++) {
+      if (newBuffer[i] !== oldBuffer[i]) {
+        doLogging && shouldLog(LogLevel.Warning) && console.warn(`Buffers differs at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])}, oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])}`)
+        allEqual = false;
+        if (!doLogging)
+          return false;
       }
     }
+    if (allEqual) {
+      doLogging && shouldLog(LogLevel.Info) && console.log("Buffers are identical");
+    }
+    return allEqual;
+  }
 }
 
 export function sleepForAWhile(timeoutMilliseconds: number)

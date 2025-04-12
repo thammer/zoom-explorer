@@ -1,5 +1,5 @@
 import { shouldLog, LogLevel } from "./Logger.js";
-import { compareBuffers, getNumberFromBits, partialArrayMatch, partialArrayStringMatch, setBitsFromNumber } from "./tools.js";
+import { compareBuffers, getNumberFromBits, partialArrayStringMatch, setBitsFromNumber } from "./tools.js";
 
 /**
  * Settings for one effect slot in a Zoom patch.
@@ -33,6 +33,37 @@ export class EffectSettings
     return settings;
   }
 }
+
+const PTCF_TARGET_G5N        = 0x00000001;
+const PTCF_TARGET_G3N        = 0x00000002;
+const PTCF_TARGET_G3XN       = 0x00000004;
+const PTCF_TARGET_B3N        = 0x00000008;
+const PTCF_TARGET_G1FOUR     = 0x00000010;
+const PTCF_TARGET_G1XFOUR    = 0x00000020;
+const PTCF_TARGET_B1FOUR     = 0x00000040;
+const PTCF_TARGET_B1XFOUR    = 0x00000080;
+const PTCF_TARGET_A1FOUR     = 0x00000100;
+const PTCF_TARGET_A1XFOUR    = 0x00000200;
+const PTCF_TARGET_G11        = 0x00000400;
+const PTCF_TARGET_H8         = 0x00000800;
+const PTCF_TARGET_G6         = 0x00001000;
+const PTCF_TARGET_B6         = 0x00002000;
+const PTCF_TARGET_R20        = 0x00004000;
+const PTCF_TARGET_B2FOUR     = 0x00010000;
+const PTCF_TARGET_MS50G_PLUS = 0x00040000; // Same as MS-70CDR+
+const PTCF_TARGET_MS60B_PLUS = 0x00080000;
+
+const PTCF_EFFECT_GROUP_DYNAMICS   = 1;
+const PTCF_EFFECT_GROUP_FILTER     = 2;
+const PTCF_EFFECT_GROUP_DRIVE      = 3;
+const PTCF_EFFECT_GROUP_PREAMP     = 4;
+const PTCF_EFFECT_GROUP_MODULATION = 6;
+const PTCF_EFFECT_GROUP_SFX        = 7;
+const PTCF_EFFECT_GROUP_DELAY      = 8;
+const PTCF_EFFECT_GROUP_REVERB     = 9;
+
+const PTCF_EFFECT_GROUP_MASK = 0xFF000000;
+const PTCF_EFFECT_GROUP_SHIFT = 24;
 
 /**
  * 
@@ -140,6 +171,31 @@ export class ZoomPatch
       return null;
   }
 
+  public deleteEffectInSlot(effectSlot: number)
+  {
+    let effectSettings = this.effectSettings;
+    if (effectSettings === null) {
+      shouldLog(LogLevel.Warning) && console.warn(`Attempted to delete effect from slot ${effectSlot} when effectSettings is null`);
+      return;
+    }
+    else if (effectSlot < 0 || effectSlot >= effectSettings.length) {
+      shouldLog(LogLevel.Warning) && console.warn(`effectSlot ${effectSlot} out of range: [0, ${effectSettings.length - 1}]`);
+      return;
+    }
+    effectSettings.splice(effectSlot, 1);
+  }
+
+  //                           5.  4.  3.  2.  1.  0.
+  //                         555044403330222011100000
+  private static prm2BitPattern = 0b101010000110010000100000;
+  static effectSlotToPrm2BitPattern(selectedEffectSlot: number, totalNumberOfSlots: number): number
+  {
+    let maskedPattern = this.prm2BitPattern & (0b111111111111111111111111 >> (4 * (6 - totalNumberOfSlots))); 
+    return (maskedPattern >> (selectedEffectSlot + 1) * 4) & 0xFFFF;
+  }
+
+  
+
   // Toplevel chunk including header and subchunks
   PTCF: null | string = null;
   length: null | number = null; // NB! This length includes the 4 byte ID and the 4 byte length value, in other words it is the total patch length starting from the P in PTCF. This is different from the chunk lengths below, which does not include these 8 bytes.
@@ -171,10 +227,26 @@ export class ZoomPatch
 
   PRM2: null | string = null; // 4 + 4 + prm2Length
   prm2Length: null | number = null; // 4 bytes
+  prm2InvalidEffectSlot: null | number = null; // based on byte 2 and 3 in prm2Unknown, bitfield for slot(s) with unknown effect
+  prm2Byte2Lower6Bits: null | number = null; // only seen 0 for these bits
+  prm2Byte3Upper4Bits: null | number = null; // only seen 0 for these bits
+  prm2Byte9Lower5Bits: null | number = null; // only seen 0 for these bits
+  prm2Byte10Bit5: null | number = null; // only seen 0 for this bit
+  prm2PatchVolume: null | number = null; // based on byte 9 and 10 in prm2Unknown
+  prm2EditEffectSlot: null | number = null; // based on byte 10 in prm2Unknown
+  prm2EditEffectSlotBits: null | number = null; // based on byte 11 and 12 in prm2Unknown
+  prm2Byte13: null | number = null; // byte 13 in prm2Unknown - MS-50G+, 0 or 0x8C ?
+  prm2Byte14: null | number = null; // byte 14 in prm2Unknown - MS-50G+, 0 or 0x08 ?
+  prm2PreampSlot: null | number = null; // based on byte 20 in prm2Unknown
+  prm2Byte20Bit1And8: null | number = null; // only seen 0 for these bits
+  prm2BPMSlot: null | number = null; // based on byte 21 and 22 in prm2Unknown, bitfield for slot with BPM effect
+  prm2Byte21Lower4Bits: null | number = null; // only seen 0 for these bits 
+  prm2Byte22Bits3To7: null | number = null; // only seen 0 for these bits
+  prm2LineSelSlot: null | number = null; // based on byte 22 and 23 in prm2Unknown, bitfield for slot with Line Selector
+  prm2Byte23Upper3Bits: null | number = null; // byte 23 in prm2Unknown - Line Selector on MS-70CDR+
+  prm2Byte24: null | number = null; // byte 24 in prm2Unknown - MS-50G+, 0 or 0x80
   prm2Tempo: null | number = null; // based on the two last bytes in prm2Unknown
-  prm2EditEffectSlot: null | number = null; // based on byte 10, 11 and 12 in prm2Unknown
-  prm2FirstSlotWithDrivePerhaps: null | number = null; // based on byte 20 in prm2Unknown
-  prm2Unknown: null | Uint8Array = null; // prm2Length bytes
+  prm2Buffer: null | Uint8Array = null; // prm2Length bytes
 
   NAME: null | string = null;
   nameLength: null | number = null; // 4 bytes
@@ -434,7 +506,7 @@ export class ZoomPatch
     offset = this.readPTCFChunks(data, offset, this.length - lengthOfPTCFIDAndLengthBytes - (offset - initialOffset));
 
     if (offset - initialOffset != this.length - lengthOfPTCFIDAndLengthBytes) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() offset mismatch after reading chunks. offset (${offset}) - initialOffset (${initialOffset}) != total PTCF chunk length (${this.length})`);
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() offset mismatch after reading chunks. offset (${offset}) - initialOffset (${initialOffset}) != total PTCF chunk length (${this.length})`);
     }
 
     let chunkData: Uint8Array | undefined;
@@ -444,7 +516,7 @@ export class ZoomPatch
     chunkID = "TXJ1";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -458,7 +530,7 @@ export class ZoomPatch
     chunkID = "TXE1";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -490,14 +562,14 @@ export class ZoomPatch
     chunkID = "EDTB";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
       this.EDTB = chunkID;
       this.edtbLength = chunkData.length;
       if (this.numEffects === null) {
-        shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() this.numEffects === null, but EDTB chunk has length ${chunkData.length}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() this.numEffects === null, but EDTB chunk has length ${chunkData.length}`);
       }
       else {
         this.edtbReversedBytes = new Array<Uint8Array>(this.numEffects);
@@ -529,35 +601,88 @@ export class ZoomPatch
     chunkID = "PRM2";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
       this.PRM2 = chunkID;
       this.prm2Length = chunkData.length;
       if (this.prm2Length != null && this.prm2Length > 2) {
-        this.prm2Unknown = chunkData.slice(chunkOffset, chunkOffset + this.prm2Length); chunkOffset += this.prm2Length;
-        let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
-        let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+        this.prm2Buffer = chunkData.slice(chunkOffset, chunkOffset + this.prm2Length); chunkOffset += this.prm2Length;
+        let tempo1 = this.prm2Buffer[this.prm2Buffer.length -2];
+        let tempo2 = this.prm2Buffer[this.prm2Buffer.length -1];
         this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
-        if (this.prm2Length > 10) {
-          this.prm2EditEffectSlot = (this.prm2Unknown[10] & 0b11100000) >> 5;
+        if (this.prm2Length > 2) {
+          this.prm2Byte2Lower6Bits = this.prm2Buffer[2] & 0b00111111;
         }
+        if (this.prm2Length > 3) {
+          this.prm2InvalidEffectSlot = ((this.prm2Buffer[2] & 0b11000000) >> 6) + ((this.prm2Buffer[3] & 0b00001111) << 2);
+          this.prm2Byte3Upper4Bits = this.prm2Buffer[3] & 0b11110000;
+        }
+        if (this.prm2Length > 9) {
+          this.prm2Byte9Lower5Bits = this.prm2Buffer[9] & 0b00011111;          
+        }
+        if (this.prm2Length > 10) {
+          this.prm2EditEffectSlot = (this.prm2Buffer[10] & 0b11100000) >> 5;
+          this.prm2PatchVolume = ((this.prm2Buffer[9] & 0b11100000) >> 5) + ((this.prm2Buffer[10] & 0b00001111) << 3);
+          this.prm2Byte10Bit5 = this.prm2Buffer[10] & 0b00010000;
+        }
+        if (this.prm2Length > 12) {
+          this.prm2EditEffectSlotBits = (this.prm2Buffer[11] & 0b11111111) << 8 + (this.prm2Buffer[12] & 0b11111111);
+          // MS-50G+, patch 038 smooth, with TS_DRIVE deleted frm pedal, saw one incorrect value in prm2Buffer[12]
+        }
+        if (this.prm2Length > 13) {
+          this.prm2Byte13 = this.prm2Buffer[13];          
+        }
+        if (this.prm2Length > 14) {
+          this.prm2Byte14 = this.prm2Buffer[14];          
+        }
+        if (this.prm2Length > 20) {
+          this.prm2PreampSlot = (this.prm2Buffer[20] & 0b01111110) >> 1;
+          this.prm2Byte20Bit1And8 = this.prm2Buffer[20] & 0b10000001;
+        }
+        if (this.prm2Length > 21) {
+          this.prm2Byte21Lower4Bits = this.prm2Buffer[21] & 0b00001111;
+        }
+        if (this.prm2Length > 22) {
+          this.prm2BPMSlot = ((this.prm2Buffer[21] & 0b11110000) >> 4) + ((this.prm2Buffer[22] & 0b00000011) << 4);
+          this.prm2Byte22Bits3To7 = this.prm2Buffer[22] & 0b01111100;
+        }
+        if (this.prm2Length > 23) {
+          this.prm2LineSelSlot = ((this.prm2Buffer[22] & 0b10000000) >> 7) + ((this.prm2Buffer[23] & 0b00011111) << 1);
+          this.prm2Byte23Upper3Bits = this.prm2Buffer[23] & 0b11100000;          
+        }
+        if (this.prm2Length > 24) {
+          this.prm2Byte24 = this.prm2Buffer[24];          
+        }
+
+        let verifyOK = this.verifyPrm2Buffer();
+        if (!verifyOK)
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() verifyPrm2Buffer() failed`);
+
         /*
-        o prm2 unknown byte 9 is always 0x80. But scanning through patches om MS-50G+ gives 1 anomaly (warning) for this (Krampus drive).
-        o prm2 unknown byte 10 is always 3 effect slot bits, then 01100. But scanning through patches om MS-50G+ gives 1 anomaly (warning) for this (Krampus drive).
+        o prm2 unknown byte 9 is always 0x80. But scanning through patches on MS-50G+ gives 1 anomaly (warning) for this,
+          Krampus drive patch, first patch or copies of first patch on MS-50G+. This could perhaps just be a small bug/mistake from Zoom
+          when they created the first patch. It doesn't seem to be anything significant.
+        o prm2 unknown byte 10 is always 3 effect slot bits, then 01100. But scanning through patches om MS-50G+ gives
+          1 anomaly (warning) for this (Krampus drive patch has the 5 ending bits 01000 instead of 01100).
         o prm2 unknown bytes 11 and 12 change depending on effect slot. Byte 12 is probably logically before byte 11.
 
-          Effect slot B11 B12 Bits 11  Bits 12  Bits 11
-                    1 42  86  01000010 10000110 01000010
-                    2 64  A8  01100100 10101000 01100100
-                    3 86  0A  10000110 00001010 10000110
-                    4 A8  00  10101000 00000000 10101000
-                    5 0A  00  00001010 00000000 00001010
-                    6 00  00  00000000 00000000 00000000
+          Effect slot B11 B12 Byte 11  Byte 12     Byte 11     Byte 10
+                    5 00  00  00000000 0000 0000   0000 0000   1010
+                    4 0A  00  00001010 0000 0000   0000 1010   1000
+                    3 A8  00  10101000 0000 0000   1010 1000   0110
+                    2 86  0A  10000110 0000 1010   1000 0110   1000
+                    1 64  A8  01100100 1010 1000   0110 0100   0010
+                    0 42  86  01000010 1000 0110   0100 0010   0000
               
           It's just a bit pattern that is shifted four bits to the right for each effect slot, 
-          and it's the same for each patch, no matter which effect is selected in each slot. Weird.
+          and it's the same for each patch, no matter which effect is selected in each slot.
+          The bit pattern is the prm2EditEffectSlot bit pattern from byte 10, counting down from 5 to 0.
+
+          My current theory is that this is related to which page should be shown on a screen,
+          with support for 5 screens.
+        o prm2 unknown byte 20 indicates which effect slots have a preamp effect. On the MS-50G+, a maximum of 1 bit is set.
         */
 
 
@@ -567,7 +692,7 @@ export class ZoomPatch
     chunkID = "NAME";
     chunkData = this.chunks.get(chunkID);
     if (chunkData === undefined) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() chunk ID "${chunkID} not found in patch data - this.chunks.size = ${this.chunks.size}`);
     }
     else {
       chunkOffset = 0;
@@ -584,6 +709,110 @@ export class ZoomPatch
     }
 
     return offset;
+  }
+
+  verifyPrm2Buffer(): boolean
+  {
+    if (this.prm2Buffer === null || this.prm2InvalidEffectSlot === null || this.prm2PatchVolume === null ||
+      this.prm2EditEffectSlot === null || this.prm2BPMSlot === null || this.prm2PreampSlot === null ||
+      this.prm2LineSelSlot === null || this.prm2Tempo === null ||
+      this.prm2Byte2Lower6Bits === null || this.prm2Byte3Upper4Bits === null ||
+      this.prm2Byte9Lower5Bits === null || this.prm2Byte10Bit5 === null || this.edtbEffectSettings === null ||
+      this.prm2Byte13 === null || this.prm2Byte14 === null ||
+      this.prm2Byte20Bit1And8 === null || this.prm2Byte21Lower4Bits === null || this.prm2Byte22Bits3To7 === null ||
+      this.prm2Byte23Upper3Bits === null || this.prm2Byte24 === null)
+    {
+      return false;
+    }
+
+    let compareBuffer =  this.prm2Buffer.slice();
+    this.setPrm2BufferFromDerivedValues(compareBuffer, true, this.prm2InvalidEffectSlot, this.prm2PatchVolume, this.prm2EditEffectSlot,
+      this.edtbEffectSettings.length, this.prm2PreampSlot, this.prm2BPMSlot, this.prm2LineSelSlot, this.prm2Tempo,
+      this.prm2Byte2Lower6Bits, this.prm2Byte3Upper4Bits,
+      this.prm2Byte9Lower5Bits, this.prm2Byte10Bit5,
+      this.prm2Byte13, this.prm2Byte14,
+      this.prm2Byte20Bit1And8, this.prm2Byte21Lower4Bits, this.prm2Byte22Bits3To7,
+      this.prm2Byte23Upper3Bits, this.prm2Byte24);
+
+    return compareBuffers(compareBuffer, this.prm2Buffer, true);
+  }
+
+  setPrm2BufferFromDerivedValues(prm2Buffer: Uint8Array, clear: boolean, prm2InvalidEffectSlot: number, prm2PatchVolume: number, prm2EditEffectSlot: number,
+    totalNumberOfSlots: number, prm2PreampSlot: number, prm2BPMSlot: number, prm2LineSelSlot: number, prm2Tempo: number,
+    prm2Byte2Lower6Bits = 0, prm2Byte3Upper4Bits = 0, prm2Byte9Lower5Bits: number = 0, prm2Byte10Bit5: number = 0,
+    prm2Byte13: number = 0, prm2Byte14: number = 0, prm2Byte20Bit1And8: number = 0, prm2Byte21Lower4Bits: number = 0, 
+    prm2Byte22Bits3To7: number = 0, prm2Byte23Upper3Bits: number = 0, prm2Byte24: number = 0)
+  {
+    let prm2Length = prm2Buffer.length;
+    if (clear)
+      prm2Buffer.fill(0, 0, prm2Length);
+
+    if (prm2Length > 2) {
+      let tempo1 = (prm2Tempo & 0b00001111) << 4;
+      let tempo2 = (prm2Tempo & 0b11110000) >> 4;
+      prm2Buffer[prm2Length - 2] = tempo1;
+      prm2Buffer[prm2Length - 1] = tempo2;      
+    }
+    if (prm2Length > 3) {
+      prm2Buffer[2] = ((prm2InvalidEffectSlot & 0b00000011) << 6) + (prm2Byte2Lower6Bits & 0b00111111);
+      prm2Buffer[3] = ((prm2InvalidEffectSlot & 0b00111100) >> 2) + (prm2Byte3Upper4Bits & 0b11110000);
+    }
+    if (prm2Length > 10) {
+      prm2Buffer[9] = ((prm2PatchVolume & 0b00000111) << 5) + (prm2Byte9Lower5Bits & 0b00011111);
+      prm2Buffer[10] = ((prm2PatchVolume & 0b01111000) >> 3) + prm2Byte10Bit5 + ((prm2EditEffectSlot & 0b00000111) << 5)
+    }
+    if (prm2Length > 12) {
+      let bits = ZoomPatch.effectSlotToPrm2BitPattern(prm2EditEffectSlot, totalNumberOfSlots);
+      prm2Buffer[11] = (bits & 0b11111111);
+      prm2Buffer[12] = (bits & 0b1111111100000000) >> 8;
+      // MS-50G+, patch 038 smooth, with TS_DRIVE deleted frm pedal, saw one incorrect value in prm2Buffer[12]
+    }
+    if (prm2Length > 13) {
+      prm2Buffer[13] = prm2Byte13;
+    }
+    if (prm2Length > 14) {
+      prm2Buffer[14] = prm2Byte14;
+    }
+    if (prm2Length > 20) {
+      prm2Buffer[20] = ((prm2PreampSlot & 0b00111111) << 1) + (prm2Byte20Bit1And8 & 0b10000001);
+}
+    if (prm2Length > 22) {
+      prm2Buffer[21] = ((prm2BPMSlot & 0b00001111) << 4) + (prm2Byte21Lower4Bits & 0b00001111);
+      prm2Buffer[22] = ((prm2BPMSlot & 0b00110000) >> 4) + (prm2Byte22Bits3To7 & 0b01111100) + ((prm2LineSelSlot & 0b0000001) << 7);
+    }
+    if (prm2Length > 23) {
+      prm2Buffer[23] = ((prm2LineSelSlot & 0b00111110) >> 1) + (prm2Byte23Upper3Bits & 0b11100000);
+    }
+    if (prm2Length > 24) {
+      prm2Buffer[24] = prm2Byte24;
+    }
+  }
+
+  verifyPrm2PreampBits(): boolean
+  {
+    if (this.prm2PreampSlot === null || this.edtbEffectSettings === null)
+      return false;
+
+    return this.prm2PreampSlot === this.generatePrm2PreampBits();
+  }
+
+  generatePrm2PreampBits(): number
+  {
+    if (this.prm2PreampSlot === null || this.edtbEffectSettings === null) {
+      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.generatePrm2PreampBits() - this.prm2PreampBits == null || this.edtbEffectSettings == null`);
+      return 0;
+    }
+
+    let preampBits: number = 0;
+
+    for (let i = 0; i < this.edtbEffectSettings.length; i++) {
+      let group = (this.edtbEffectSettings[i].id & PTCF_EFFECT_GROUP_MASK) >> PTCF_EFFECT_GROUP_SHIFT;
+      if (group === PTCF_EFFECT_GROUP_PREAMP) {
+        preampBits |= 1 << i;
+      }
+    }
+
+    return preampBits;
   }
 
   /**
@@ -836,28 +1065,28 @@ export class ZoomPatch
       shouldLog(LogLevel.Info) && console.log(`Skipping empty PRM2 chunk when attempting to build patch buffer for patch "${this.name}"`);
     }
     else {
-      if (this.prm2Length === null || this.prm2Unknown === null) {
-        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Unknown}`);
+      if (this.prm2Length === null || this.prm2Buffer === null) {
+        shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. prm2Length = ${this.prm2Length}, prm2Unknown = ${this.prm2Buffer}`);
         return undefined;
       }
 
-      let tempo1 = this.prm2Unknown[this.prm2Unknown.length -2];
-      let tempo2 = this.prm2Unknown[this.prm2Unknown.length -1];
+      let tempo1 = this.prm2Buffer[this.prm2Buffer.length -2];
+      let tempo2 = this.prm2Buffer[this.prm2Buffer.length -1];
       tempo1 &=  0b00001111; // blank the 4 upper bits
       tempo1 |= (this.tempo & 0b00001111) << 4; // move the 4 lower bits in this.tempo into the 4 upper bits in tempo1
       tempo2 &=  0b11110000; // blank the 4 lower bits
       tempo2 |= (this.tempo & 0b11110000) >> 4; // move the 4 upper bits in this.tempo into the 4 lower bits in tempo2
       
-      this.prm2Unknown[this.prm2Unknown.length -2] = tempo1;
-      this.prm2Unknown[this.prm2Unknown.length -1] = tempo2;
+      this.prm2Buffer[this.prm2Buffer.length -2] = tempo1;
+      this.prm2Buffer[this.prm2Buffer.length -1] = tempo2;
 
       if (this.prm2Length > 10) {
-        this.prm2Unknown[10] = (this.prm2Unknown[10] & 0b00011111) | (this.currentEffectSlot & 0b00000111) << 5;
+        this.prm2Buffer[10] = (this.prm2Buffer[10] & 0b00011111) | (this.currentEffectSlot & 0b00000111) << 5;
       }
 
       offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
       offset = result = this.writeInt32(ptcfChunk, offset, this.prm2Length); success &&= (result !== 0);
-      offset = result = this.writeSlice(ptcfChunk, offset, this.prm2Unknown); success &&= (result !== 0);  
+      offset = result = this.writeSlice(ptcfChunk, offset, this.prm2Buffer); success &&= (result !== 0);  
     }  
     
     expectedOffset += prm2TotalLength; 
