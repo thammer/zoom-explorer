@@ -185,16 +185,14 @@ export class ZoomPatch
     effectSettings.splice(effectSlot, 1);
   }
 
-  //                           5.  4.  3.  2.  1.  0.
-  //                         555044403330222011100000
+  //                                  5.  4.  3.  2.  1.  0.
+  //                                555044403330222011100000
   private static prm2BitPattern = 0b101010000110010000100000;
   static effectSlotToPrm2BitPattern(selectedEffectSlot: number, totalNumberOfSlots: number): number
   {
-    let maskedPattern = this.prm2BitPattern & (0b111111111111111111111111 >> (4 * (6 - totalNumberOfSlots))); 
+    let maskedPattern = ZoomPatch.prm2BitPattern & (0b111111111111111111111111 >> (4 * (6 - totalNumberOfSlots))); 
     return (maskedPattern >> (selectedEffectSlot + 1) * 4) & 0xFFFF;
   }
-
-  
 
   // Toplevel chunk including header and subchunks
   PTCF: null | string = null;
