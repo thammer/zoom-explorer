@@ -187,7 +187,11 @@ async function start()
 
   patchEditor.setEffectSlotOnOffCallback((effectSlot: number, on: boolean) => {
     handleEffectSlotOnOff(zoomDevice, effectSlot, on);
-  })
+  });
+
+  patchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
+    handleEffectSlotDelete(zoomDevice, effectSlot);
+  });
 
 
 
@@ -986,7 +990,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   headerCell.appendChild(lineBreak);
 
   label = document.createElement("label") as HTMLLabelElement;
-  label.textContent = `Effects: ${patch.numEffects}. IDs: ${idString}.`;
+  label.textContent = `Effects: ${patch.numEffects}. IDs: ${idString}`;
   headerCell.appendChild(label);
 
   let button = document.createElement("button") as HTMLButtonElement;
@@ -1142,27 +1146,27 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       if (patch.prm2Buffer.length > 20)
         preampString = `${patch.prm2Buffer[20].toString(2).padStart(8, "0")}`;
       if (patch.prm2Byte2Lower6Bits !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte2Lower6Bits: ${patch.prm2Byte2Lower6Bits?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte2Lower6Bits: ${patch.prm2Byte2Lower6Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte3Upper4Bits !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte3Upper4Bits: ${patch.prm2Byte3Upper4Bits?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte3Upper4Bits: ${patch.prm2Byte3Upper4Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte9Lower5Bits !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte9Lower5Bits: ${patch.prm2Byte9Lower5Bits?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte9Lower5Bits: ${patch.prm2Byte9Lower5Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte10Bit5 !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte10Bit5: ${patch.prm2Byte10Bit5?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte10Bit5: ${patch.prm2Byte10Bit5?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte13 !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte13: ${patch.prm2Byte13?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte13: ${patch.prm2Byte13?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte14 !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte14: ${patch.prm2Byte14?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte14: ${patch.prm2Byte14?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte20Bit1And8 !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte20Bit1And8: ${patch.prm2Byte20Bit1And8?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte20Bit1And8: ${patch.prm2Byte20Bit1And8?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte21Lower4Bits !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte21Lower4Bits: ${patch.prm2Byte21Lower4Bits?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte21Lower4Bits: ${patch.prm2Byte21Lower4Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte22Bits3To7 !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte22Bits3To7: ${patch.prm2Byte22Bits3To7?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte22Bits3To7: ${patch.prm2Byte22Bits3To7?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte23Upper3Bits !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte23Upper3Bits: ${patch.prm2Byte23Upper3Bits?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte23Upper3Bits: ${patch.prm2Byte23Upper3Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte24 !== 0)
-        shouldLog(LogLevel.Warning) && console.warn(`Unknown bits in prm2Byte24: ${patch.prm2Byte24?.toString(2).padStart(8, "0")}`);
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte24: ${patch.prm2Byte24?.toString(2).padStart(8, "0")}`);
     };
     let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Patch volume: ${patch.prm2PatchVolume}  ` +
       `Edit effect slot: ${patch.prm2EditEffectSlot}<br/>` +
@@ -1194,13 +1198,19 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let effectSettingsString = "";
     if (reversedBytes !== null && patch.ids !== null && effectSettingsArray !== null) {
       for (let i = 0; i < reversedBytes.length; i++) {
-        let effectSettings = effectSettingsArray[i];
-        let parameterString = ""; 
-        for (let p=0; p<effectSettings.parameters.length; p++) {
-          parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
+        if (i < effectSettingsArray.length)
+        {
+          let effectSettings = effectSettingsArray[i];
+          let parameterString = ""; 
+          for (let p=0; p<effectSettings.parameters.length; p++) {
+            parameterString += effectSettings.parameters[p].toString().toUpperCase().padStart(4, " ") + " ";
+          }
+          effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
+          effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
         }
-        effectSettingsString += `     Effect ID: ${patch.ids[i].toString(16).toUpperCase().padStart(8, "0")}  Settings: ${effectSettings.enabled ? "[ ON]" : "[OFF]"}  `;
-        effectSettingsString += `ID: ${effectSettings.id.toString(16).toUpperCase().padStart(8, "0")}  Parameters: ${parameterString}<br/>`;
+        else {
+          effectSettingsString += `     Effect ID: 00000000  Settings: [ - ]  ID: --------  Parameters: -<br/>`;
+        }
         effectSettingsString += `                          Reversed: `;
         let effect = reversedBytes[i];
         for (let p = 0; p < effect.length + unknownOffset; p++) {
@@ -1459,6 +1469,25 @@ function handleEffectSlotOnOff(zoomDevice: ZoomDevice, effectSlot: number, on: b
   }
 }
 
+function handleEffectSlotDelete(zoomDevice: ZoomDevice, effectSlot: number) {
+  if (currentZoomPatch === undefined) {
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when currentZoomPatch is undefined")
+    return;
+  }
+
+  if (currentZoomPatch.effectSettings !== null && effectSlot < currentZoomPatch.effectSettings.length)
+  {
+    shouldLog(LogLevel.Info) && console.log(`Deleting effect in slot ${effectSlot}`);
+
+    currentZoomPatch.deleteEffectInSlot(effectSlot);
+    zoomDevice.deleteScreenForEffectInSlot(effectSlot);
+    zoomDevice.uploadPatchToCurrentPatch(currentZoomPatch);
+
+    updatePatchInfoTable(currentZoomPatch);
+    getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
+  }
+}
+
 
 function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectSettings>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
   syncToCurrentPatchOnPedalImmediately = true)
@@ -1497,7 +1526,7 @@ function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectS
 
     zoomPatch.updatePatchPropertiesFromDerivedProperties();
     if (syncToCurrentPatchOnPedalImmediately) 
-      zoomDevice.uploadPatchToCurrentPatch(zoomPatch)
+      zoomDevice.uploadPatchToCurrentPatch(zoomPatch);
   }
 
 

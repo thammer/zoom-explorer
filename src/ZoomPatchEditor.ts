@@ -8,6 +8,7 @@ import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 export type EditPatchTextEditedListenerType = (event: Event, type: string, initialValueString: string) => boolean;
 export type EditPatchMouseEventListenerType = (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => void;
 export type EditPatchEffectSlotOnOffListenerType = (effectSlot: number, on: boolean) => void;
+export type EditPatchEffectSlotDeleteListenerType = (effectSlot: number) => void;
 
 let debugCounter = 0;
 
@@ -17,6 +18,7 @@ export class ZoomPatchEditor
   private mouseMovedCallback: EditPatchMouseEventListenerType | undefined = undefined;
   private mouseUpCallback: EditPatchMouseEventListenerType | undefined = undefined;
   private effectSlotOnOffCallback: EditPatchEffectSlotOnOffListenerType | undefined = undefined;
+  private effectSlotDeleteCallback: EditPatchEffectSlotDeleteListenerType | undefined = undefined;
 
   private undoOnEscape = "";
   private muteBlurOnEscape = false;
@@ -122,6 +124,11 @@ export class ZoomPatchEditor
   setEffectSlotOnOffCallback(effectSlotOnOffCallback: EditPatchEffectSlotOnOffListenerType) 
   { 
     this.effectSlotOnOffCallback = effectSlotOnOffCallback;
+  }
+
+  setEffectSlotDeleteCallback(effectSlotDeleteCallback: EditPatchEffectSlotDeleteListenerType) 
+  { 
+    this.effectSlotDeleteCallback = effectSlotDeleteCallback;
   }
 
   getEffectAndParameterNumber(str: string): [effectSlot: number | undefined, parameterNumber: number | undefined] {
@@ -320,6 +327,7 @@ export class ZoomPatchEditor
       let effectHeader: HTMLTableCellElement;
       let effectSlotName: HTMLSpanElement;
       let effectOnOffButton: HTMLButtonElement;
+      let effectDeleteButton: HTMLButtonElement;
 
       if (cellWithEffectTable.children.length < 1) {
         effectTable = document.createElement("table");
@@ -345,6 +353,10 @@ export class ZoomPatchEditor
         effectOnOffButton = effectHeader.children[0].children[0] as HTMLButtonElement;
         effectOnOffButton.dataset.effectSlot = effectSlot.toString();
         effectOnOffButton.addEventListener("click", (event) => this.onEffectOnOffButtonClick(event));
+
+        effectDeleteButton = effectHeader.children[0].children[4] as HTMLButtonElement;
+        effectDeleteButton.dataset.effectSlot = effectSlot.toString();
+        effectDeleteButton.addEventListener("click", (event) => this.onEffectSlotDeleteButtonClick(event));
       }
       else {
         effectTable = cellWithEffectTable.children[0] as HTMLTableElement;
@@ -509,6 +521,17 @@ export class ZoomPatchEditor
     if (this.effectSlotOnOffCallback !== undefined)
       this.effectSlotOnOffCallback(effectSlot, !button.classList.contains("on"));
   }
+
+  onEffectSlotDeleteButtonClick(event: MouseEvent): any
+  {
+    let button = event.target as HTMLButtonElement;
+    if (button.dataset.effectSlot === undefined)
+      return; // this should never happen
+    let effectSlot = Number.parseInt(button.dataset.effectSlot);
+    if (this.effectSlotDeleteCallback !== undefined)
+      this.effectSlotDeleteCallback(effectSlot);
+  }
+
 
   updateValueBar(cell: HTMLTableCellElement, rawValue: number, maxValue: number)
   {

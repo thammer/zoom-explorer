@@ -802,6 +802,13 @@ export class ZoomDevice implements IManagedMIDIDevice
     this.emitEffectParameterChangedEvent();
   }
 
+  public deleteScreenForEffectInSlot(effectSlot: number)
+  {
+    // Update screens
+    if (this.currentScreenCollection !== undefined)
+      this.currentScreenCollection.deleteScreen(effectSlot);
+  }
+
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
   {
     let reply: Uint8Array | undefined;

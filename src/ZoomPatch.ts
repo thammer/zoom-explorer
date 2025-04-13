@@ -8,7 +8,14 @@ export class EffectSettings
 {
   enabled: boolean = false;
   id: number = 0;
-  parameters: Array<number> = new Array<number>();
+  parameters: Array<number>;
+
+  constructor(numParameters: number = 0)
+  {
+    this.parameters = new Array<number>(numParameters)
+    if (numParameters > 0)
+      this.parameters.fill(0);
+  }
 
   clone() : EffectSettings
   {
@@ -17,6 +24,13 @@ export class EffectSettings
     settings.id = this.id;
     settings.parameters = Array.from(this.parameters);
     return settings;
+  }
+
+  clear()
+  {
+    this.enabled = false;
+    this.id = 0;
+    this.parameters.fill(0);
   }
 
   setFrom(other: EffectSettings)
@@ -64,6 +78,8 @@ const PTCF_EFFECT_GROUP_REVERB     = 9;
 
 const PTCF_EFFECT_GROUP_MASK = 0xFF000000;
 const PTCF_EFFECT_GROUP_SHIFT = 24;
+
+const MSOG_NUM_PARAMS_PER_EFFECT = 9;
 
 /**
  * 
@@ -173,16 +189,95 @@ export class ZoomPatch
 
   public deleteEffectInSlot(effectSlot: number)
   {
-    let effectSettings = this.effectSettings;
-    if (effectSettings === null) {
+    if (this.effectSettings === null) {
       shouldLog(LogLevel.Warning) && console.warn(`Attempted to delete effect from slot ${effectSlot} when effectSettings is null`);
       return;
     }
-    else if (effectSlot < 0 || effectSlot >= effectSettings.length) {
-      shouldLog(LogLevel.Warning) && console.warn(`effectSlot ${effectSlot} out of range: [0, ${effectSettings.length - 1}]`);
+    
+    if (effectSlot < 0 || effectSlot >= this.effectSettings.length) {
+      shouldLog(LogLevel.Warning) && console.warn(`effectSlot ${effectSlot} out of range: [0, ${this.effectSettings.length - 1}]`);
       return;
     }
-    effectSettings.splice(effectSlot, 1);
+
+    if (this.effectSettings.length === 1) {
+      // An empty patch has one effect (slot 0) with ID 0 and all params 0
+      this.effectSettings[0].clear();
+    } 
+    else {
+      this.effectSettings.splice(effectSlot, 1);
+    } 
+
+    // Update ptcf IDs
+    if (this.ids !== null) {
+      if (effectSlot === 0 ) {
+        if (this.ids.length === 1)
+          this.ids[0] = 0; // An empty patch has one effect (slot 0) with ID 0 and all params 0
+        else
+          this.ids = this.ids.subarray(1, this.ids.length);
+      } 
+      else {
+        if (effectSlot === this.ids.length - 1)
+          this.ids = this.ids.subarray(0, this.ids.length - 1);
+        else {
+          let originalIds = this.ids;
+          this.ids = this.ids.subarray(0, this.ids.length - 1);
+          this.ids.set(originalIds.subarray(effectSlot + 1), effectSlot);
+        }
+      }
+    }
+
+    if (this.numEffects !== null)
+      this.numEffects = Math.max(1, this.numEffects -1); // An empty patch has one effect (slot 0) with ID 0 and all params 0
+
+    if (this.msogNumEffects !== null)
+      this.msogNumEffects = this.numEffects;
+
+    if (this.edtbReversedBytes !== null) {
+      if (this.edtbReversedBytes.length === 1) {
+        // An empty patch has one effect (slot 0) with ID 0 and all params 0
+        this.edtbReversedBytes[0].fill(0);
+      }
+      else {
+        this.edtbReversedBytes.splice(effectSlot, 1);
+      }
+    }
+    else if (this.msogEffectsReversedBytes !== null) {
+      // should probably move some bytes, insert 0 at the end?
+    }
+
+    if (this.edtbLength !== null && this.edtbReversedBytes !== null) {
+      this.edtbLength = this.edtbReversedBytes.length * 24;
+    }
+
+    if (effectSlot <= this.currentEffectSlot)
+      this.currentEffectSlot = Math.max(Math.min(this.currentEffectSlot, this.effectSettings.length - 1), 0)
+
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlot = this.currentEffectSlot;
+    else if (this.msogEditEffectSlot !== null)
+      this.msogEditEffectSlot = this.currentEffectSlot;
+    
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlotBits = ZoomPatch.effectSlotToPrm2BitPattern(this.prm2EditEffectSlot, this.effectSettings.length);
+
+    if (this.prm2InvalidEffectSlot !== null)
+      this.prm2InvalidEffectSlot = ZoomPatch.deleteBitAndShiftUpperBits(this.prm2InvalidEffectSlot, effectSlot);
+
+    if (this.prm2PreampSlot !== null)
+      this.prm2PreampSlot = ZoomPatch.deleteBitAndShiftUpperBits(this.prm2PreampSlot, effectSlot);
+
+    if (this.prm2BPMSlot !== null)
+      this.prm2BPMSlot = ZoomPatch.deleteBitAndShiftUpperBits(this.prm2BPMSlot, effectSlot);
+
+    if (this.prm2LineSelSlot !== null)
+      this.prm2LineSelSlot = ZoomPatch.deleteBitAndShiftUpperBits(this.prm2LineSelSlot, effectSlot);  
+  }
+
+  private static deleteBitAndShiftUpperBits(bitPattern: number, bit: number): number
+  { 
+    let upperBits = (bitPattern >> (bit + 1)) << bit;
+    let lowerBits = bitPattern & (0b11111111 >> (8 - bit));
+    return lowerBits + upperBits;
   }
 
   //                                  5.  4.  3.  2.  1.  0.
@@ -204,6 +299,7 @@ export class ZoomPatch
   ptcfUnknown: null | Uint8Array = null; // 6 bytes
   ptcfShortName: null | string = null; // For patches delivered with MS+ pedals, this is always the 10 first characters of nameName
   ids: null | Uint32Array = null;
+  idstore: Uint32Array = new Uint32Array(16); // storage buffer for ids. ids is a subarray of idstore.
   
   ptcfChunk: null | Uint8Array = null; // Raw unparsed PTCF chunk, including the "PTCF" ID and 4 bytes for the length value
   chunks: Map<string, Uint8Array> = new Map<string, Uint8Array>(); // Raw unparsed chunks
@@ -359,12 +455,13 @@ export class ZoomPatch
     return offset + 4;
   }
 
-  readInt32Array(patch: Uint8Array, offset: number, length: number) : Uint32Array | null
+  readInt32Array(patch: Uint8Array, offset: number, length: number, array: null | Uint32Array = null) : Uint32Array | null
   {
     if (patch.length - offset < length * 4)
       return null;
 
-    let array = new Uint32Array(length);
+    if (array === null)
+      array = new Uint32Array(length);
     for (let i=0; i<length; i++) {
       let num = this.readInt32(patch, offset + i*4);
       if (num === null)
@@ -496,7 +593,12 @@ export class ZoomPatch
     this.maxNameLength = 10; // if NAME chunk is found, this will be changed below
 
     if (this.numEffects !== null) {
-      this.ids = this.readInt32Array(data, offset, this.numEffects);
+      let idarray = this.readInt32Array(data, offset, this.numEffects, this.idstore);
+      if (idarray === null)
+        this.ids = null;
+      else
+        this.ids = this.idstore.subarray(0, this.numEffects);
+
       offset += this.numEffects * 4;
     }
 
@@ -656,7 +758,7 @@ export class ZoomPatch
 
         let verifyOK = this.verifyPrm2Buffer();
         if (!verifyOK)
-          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() verifyPrm2Buffer() failed`);
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2Buffer() failed`);
 
         /*
         o prm2 unknown byte 9 is always 0x80. But scanning through patches on MS-50G+ gives 1 anomaly (warning) for this,
@@ -746,6 +848,24 @@ export class ZoomPatch
       prm2Buffer.fill(0, 0, prm2Length);
 
     if (prm2Length > 2) {
+      if ((prm2Buffer[prm2Length - 2] & 0b00001111) != 0) {
+        shouldLog(LogLevel.Warning) && console.warn(`Lower 4 bits of prm2Buffer[prm2Length - 2] should be 0 but was ${prm2Buffer[prm2Length - 2] & 0b00001111}`);
+      }
+      if ((prm2Buffer[prm2Length - 1] & 0b11110000) != 0) {
+        shouldLog(LogLevel.Warning) && console.warn(`Upper 4 bits of prm2Buffer[prm2Length - 1] should be 0 but was ${prm2Buffer[prm2Length - 1] & 0b11110000}`);
+      }
+
+      // FIXME: Investigate if I should be more careful with setting the tempo bits
+      // let tempo1 = this.prm2Buffer[this.prm2Buffer.length -2];
+      // let tempo2 = this.prm2Buffer[this.prm2Buffer.length -1];
+      // tempo1 &=  0b00001111; // blank the 4 upper bits
+      // tempo1 |= (this.tempo & 0b00001111) << 4; // move the 4 lower bits in this.tempo into the 4 upper bits in tempo1
+      // tempo2 &=  0b11110000; // blank the 4 lower bits
+      // tempo2 |= (this.tempo & 0b11110000) >> 4; // move the 4 upper bits in this.tempo into the 4 lower bits in tempo2
+      
+      // this.prm2Buffer[this.prm2Buffer.length -2] = tempo1;
+      // this.prm2Buffer[this.prm2Buffer.length -1] = tempo2;
+
       let tempo1 = (prm2Tempo & 0b00001111) << 4;
       let tempo2 = (prm2Tempo & 0b11110000) >> 4;
       prm2Buffer[prm2Length - 2] = tempo1;
@@ -1068,18 +1188,25 @@ export class ZoomPatch
         return undefined;
       }
 
-      let tempo1 = this.prm2Buffer[this.prm2Buffer.length -2];
-      let tempo2 = this.prm2Buffer[this.prm2Buffer.length -1];
-      tempo1 &=  0b00001111; // blank the 4 upper bits
-      tempo1 |= (this.tempo & 0b00001111) << 4; // move the 4 lower bits in this.tempo into the 4 upper bits in tempo1
-      tempo2 &=  0b11110000; // blank the 4 lower bits
-      tempo2 |= (this.tempo & 0b11110000) >> 4; // move the 4 upper bits in this.tempo into the 4 lower bits in tempo2
-      
-      this.prm2Buffer[this.prm2Buffer.length -2] = tempo1;
-      this.prm2Buffer[this.prm2Buffer.length -1] = tempo2;
-
-      if (this.prm2Length > 10) {
-        this.prm2Buffer[10] = (this.prm2Buffer[10] & 0b00011111) | (this.currentEffectSlot & 0b00000111) << 5;
+      if (this.prm2Buffer === null || this.prm2InvalidEffectSlot === null || this.prm2PatchVolume === null ||
+        this.prm2EditEffectSlot === null || this.prm2BPMSlot === null || this.prm2PreampSlot === null ||
+        this.prm2LineSelSlot === null || this.prm2Tempo === null ||
+        this.prm2Byte2Lower6Bits === null || this.prm2Byte3Upper4Bits === null ||
+        this.prm2Byte9Lower5Bits === null || this.prm2Byte10Bit5 === null || this.edtbEffectSettings === null ||
+        this.prm2Byte13 === null || this.prm2Byte14 === null ||
+        this.prm2Byte20Bit1And8 === null || this.prm2Byte21Lower4Bits === null || this.prm2Byte22Bits3To7 === null ||
+        this.prm2Byte23Upper3Bits === null || this.prm2Byte24 === null)
+      {
+        shouldLog(LogLevel.Warning) && console.error(`Unable to build PRM2 patch buffer. Inconsistent patch data for patch ${this.name}.`);        
+      } 
+      else {
+        this.setPrm2BufferFromDerivedValues(this.prm2Buffer, false, this.prm2InvalidEffectSlot, this.prm2PatchVolume, this.prm2EditEffectSlot,
+          this.edtbEffectSettings.length, this.prm2PreampSlot, this.prm2BPMSlot, this.prm2LineSelSlot, this.prm2Tempo,
+          this.prm2Byte2Lower6Bits, this.prm2Byte3Upper4Bits,
+          this.prm2Byte9Lower5Bits, this.prm2Byte10Bit5,
+          this.prm2Byte13, this.prm2Byte14,
+          this.prm2Byte20Bit1And8, this.prm2Byte21Lower4Bits, this.prm2Byte22Bits3To7,
+          this.prm2Byte23Upper3Bits, this.prm2Byte24);
       }
 
       offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
@@ -1192,7 +1319,11 @@ export class ZoomPatch
         return undefined;
       }
       reversedBytes.set(this.msogEffectsReversedBytes[i], 0);
-      let effectSettings = this.effectSettings[i];
+      let effectSettings: EffectSettings;
+      if (i < this.effectSettings.length)
+        effectSettings = this.effectSettings[i];
+      else
+        effectSettings = new EffectSettings(MSOG_NUM_PARAMS_PER_EFFECT);
 
       let bitpos = reversedBytes.length * 8 - 1;
       setBitsFromNumber(reversedBytes, bitpos, bitpos, effectSettings.enabled ? 1 : 0); bitpos -= 1;
@@ -1250,7 +1381,9 @@ export class ZoomPatch
     this.msogUnknown1[0] |= (leftToRightEffectSlot & 0b00000011) << 6; // the two lower bits in the effect slot number
     this.msogUnknown1[1] &= 0b11111110; // blank the 1 lower bit
     this.msogUnknown1[1] |= (leftToRightEffectSlot & 0b00000100) >> 2; // bit 3 in the effect slot number
-    // let leftToRightEffectSlot = ((this.msogUnknown1[0] & 0b11000000) >> 6) + ((this.msogUnknown1[1] & 0b00000001) << 2);
+
+    this.msogUnknown1[1] &= 0b11100011; // blank bit 3, 4 and 5
+    this.msogUnknown1[1] |= (this.msogNumEffects & 0b00000111) << 2; // move num effects into the these 3 bits
 
     offset = result = this.writeSlice(msogDataBuffer, offset, this.msogUnknown1); success &&= (result !== 0);  
 
@@ -1295,7 +1428,7 @@ export class ZoomPatch
     this.maxNumEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects. See FIXME below on msogNumEffects.
     this.msogEffectsReversedBytes = new Array<Uint8Array>(this.maxNumEffects);
     this.msogEffectSettings = new Array<EffectSettings>();
-    this.ids = new Uint32Array(this.maxNumEffects);
+    this.ids = this.idstore.subarray(0, this.maxNumEffects); // new Uint32Array(this.maxNumEffects);
     for (let i=0; i<this.maxNumEffects; i++) { // Each effect section is 18 bytes
       // P0 = 13 bits. P1 = 13 bits. P2 = 13 bits. P3-P8 = 8 bits
       this.msogEffectsReversedBytes[i] = data.slice(offset, offset + 18).reverse(); offset += 18;
@@ -1335,12 +1468,41 @@ export class ZoomPatch
     this.msogTempo = ((this.msogUnknown1[1] & 0b11100000) >> 5) + ((this.msogUnknown1[2] & 0b00011111) << 3);
 
     let leftToRightEffectSlot = ((this.msogUnknown1[0] & 0b11000000) >> 6) + ((this.msogUnknown1[1] & 0b00000001) << 2);
-    this.msogEditEffectSlot = 5 - leftToRightEffectSlot;
+    this.msogEditEffectSlot = 5 - leftToRightEffectSlot; // might be adjusted below after we have adjusted msogNumEffects
 
     this.msogDSPFullBits = (this.msogUnknown1[0] & 0b00111111);
 
     this.msogNumEffects = (this.msogUnknown1[1] & 0b00011100) >> 2;
-    this.numEffects = this.msogNumEffects;
+
+    // Note: msogNumEffects can in some cases be wrong in the message (0x28) from the pedal.
+    // This has been observed on MS-50G and MS-70CDR in cases when the user deletes an effect 
+    // on the pedal. The patch sent will have the correct effectSettings array, 
+    // with id = 0 for the deleted effect, but the msogNumEffects and possibly msogEditEffectSlot
+    // still have the old values, which are incorrect after the deletion.
+    // If the current patch is requested manually after this, the values will be correct.
+
+    // It is possible to have an empty slot in the first slot and an actual effect in the second slot
+    // So we count from the back
+    let countNumEffects = this.maxNumEffects;
+    for (let i=this.ids.length - 1; i >= 0; i--) {
+      if (this.ids[i] === 0)
+        countNumEffects--;
+      else
+        break;
+    }
+
+    if (this.msogNumEffects !== countNumEffects) {
+      shouldLog(LogLevel.Warning) && console.warn(`msogNumEffects (${this.msogNumEffects}) != number of IDs that are not zero (${countNumEffects}). Changing msogNumEffects to ${countNumEffects}.`);
+      this.msogNumEffects = countNumEffects;
+    }
+
+    this.numEffects = this.msogNumEffects; // see note below and code below to fix this
+
+    if (this.msogEditEffectSlot >= this.msogNumEffects) {
+      shouldLog(LogLevel.Warning) && console.warn(`msogEditEffectSlot (${this.msogEditEffectSlot}) >= msogNumEffects (${this.msogNumEffects}). Changing msogEditEffectSlot to ${this.msogNumEffects - 1}.`);
+      this.msogEditEffectSlot = this.msogNumEffects - 1;
+    }
+
     // FIXME: Think through the difference between num effects used in a patch and the max number of effects for a device
     // we need to read 6 effects here to get the offsets right...
 

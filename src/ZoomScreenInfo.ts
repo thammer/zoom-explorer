@@ -256,6 +256,16 @@ export class ZoomScreenCollection
     parameter.valueString = valueString;
  }
  
+ deleteScreen(screenNumber: number) : void
+ {
+   if (screenNumber < 0 || screenNumber >= this.screens.length) {
+     shouldLog(LogLevel.Error) && console.error(`screenNumber ${screenNumber} out of range`);
+     return;  
+   }
+   
+   this.screens.splice(screenNumber, 1);
+ }
+
   static fromScreenData(data: Uint8Array, offset: number = 0) : ZoomScreenCollection 
   {
     let zoomScreenCollection = new ZoomScreenCollection();
