@@ -13,6 +13,7 @@ import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import { shouldLog, LogLevel } from "./Logger.js";
 import { extendMSOGMapWithMS60BEffects } from "./ZoomEffectMaps.js";
 import zoomEffectIDsAllZDL7 from "./zoom-effect-ids-allzdl7.js";
+import zoomEffectIDsMS200DPlus from "./zoom-effect-ids-ms200dp.js"
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -293,10 +294,12 @@ mapEffectsButton.addEventListener("click", async (event) => {
 
   let zoomDevice = zoomDevices[0];
 
+  //     <p>This is only relevant for the G- and B-series pedals (from the AllZDL7 list), so if you have any other pedals, this mapping probably won't work. 
+
   let text = `
     <p>You're about to start mapping all parameters for all effects on your pedal.</p>
 
-    <p>This is only relevant for the G- and B-series pedals (from the AllZDL7 list), so if you have any other pedals, this mapping probably won't work. 
+    <p>This is only relevant for the MS-200D+ pedal, so if you have any other pedal, this mapping probably won't work. 
     Also, mapping has already been done for the MS-50G+, MS-60B+, and MS-70CDR+ pedals, so there's no need to map these again.</p>
 
     <p>The mapping process will generate a mapping file that is needed for the patch editor to work for your pedal.
@@ -349,9 +352,9 @@ mapEffectsButton.addEventListener("click", async (event) => {
     await sleepForAWhile(600);
 
     mapEffectsButton.innerText = "Cancel";
-    let effectList: Map<number, string> = zoomEffectIDsAllZDL7;
+    let effectList: Map<number, string> = zoomEffectIDsMS200DPlus;
 
-    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsAllZDL7");
+    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsMS200DP");
     mapEffectsButton.innerText = "Save mappings";
 
     infoDialog.show(`Mapping completed. Please click the "Save mappings" button and email the file to h@mmer.no together with the name of your pedal.`);
