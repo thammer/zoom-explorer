@@ -331,11 +331,14 @@
         border-radius: 3px;
         background-color: #EEEEEEAA;
       }
-      table.editEffectTable .effectActionButton:hover {
+      table.editEffectTable .effectActionButton:hover:enabled {
           background-color: #DDDDDD;
       }
-      table.editEffectTable .effectActionButton:active {
+      table.editEffectTable .effectActionButton:active:enabled {
           background-color: #EEEEEE;
+      }
+      table.editEffectTable .effectActionButton:disabled {
+          opacity: 0.3;
       }
       .sendSysexButton {
         float: right;

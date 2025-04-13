@@ -189,11 +189,13 @@ async function start()
     handleEffectSlotOnOff(zoomDevice, effectSlot, on);
   });
 
+  patchEditor.setEffectSlotMoveCallback((effectSlot: number, direction: "left" | "right") => {
+    handleEffectSlotMove(zoomDevice, effectSlot, direction);
+  });
+
   patchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
     handleEffectSlotDelete(zoomDevice, effectSlot);
   });
-
-
 
   // shouldLog(LogLevel.Info) && console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
@@ -1488,6 +1490,36 @@ function handleEffectSlotDelete(zoomDevice: ZoomDevice, effectSlot: number) {
   }
 }
 
+function handleEffectSlotMove(zoomDevice: ZoomDevice, effectSlot: number, direction: "left" | "right") {
+  if (currentZoomPatch === undefined) {
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when currentZoomPatch is undefined")
+    return;
+  }
+
+  if (currentZoomPatch.effectSettings !== null && effectSlot < currentZoomPatch.effectSettings.length)
+  {
+    shouldLog(LogLevel.Info) && console.log(`Moving effect in slot ${effectSlot} ${direction}`);
+
+    if (effectSlot === 0 && direction === "right") {
+      shouldLog(LogLevel.Error) && console.error(`Cannot move effect in effectSlot ${effectSlot} (the rightmost slot) to the right`);
+      return;
+    }
+
+    if (effectSlot === currentZoomPatch.effectSettings.length - 1 && direction === "left") {
+      shouldLog(LogLevel.Error) && console.error(`Cannot move effect in effectSlot ${effectSlot} (the leftmost slot) to the left`);
+      return;
+    }
+
+    let destinationEffectSlot = direction === "left" ? effectSlot + 1 : effectSlot - 1;
+
+    currentZoomPatch.swapEffectsInSlots(effectSlot, destinationEffectSlot);
+    zoomDevice.swapScreensForEffectSlots(effectSlot, destinationEffectSlot);
+    zoomDevice.uploadPatchToCurrentPatch(currentZoomPatch);
+
+    updatePatchInfoTable(currentZoomPatch);
+    getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
+  }
+}
 
 function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectSettings>(zoomDevice: ZoomDevice, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
   syncToCurrentPatchOnPedalImmediately = true)

@@ -187,6 +187,72 @@ export class ZoomPatch
       return null;
   }
 
+  public swapEffectsInSlots(effectSlot1: number, effectSlot2: number): void
+  {
+    if (this.effectSettings === null) {
+      shouldLog(LogLevel.Error) && console.error(`Attempted to swap effects in slots ${effectSlot1} and ${effectSlot2} when effectSettings is null`);
+      return;
+    }
+    
+    if (effectSlot1 < 0 || effectSlot1 >= this.effectSettings.length) {
+      shouldLog(LogLevel.Error) && console.error(`effectSlot1 ${effectSlot1} out of range: [0, ${this.effectSettings.length - 1}]`);
+      return;
+    }
+
+    if (effectSlot2 < 0 || effectSlot2 >= this.effectSettings.length) {
+      shouldLog(LogLevel.Error) && console.error(`effectSlot2 ${effectSlot2} out of range: [0, ${this.effectSettings.length - 1}]`);
+      return;
+    }
+
+    if (effectSlot1 === effectSlot2) {
+      shouldLog(LogLevel.Error) && console.error(`Cannot swap 2 identical effect slots ${effectSlot1}`)
+    }
+
+    let tempEffectSettings = this.effectSettings[effectSlot2];
+    this.effectSettings[effectSlot2] = this.effectSettings[effectSlot1];
+    this.effectSettings[effectSlot1] = tempEffectSettings;
+
+    // Update ptcf IDs
+    if (this.ids !== null) {
+      let tempID = this.ids[effectSlot2];
+      this.ids[effectSlot2] = this.ids[effectSlot1];
+      this.ids[effectSlot1] = tempID;
+    }
+
+    if (this.edtbReversedBytes !== null) {
+      let tempReversedBytes = this.edtbReversedBytes[effectSlot2];
+      this.edtbReversedBytes[effectSlot2] = this.edtbReversedBytes[effectSlot1];
+      this.edtbReversedBytes[effectSlot1] = tempReversedBytes;
+    }
+    else if (this.msogEffectsReversedBytes !== null) {
+      let tempReversedBytes = this.msogEffectsReversedBytes[effectSlot2];
+      this.msogEffectsReversedBytes[effectSlot2] = this.msogEffectsReversedBytes[effectSlot1];
+      this.msogEffectsReversedBytes[effectSlot1] = tempReversedBytes;
+    }
+
+    this.currentEffectSlot = effectSlot2;
+
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlot = this.currentEffectSlot;
+    else if (this.msogEditEffectSlot !== null)
+      this.msogEditEffectSlot = this.currentEffectSlot;
+    
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlotBits = ZoomPatch.effectSlotToPrm2BitPattern(this.prm2EditEffectSlot, this.effectSettings.length);
+
+    if (this.prm2InvalidEffectSlot !== null)
+      this.prm2InvalidEffectSlot = ZoomPatch.swapBits(this.prm2InvalidEffectSlot, effectSlot1, effectSlot2);
+
+    if (this.prm2PreampSlot !== null)
+      this.prm2PreampSlot = ZoomPatch.swapBits(this.prm2PreampSlot, effectSlot1, effectSlot2);
+
+    if (this.prm2BPMSlot !== null)
+      this.prm2BPMSlot = ZoomPatch.swapBits(this.prm2BPMSlot, effectSlot1, effectSlot2);
+
+    if (this.prm2LineSelSlot !== null)
+      this.prm2LineSelSlot = ZoomPatch.swapBits(this.prm2LineSelSlot, effectSlot1, effectSlot2);  
+  }
+
   public deleteEffectInSlot(effectSlot: number)
   {
     if (this.effectSettings === null) {
@@ -242,7 +308,13 @@ export class ZoomPatch
       }
     }
     else if (this.msogEffectsReversedBytes !== null) {
-      // should probably move some bytes, insert 0 at the end?
+      if (this.msogEffectsReversedBytes.length === 1) {
+        // An empty patch has one effect (slot 0) with ID 0 and all params 0
+        this.msogEffectsReversedBytes[0].fill(0);
+      }
+      else {
+        this.msogEffectsReversedBytes.splice(effectSlot, 1);
+      }
     }
 
     if (this.edtbLength !== null && this.edtbReversedBytes !== null) {
@@ -271,6 +343,19 @@ export class ZoomPatch
 
     if (this.prm2LineSelSlot !== null)
       this.prm2LineSelSlot = ZoomPatch.deleteBitAndShiftUpperBits(this.prm2LineSelSlot, effectSlot);  
+  }
+
+  private static swapBits(bitPattern: number, bit1: number, bit2: number): number
+  {
+    let bitMask = ((~(1 << bit1)) & 0b11111111) | ((~(1 << bit2)) & 0b11111111)     
+    bitPattern &= bitMask;
+    
+    let bit1Value = (bitPattern & (1 << bit1)) >> bit1;
+    let bit2Value = (bitPattern & (1 << bit2)) >> bit2;
+
+    bitPattern |= (bit1Value << bit2) | (bit2Value << bit1);
+
+    return bitPattern;
   }
 
   private static deleteBitAndShiftUpperBits(bitPattern: number, bit: number): number

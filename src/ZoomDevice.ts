@@ -809,6 +809,13 @@ export class ZoomDevice implements IManagedMIDIDevice
       this.currentScreenCollection.deleteScreen(effectSlot);
   }
 
+  public swapScreensForEffectSlots(effectSlot1: number, effectSlot2: number)
+  {
+    // Update screens
+    if (this.currentScreenCollection !== undefined)
+      this.currentScreenCollection.swapScreens(effectSlot1, effectSlot2);
+  }
+
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
   {
     let reply: Uint8Array | undefined;
@@ -1779,7 +1786,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         let changed = this.syncStateWithNewBankAndProgram(this._currentBank, program);
         // Note: On MS Plus series, we will probably have received a message with bank and program change earlier on, bankAndProgramNumberV2
         // Screen is not updated yet on the pedal then, but hopefully it'll be updated now.
-        if (this._autoUpdateScreens)
+        if (changed && this._autoUpdateScreens)
           this.updateScreens();
 
         if (changed)
