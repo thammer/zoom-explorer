@@ -2,17 +2,14 @@ import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { getChannelMessage, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
-import { decodeWFCFromString, encodeWFCToString, WFCFormatType } from "./wfc.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { EffectParameterMap, ZoomDevice } from "./ZoomDevice.js";
 import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
-import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import { shouldLog, LogLevel } from "./Logger.js";
 import { extendMSOGMapWithMS60BEffects } from "./ZoomEffectMaps.js";
-import zoomEffectIDsAllZDL7 from "./zoom-effect-ids-allzdl7.js";
 import zoomEffectIDsMS200DPlus from "./zoom-effect-ids-ms200dp.js"
 
 function getZoomCommandName(data: Uint8Array) : string
@@ -290,6 +287,8 @@ let mappings: { [key: string]: EffectParameterMap; } | undefined;
 
 let mapEffectsButton: HTMLButtonElement = document.getElementById("mapEffectsButton") as HTMLButtonElement;
 let origonalMapEffectsLabel = mapEffectsButton.innerText;
+let isMappingEffects = false;
+
 mapEffectsButton.addEventListener("click", async (event) => {
 
   let zoomDevice = zoomDevices[0];
@@ -317,7 +316,7 @@ mapEffectsButton.addEventListener("click", async (event) => {
   `;
 
 
-  if (mapEffectsButton.innerText == "Cancel") {
+  if (mapEffectsButton.innerText.includes("Cancel")) {
     zoomDevice.cancelMapping();
     mapEffectsButton.innerText = "...";
     return;
@@ -326,24 +325,28 @@ mapEffectsButton.addEventListener("click", async (event) => {
   if (mappings === undefined) {
     let result = await confirmDialog.getUserConfirmation(text);
 
-    if (!result)
+    if (!result) 
       return;
 
+    // Select the patch with fewest effect slots in use (1 or more)
     if (zoomDevice.currentPatch === undefined || zoomDevice.currentPatch.effectSettings === null || 
-      zoomDevice.currentPatch.effectSettings[0].id === 0)
+      zoomDevice.currentPatch.effectSettings.length != 1 || zoomDevice.currentPatch.effectSettings[0].id === 0)
     {
-      // Select a non-empty patch
       if (zoomDevice.patchList.length <1)
         await updatePatchList();
 
+      let mostSuitableMemorySlot = 0;
+      let minNumSlots = 10;
       let memorySlot = 0;
       while (memorySlot < zoomDevice.patchList.length) {
         let patch = zoomDevice.patchList[memorySlot];
-        if (patch.effectSettings !== null && patch.effectSettings[0].id !== 0)
-          break;
+        if (patch.effectSettings !== null && patch.effectSettings[0].id !== 0 && patch.effectSettings.length <= minNumSlots) {
+          mostSuitableMemorySlot = memorySlot;
+          minNumSlots = patch.effectSettings.length;
+        }
         memorySlot++;
       }
-      zoomDevice.setCurrentMemorySlot(memorySlot)
+      zoomDevice.setCurrentMemorySlot(mostSuitableMemorySlot)
     }
 
     zoomDevice.setAutoSave(false);   
@@ -352,9 +355,15 @@ mapEffectsButton.addEventListener("click", async (event) => {
     await sleepForAWhile(600);
 
     mapEffectsButton.innerText = "Cancel";
+    isMappingEffects = true;
+
     let effectList: Map<number, string> = zoomEffectIDsMS200DPlus;
 
-    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsMS200DP");
+    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsMS200DP", (effectName: string, effectID: number, totalNumEffects: number) => {
+      mapEffectsButton.innerText = `Mapping ${effectName} ${effectID}/${totalNumEffects}. Click to Cancel.`;
+    });
+
+    isMappingEffects = false;
     mapEffectsButton.innerText = "Save mappings";
 
     infoDialog.show(`Mapping completed. Please click the "Save mappings" button and email the file to h@mmer.no together with the name of your pedal.`);
@@ -677,6 +686,9 @@ function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number
 
 async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
 {
+  if (isMappingEffects)
+    return;
+
   shouldLog(LogLevel.Info) && console.log(`Screen changed`);
   getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
 }
@@ -703,6 +715,9 @@ function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 
 function handleCurrentPatchChanged(zoomDevice: ZoomDevice): void 
 {
+  if (isMappingEffects)
+    return;
+
   // Handle updates to name. 
   // Don't know if we really need this for anything else.
   shouldLog(LogLevel.Info) && console.log(`Current patch changed`);
@@ -730,6 +745,9 @@ function handleTempoChanged(zoomDevice: ZoomDevice, tempo: number): void {
 // FIXME: Look into if it's a good idea to have this function be async. 2024-06-26.
 async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array): Promise<void>
 {
+  if (isMappingEffects)
+    return;
+
   let [messageType, channel, data1, data2] = getChannelMessage(data); 
 
   let device = zoomDevice.deviceInfo;

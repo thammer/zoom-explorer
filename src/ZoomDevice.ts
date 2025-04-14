@@ -77,6 +77,7 @@ export type ParameterValueMap = {
 
 export type EffectParameterMap = {
   name: string,
+  screenName: null | string,
   parameters: Array<ParameterValueMap>
 };
 
@@ -132,7 +133,8 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _patchListDownloadInProgress: boolean = false;
   private _autoRequestPatchForMemorySlotInProgress: boolean = false;
   private _autoRequestPatchMemorySlotNumber: number = -1; 
-  private _disableMidiHandlers: boolean = false;;
+  private _disableMidiHandlers: boolean = false;
+  private _isMappingParameters: boolean = false;
   private _cancelMapping: boolean = false;
 
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
@@ -1075,6 +1077,9 @@ export class ZoomDevice implements IManagedMIDIDevice
       }
     }
 
+    if (this._isMappingParameters)
+      return;
+    
     this.updateScreens();
   }
 
@@ -2332,12 +2337,16 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._cancelMapping = true;
   }
 
-  public async mapParameters(effectList: Map<number, string>, effectListName: string): Promise<{ [key: string]: EffectParameterMap; } | undefined>
+  public async mapParameters(effectList: Map<number, string>, effectListName: string, 
+    progressCallback?: (currrentEffectName: string, currentEffect: number, totalNumEffects: number) => void): Promise<{ [key: string]: EffectParameterMap; } | undefined>
   {
     this._disableMidiHandlers = true;
+    this._isMappingParameters = true;
     
     if (this.currentPatch === undefined || this.currentPatch.effectSettings === null) {
       shouldLog(LogLevel.Error) && console.error("Cannot map parameters when currentPatch == undefined or currentPatch.effectSettings == null");
+      this._disableMidiHandlers = false;
+      this._isMappingParameters = false
       return undefined;
     }
 
@@ -2345,11 +2354,15 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     if (patch.effectSettings === null) {
       shouldLog(LogLevel.Error) && console.error("patch.effectSettings == null. This is a bug.");
+      this._disableMidiHandlers = false;
+      this._isMappingParameters = false;
       return undefined;
     }
 
     if (patch.effectSettings.length < 1) {
       shouldLog(LogLevel.Error) && console.error("patch.effectSettings.length < 1. Aborting mapping.");
+      this._disableMidiHandlers = false;
+      this._isMappingParameters = false;
       return undefined;
     }
 
@@ -2420,30 +2433,42 @@ export class ZoomDevice implements IManagedMIDIDevice
       if (screenCollection === undefined) {
         shouldLog(LogLevel.Error) && console.error("*** Failed to download screens while verifying patch, aborting mapping ***");
         setLogLevel(logLevel); // enable MIDI logging again
+        this._disableMidiHandlers = false;
+        this._isMappingParameters = false;
         return undefined;
       }
 
-      if (screenCollection.screens.length != 1) {
+      if (screenCollection.screens.length < 1) {
         shouldLog(LogLevel.Error) && console.error(`*** screenCollection.screens.length ${screenCollection.screens.length} is out of range while verifying patch, aborting mapping ***`);
         setLogLevel(logLevel); // enable MIDI logging again
+        this._disableMidiHandlers = false;
+        this._isMappingParameters = false;
         return undefined;
       }
 
       let screen = screenCollection.screens[0].parameters;
 
       if (screen[1].name.toUpperCase() !== effectList.get(id)?.toUpperCase()) {
-        shouldLog(LogLevel.Warning) && console.warn(`*** screen[1].name "${screen[1].name}" does not match ${effectListName}.get(id) "${effectList.get(id)}" while verifying patch, skipping effect ***`);
+        shouldLog(LogLevel.Warning) && console.warn(`*** screen[1].name "${screen[1].name}" does not match ${effectListName}.get(id) "${effectList.get(id)}" while verifying patch, not skipping effect ***`);
         shouldLog(LogLevel.Warning) && console.warn(`Screen: ${JSON.stringify(screen)}`);
-        counter++;
-        continue;
+        // Note: In some cases this is just a slight mismatch between the effect name and the screen name, e.g. "Orange Limi" vs "Orange Lim"
+        // But it could also mean that the effect was completely missing from the pedal, which should be investigated.
+        // This means that the resulting mapping file should be exained to see if the differences between name and screenName are significant.
+ //       counter++;
+ //       continue;
       }
 
       let effectSettings: EffectSettings = patch.effectSettings[0];
 
       shouldLog(LogLevel.Info) && console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length} parameters`);
 
+      if (progressCallback) {
+        progressCallback(`${effectList.get(id)}`, counter, numEffects);
+      }
+
       let mappingsForEffect: EffectParameterMap = {
         name: effectList.get(id)!,
+        screenName: screen[1].name,
         parameters: new Array<ParameterValueMap>()
       }; 
     
@@ -2480,7 +2505,7 @@ export class ZoomDevice implements IManagedMIDIDevice
 
       counter++;
 
-      await sleepForAWhile(100); // let the chrome console catch up ???
+      await sleepForAWhile(200); // let the chrome console catch up ???
     }
 
     let timeSpent = performance.now() - startTime;
@@ -2502,6 +2527,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     //this.uploadCurrentPatch(originalCurrentPatch);
 
     this._disableMidiHandlers = false;
+    this._isMappingParameters = false;
 
     setLogLevel(logLevel); // enable MIDI logging again
 
