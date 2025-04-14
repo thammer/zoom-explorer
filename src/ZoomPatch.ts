@@ -79,6 +79,10 @@ const PTCF_EFFECT_GROUP_REVERB     = 9;
 const PTCF_EFFECT_GROUP_MASK = 0xFF000000;
 const PTCF_EFFECT_GROUP_SHIFT = 24;
 
+const PTCF_EDTB_REVERSED_BYTES_SIZE = 24;
+
+const MSOG_REVERSED_BYTES_SIZE = 18;
+
 const MSOG_NUM_PARAMS_PER_EFFECT = 9;
 
 /**
@@ -318,7 +322,7 @@ export class ZoomPatch
     }
 
     if (this.edtbLength !== null && this.edtbReversedBytes !== null) {
-      this.edtbLength = this.edtbReversedBytes.length * 24;
+      this.edtbLength = this.edtbReversedBytes.length * PTCF_EDTB_REVERSED_BYTES_SIZE;
     }
 
     if (effectSlot <= this.currentEffectSlot)
@@ -345,6 +349,124 @@ export class ZoomPatch
       this.prm2LineSelSlot = ZoomPatch.deleteBitAndShiftUpperBits(this.prm2LineSelSlot, effectSlot);  
   }
 
+  /**
+   * Adds a new effect in the given slot. Existing effects are shifted to the left.
+   * @param effectSlot 
+   * @param effectSettings 
+   * @returns 
+   */
+  public addEffectInSlot(effectSlot: number, effectSettings: EffectSettings)
+  {
+    if (this.effectSettings === null) {
+      shouldLog(LogLevel.Error) && console.error(`Attempted to delete effect from slot ${effectSlot} when effectSettings is null`);
+      return;
+    }
+    
+    if (effectSlot < 0 || effectSlot > this.effectSettings.length) {
+      shouldLog(LogLevel.Error) && console.error(`effectSlot ${effectSlot} out of range: [0, ${this.effectSettings.length}]`);
+      return;
+    }
+
+    if (this.effectSettings.length === this.maxNumEffects) {
+      shouldLog(LogLevel.Error) && console.error(`Attempted to add effect in slot ${effectSlot} when all ${this.maxNumEffects} slots are full already`);
+      return;
+    }
+
+    this.effectSettings.splice(effectSlot, 0, effectSettings);
+
+    // Update IDs
+    if (this.ids !== null) {
+      for (let i=effectSlot + 1; i<this.effectSettings.length; i++) {
+        this.ids[i] = this.ids[i-1];
+      }
+      this.ids[effectSlot] = effectSettings.id;
+    }
+
+    if (this.numEffects !== null)
+      this.numEffects++;
+
+    if (this.msogNumEffects !== null)
+      this.msogNumEffects = this.numEffects;
+
+    if (this.edtbReversedBytes !== null) {
+      let reversedBytes = new Uint8Array(PTCF_EDTB_REVERSED_BYTES_SIZE);
+      reversedBytes.fill(0); // See readPTCFChunks(), edtbReversedBytes part, assuming all excess bytes are 0
+
+      for (let i=effectSlot + 1; i<this.effectSettings.length; i++) {
+        this.edtbReversedBytes[i] = this.edtbReversedBytes[i-1];
+      }
+      this.edtbReversedBytes[effectSlot] = reversedBytes;
+    }
+    else if (this.msogEffectsReversedBytes !== null) {
+      let reversedBytes = new Uint8Array(MSOG_REVERSED_BYTES_SIZE);
+      reversedBytes.fill(0); 
+
+      for (let i=effectSlot + 1; i<this.effectSettings.length; i++) {
+        this.msogEffectsReversedBytes[i] = this.msogEffectsReversedBytes[i-1];
+      }
+      this.msogEffectsReversedBytes[effectSlot] = reversedBytes;
+    }
+
+    if (this.edtbLength !== null && this.edtbReversedBytes !== null) {
+      this.edtbLength = this.edtbReversedBytes.length * PTCF_EDTB_REVERSED_BYTES_SIZE;
+    }
+    
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlotBits = ZoomPatch.effectSlotToPrm2BitPattern(this.prm2EditEffectSlot, this.effectSettings.length);
+
+    if (this.prm2InvalidEffectSlot !== null)
+      this.prm2InvalidEffectSlot = ZoomPatch.insertBitAndShiftUpperBits(this.prm2InvalidEffectSlot, effectSlot, 0); // assume the inserted effect is valid
+
+    if (this.prm2PreampSlot !== null)
+      this.prm2PreampSlot = ZoomPatch.createPreampSlotBits(this.effectSettings);
+
+    if (this.prm2BPMSlot !== null)
+      this.prm2BPMSlot = ZoomPatch.createBPMSlotBits(this.effectSettings);
+
+    if (this.prm2LineSelSlot !== null)
+      this.prm2LineSelSlot = ZoomPatch.createLineSelSlotBits(this.effectSettings);
+  }
+
+  static createPreampSlotBits(effectSettings: Array<EffectSettings>): number
+  {
+    let preampBits: number = 0;
+
+    for (let i = 0; i < effectSettings.length; i++) {
+      let group = (effectSettings[i].id & PTCF_EFFECT_GROUP_MASK) >> PTCF_EFFECT_GROUP_SHIFT;
+      if (group === PTCF_EFFECT_GROUP_PREAMP) {
+        preampBits |= 1 << i;
+      }
+    }
+
+    return preampBits;
+  }
+
+  static createBPMSlotBits(effectSettings: Array<EffectSettings>): number
+  {
+    let bpmBits: number = 0;
+
+    for (let i = 0; i < effectSettings.length; i++) {
+      if (effectSettings[i].id === 0x07000ff0) { // see zoom-effect-ids-ms70cdrp.ts, last effect in list
+        bpmBits |= 1 << i;
+      }
+    }
+
+    return bpmBits;
+  }
+
+  static createLineSelSlotBits(effectSettings: Array<EffectSettings>): number
+  {
+    let lineSelBits: number = 0;
+
+    for (let i = 0; i < effectSettings.length; i++) {
+      if (effectSettings[i].id === 0x07000f00 || effectSettings[i].id === 0x09000f00) { // see zoom-effect-ids-ms70cdrp.ts and  zoom-effect-ids-ms60bp.ts, "LineSel"
+        lineSelBits |= 1 << i;
+      }
+    }
+
+    return lineSelBits;
+  }
+
   private static swapBits(bitPattern: number, bit1: number, bit2: number): number
   {
     let bitMask = ((~(1 << bit1)) & 0b11111111) | ((~(1 << bit2)) & 0b11111111)     
@@ -363,6 +485,14 @@ export class ZoomPatch
     let upperBits = (bitPattern >> (bit + 1)) << bit;
     let lowerBits = bitPattern & (0b11111111 >> (8 - bit));
     return lowerBits + upperBits;
+  }
+
+  private static insertBitAndShiftUpperBits(bitPattern: number, bit: number, value: number): number
+  { 
+    let upperBits = (bitPattern >> bit) << (bit + 1);
+    let lowerBits = bitPattern & (0b11111111 >> (8 - bit));
+    let valueBitShifted = (value & 0b0000001) << bit;
+    return lowerBits + valueBitShifted + upperBits;
   }
 
   //                                  5.  4.  3.  2.  1.  0.
@@ -399,9 +529,9 @@ export class ZoomPatch
   txe1Length: null | number = null; // 4 bytes
   txe1DescriptionEnglish: null | string = null; // txe1Length bytes
 
-  EDTB: null | string = null; // 4 + 4 + numEffects * 24 bytes == 4 + 4 + edtbLength bytes
+  EDTB: null | string = null; // 4 + 4 + numEffects * 24 bytes == 4 + 4 + edtbLength bytes (numEffects * PTCF_EDTB_REVERSED_BYTES_SIZE)
   edtbLength: null | number = null; // 4 bytes
-  edtbReversedBytes: null | Array<Uint8Array> = null; // numEffects * 24 bytes == edtbLength bytes
+  edtbReversedBytes: null | Array<Uint8Array> = null; // numEffects * 24 bytes == edtbLength bytes (PTCF_EDTB_REVERSED_BYTES_SIZE)
   edtbEffectSettings: null | Array<EffectSettings> = null;
 
   PRM2: null | string = null; // 4 + 4 + prm2Length
@@ -434,7 +564,7 @@ export class ZoomPatch
   // Zoom MS OriGinal pedal info below
   MSOG: null | string = null; // This is not a named chunk. The original MS pedals doesn't have a chunk-based layout but rather a fixed structure.
   msogEffectSettings: null | Array<EffectSettings> = null;
-  msogEffectsReversedBytes: null | Array<Uint8Array> = null; // numEffects * 18 bytes
+  msogEffectsReversedBytes: null | Array<Uint8Array> = null; // numEffects * 18 bytes (MSOG_REVERSED_BYTES_SIZE)
   msogUnknown1: null | Uint8Array = null; // 3 bytes
   msogName: null | string = null; // 10 bytes
   msogUnknown2: null | Uint8Array = null; // 1 byte
@@ -760,7 +890,7 @@ export class ZoomPatch
         this.edtbReversedBytes = new Array<Uint8Array>(this.numEffects);
         this.edtbEffectSettings = new Array<EffectSettings>();
         for (let i=0; i<this.numEffects; i++) {
-          this.edtbReversedBytes[i] = chunkData.slice(chunkOffset, chunkOffset + 24).reverse(); chunkOffset += 24;
+          this.edtbReversedBytes[i] = chunkData.slice(chunkOffset, chunkOffset + PTCF_EDTB_REVERSED_BYTES_SIZE).reverse(); chunkOffset += PTCF_EDTB_REVERSED_BYTES_SIZE;
           let bitpos = this.edtbReversedBytes[i].length * 8 - 1;
           let effectSettings = new EffectSettings();
           effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
@@ -778,7 +908,15 @@ export class ZoomPatch
             let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
             effectSettings.parameters.push(parameter);
           }
+          
           this.edtbEffectSettings.push(effectSettings);
+
+          for (let p=12; p<15 && bitpos -8 >= 0; p++) {
+            let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 7, bitpos); bitpos -= 7;
+            if (parameter !== 0) {
+              shouldLog(LogLevel.Warning) && console.warn(`Byte at edtbReversedBytes[${i}] bitpos ${bitpos} !== 0`);
+            }
+          }
         }
       }
     }
@@ -841,9 +979,17 @@ export class ZoomPatch
           this.prm2Byte24 = this.prm2Buffer[24];          
         }
 
-        let verifyOK = this.verifyPrm2Buffer();
-        if (!verifyOK)
+        if (!this.verifyPrm2Buffer())
           shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2Buffer() failed`);
+
+        if (!this.verifyPrm2PreampSlotBits())
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2PreampSlotBits() failed`);
+
+        if (!this.verifyPrm2BPMSlotBits())
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2BPMSlotBits() failed`);
+
+        if (!this.verifyPrm2LineSelSlotBits())
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2LineSelSlotBits() failed`);
 
         /*
         o prm2 unknown byte 9 is always 0x80. But scanning through patches on MS-50G+ gives 1 anomaly (warning) for this,
@@ -991,31 +1137,28 @@ export class ZoomPatch
     }
   }
 
-  verifyPrm2PreampBits(): boolean
+  verifyPrm2PreampSlotBits(): boolean
   {
     if (this.prm2PreampSlot === null || this.edtbEffectSettings === null)
       return false;
 
-    return this.prm2PreampSlot === this.generatePrm2PreampBits();
+    return this.prm2PreampSlot === ZoomPatch.createPreampSlotBits(this.edtbEffectSettings);
   }
 
-  generatePrm2PreampBits(): number
+  verifyPrm2BPMSlotBits(): boolean
   {
-    if (this.prm2PreampSlot === null || this.edtbEffectSettings === null) {
-      shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.generatePrm2PreampBits() - this.prm2PreampBits == null || this.edtbEffectSettings == null`);
-      return 0;
-    }
+    if (this.prm2BPMSlot === null || this.edtbEffectSettings === null)
+      return false;
 
-    let preampBits: number = 0;
+    return this.prm2BPMSlot === ZoomPatch.createBPMSlotBits(this.edtbEffectSettings);
+  }
 
-    for (let i = 0; i < this.edtbEffectSettings.length; i++) {
-      let group = (this.edtbEffectSettings[i].id & PTCF_EFFECT_GROUP_MASK) >> PTCF_EFFECT_GROUP_SHIFT;
-      if (group === PTCF_EFFECT_GROUP_PREAMP) {
-        preampBits |= 1 << i;
-      }
-    }
+  verifyPrm2LineSelSlotBits(): boolean
+  {
+    if (this.prm2LineSelSlot === null || this.edtbEffectSettings === null)
+      return false;
 
-    return preampBits;
+    return this.prm2LineSelSlot === ZoomPatch.createLineSelSlotBits(this.edtbEffectSettings);
   }
 
   /**
@@ -1028,7 +1171,7 @@ export class ZoomPatch
     if (this.PTCF === null) {
       shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch ${this.name}. PTCF == null`);
       return undefined;
-  }
+    }
 
     // TXJ1 chunk (japanese description) is assumed to be unchanged
 
@@ -1226,7 +1369,7 @@ export class ZoomPatch
     offset = result = this.writeInt32(ptcfChunk, offset, this.edtbLength); success &&= (result !== 0);
 
     for (let i=0; i<this.numEffects; i++) {
-      let reversedBytes = new Uint8Array(24);
+      let reversedBytes = new Uint8Array(PTCF_EDTB_REVERSED_BYTES_SIZE);
       if (this.edtbReversedBytes[i].length !== reversedBytes.length) {
         shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer for patch "${this.name}". Unexpected length of edtbReversedBytes[${i}]. edtbReversedBytes[${i}] = ${this.edtbReversedBytes[i].length}, expected ${reversedBytes.length}.`);
         return undefined;
@@ -1340,6 +1483,18 @@ export class ZoomPatch
       return undefined;
     }
 
+    if (!this.verifyPrm2Buffer())
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2Buffer() failed`);
+
+    if (!this.verifyPrm2PreampSlotBits())
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2PreampSlotBits() failed`);
+
+    if (!this.verifyPrm2BPMSlotBits())
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2BPMSlotBits() failed`);
+
+    if (!this.verifyPrm2LineSelSlotBits())
+      shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2LineSelSlotBits() failed`);
+
     // compareBuffers(ptcfChunk, this.ptcfChunk);
 
     this.ptcfChunk = ptcfChunk;
@@ -1378,7 +1533,7 @@ export class ZoomPatch
       return undefined;
     }
 
-    let effectSectionLength = 18;
+    let effectSectionLength = MSOG_REVERSED_BYTES_SIZE;
 
     let msogTotalLength = this.maxNumEffects * effectSectionLength + this.msogUnknown1.length + this.msogName.length + this.msogUnknown2.length;
 
@@ -1501,7 +1656,7 @@ export class ZoomPatch
   }
 
   // Byte  #bytes  Meaning
-  //    0  108     Effect parameters, 6x18 bytes
+  //    0  108     Effect parameters, 6x18 bytes (6xMSOG_REVERSED_BYTES_SIZE)
   //  108    3     Unknown bytes
   //  111   10     Name
   //  121    1     Unknown byte
@@ -1514,9 +1669,9 @@ export class ZoomPatch
     this.msogEffectsReversedBytes = new Array<Uint8Array>(this.maxNumEffects);
     this.msogEffectSettings = new Array<EffectSettings>();
     this.ids = this.idstore.subarray(0, this.maxNumEffects); // new Uint32Array(this.maxNumEffects);
-    for (let i=0; i<this.maxNumEffects; i++) { // Each effect section is 18 bytes
+    for (let i=0; i<this.maxNumEffects; i++) { // Each effect section is 18 bytes (MSOG_REVERSED_BYTES_SIZE)
       // P0 = 13 bits. P1 = 13 bits. P2 = 13 bits. P3-P8 = 8 bits
-      this.msogEffectsReversedBytes[i] = data.slice(offset, offset + 18).reverse(); offset += 18;
+      this.msogEffectsReversedBytes[i] = data.slice(offset, offset + MSOG_REVERSED_BYTES_SIZE).reverse(); offset += MSOG_REVERSED_BYTES_SIZE;
       let bitpos = this.msogEffectsReversedBytes[i].length * 8 - 1;
       let effectSettings = new EffectSettings();
       effectSettings.enabled = (getNumberFromBits(this.msogEffectsReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
