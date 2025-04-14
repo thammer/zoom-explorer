@@ -227,13 +227,20 @@ async function downloadEffectMaps() {
   shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   let mapForMS70CDRPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
   shouldLog(LogLevel.Info) && console.log(`mapForMS70CDRPlus.size = ${mapForMS70CDRPlus.size}`);
-    
+
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-ms60bp.json");
   shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   let mapForMS60BPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
   
   shouldLog(LogLevel.Info) && console.log(`mapForMS60BPlus.size = ${mapForMS60BPlus.size}`);
+  
+  startTime = performance.now();
+  obj = await downloadJSONResource("zoom-effect-mappings-ms200dp.json");
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  let mapForMS200DPlus: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+  
+  shouldLog(LogLevel.Info) && console.log(`mapForMS200DPlus.size = ${mapForMS200DPlus.size}`);
   
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
@@ -260,7 +267,9 @@ async function downloadEffectMaps() {
   ZoomDevice.setEffectIDMap(["MS-50G+", "MS-70CDR+"], parameterMap);
 
   ZoomDevice.setEffectIDMap(["MS-60B+"], mapForMS60BPlus);
-  
+
+  ZoomDevice.setEffectIDMap(["MS-200D+"], mapForMS200DPlus);
+
   //ZoomDevice.setEffectIDMap(mapForMS70CDRPlus);
 
   // mapForMSOG.forEach( (value, key) => {
