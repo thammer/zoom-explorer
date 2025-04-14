@@ -1516,7 +1516,6 @@ function handleEffectSlotDelete(zoomDevice: ZoomDevice, effectSlot: number) {
     zoomDevice.uploadPatchToCurrentPatch(currentZoomPatch);
 
     updatePatchInfoTable(currentZoomPatch);
-    getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
   }
 }
 
@@ -1547,7 +1546,6 @@ function handleEffectSlotMove(zoomDevice: ZoomDevice, effectSlot: number, direct
     zoomDevice.uploadPatchToCurrentPatch(currentZoomPatch);
 
     updatePatchInfoTable(currentZoomPatch);
-    getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
   }
 }
 
