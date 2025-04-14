@@ -1,5 +1,5 @@
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
-import { ZoomScreenCollection } from "./ZoomScreenInfo.js";
+import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { DeviceID, IMIDIProxy, ListenerType, MessageType } from "./midiproxy.js";
 import { getChannelMessage } from "./miditools.js";
 import { Throttler } from "./throttler.js";
@@ -809,6 +809,15 @@ export class ZoomDevice implements IManagedMIDIDevice
     // Update screens
     if (this.currentScreenCollection !== undefined)
       this.currentScreenCollection.deleteScreen(effectSlot);
+    this.emitScreenChangedEvent();
+  }
+
+  public addScreenForEffectInSlot(effectSlot: number, screen: ZoomScreen)
+  {
+    // Update screens
+    if (this.currentScreenCollection !== undefined)
+      this.currentScreenCollection.insertScreen(effectSlot, screen);
+    this.emitScreenChangedEvent();
   }
 
   public swapScreensForEffectSlots(effectSlot1: number, effectSlot2: number)
@@ -816,6 +825,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     // Update screens
     if (this.currentScreenCollection !== undefined)
       this.currentScreenCollection.swapScreens(effectSlot1, effectSlot2);
+    this.emitScreenChangedEvent();
   }
 
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>

@@ -266,6 +266,16 @@ export class ZoomScreenCollection
     this.screens.splice(screenNumber, 1);
   }
 
+  insertScreen(screenNumber: number, screen: ZoomScreen) : void
+  {
+    if (screenNumber < 0 || screenNumber > this.screens.length) {
+      shouldLog(LogLevel.Error) && console.error(`screenNumber ${screenNumber} out of range`);
+      return;  
+    }
+
+    this.screens.splice(screenNumber, 0, screen);
+  }
+
   swapScreens(screenNumber1: number, screenNumber2: number) : void
   {
     if (screenNumber1 < 0 || screenNumber1 >= this.screens.length) {
