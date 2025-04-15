@@ -219,23 +219,23 @@ export class ZoomScreenCollection
     return this;
   }
 
-  setEffectParameterValue(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>, effectSlot: number, parameterNumber: number, value: number) : void
+  setEffectParameterValue(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>, effectSlot: number, parameterNumber: number, value: number) : boolean
   {
     if (effectSlot >= this.screens.length || parameterNumber >= this.screens[effectSlot].parameters.length) {
       shouldLog(LogLevel.Error) && console.error(`setEffectParameterValue() effectSlot ${effectSlot} or parameterNumber ${parameterNumber} out of range`);
-      return;  
+      return false;
     }
 
     if (patch.effectSettings === null) {
       shouldLog(LogLevel.Error) && console.error(`patch.effectSettings == null for patch ${patch.name}`);
-      return;
+      return false;
     }
 
     let effectSettings = patch.effectSettings[effectSlot];
     let effectMap = effectsMap.get(effectSettings.id);
     if (effectMap === undefined) {
       shouldLog(LogLevel.Error) && console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
-      return;
+      return false;
     }
 
     let screen = this.screens[effectSlot];
@@ -254,6 +254,8 @@ export class ZoomScreenCollection
 
     shouldLog(LogLevel.Info) && console.log(`Changing effect parameter value from "${parameter.valueString}" to "${valueString}" for effect ${effectMap.name}, parameter ${parameter.name}`);
     parameter.valueString = valueString;
+
+    return true;
   }
 
   deleteScreen(screenNumber: number) : void

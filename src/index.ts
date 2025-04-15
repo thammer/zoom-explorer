@@ -702,13 +702,24 @@ async function handleScreenChangedEvent(zoomDevice: ZoomDevice)
   getScreenCollectionAndUpdateEditPatchTable(zoomDevice);
 }
 
+let muteScreenUpdate = false; // not the prettiest of designs...
+
 function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
 {
+  if (muteScreenUpdate)
+    return;
+
   let screenCollection = zoomDevice.currentScreenCollection;
   if (screenCollection === undefined && currentZoomPatch !== undefined && zoomDevice.effectIDMap !== undefined) {
     // FIXME: Not the most robust of designs... Depends on mapping being loaded and existing for that pedal.
-    screenCollection = ZoomScreenCollection.fromPatchAndMappings(currentZoomPatch, zoomDevice.effectIDMap);
+    muteScreenUpdate = true;
+    zoomDevice.updateScreens();
+    muteScreenUpdate = false;
+    screenCollection = zoomDevice.currentScreenCollection;
   }
+
+  if (screenCollection === undefined)
+    shouldLog(LogLevel.Warning) && console.warn("zoomDevice.screenCollection === undefined");
 
   let compare = previousEditScreenCollection;
   // Note: should probably take patch equality into consideration...
