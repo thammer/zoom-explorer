@@ -210,6 +210,7 @@ export class ZoomPatch
 
     if (effectSlot1 === effectSlot2) {
       shouldLog(LogLevel.Error) && console.error(`Cannot swap 2 identical effect slots ${effectSlot1}`)
+      return;
     }
 
     let tempEffectSettings = this.effectSettings[effectSlot2];
@@ -271,28 +272,26 @@ export class ZoomPatch
 
     if (this.effectSettings.length === 1) {
       // An empty patch has one effect (slot 0) with ID 0 and all params 0
-      this.effectSettings[0].clear();
+      let clearEffect = this.effectSettings[0].clone();
+      clearEffect.clear();
+      this.effectSettings[0] = clearEffect;
     } 
     else {
       this.effectSettings.splice(effectSlot, 1);
     } 
 
-    // Update ptcf IDs
+    // Update IDs
     if (this.ids !== null) {
-      if (effectSlot === 0 ) {
-        if (this.ids.length === 1)
-          this.ids[0] = 0; // An empty patch has one effect (slot 0) with ID 0 and all params 0
-        else
-          this.ids = this.ids.subarray(1, this.ids.length);
-      } 
+      if (this.ids.length === 1)
+        this.ids[0] = 0; // An empty patch has one effect (slot 0) with ID 0 and all params 0
       else {
-        if (effectSlot === this.ids.length - 1)
-          this.ids = this.ids.subarray(0, this.ids.length - 1);
-        else {
-          let originalIds = this.ids;
-          this.ids = this.ids.subarray(0, this.ids.length - 1);
-          this.ids.set(originalIds.subarray(effectSlot + 1), effectSlot);
+        let lastID = this.ids[this.ids.length - 1];
+        this.ids = new Uint32Array(this.idBuffer, 0, this.effectSettings.length);
+        for (let i=effectSlot; i < this.ids.length - 1; i++) {
+          this.ids[i] = this.ids[i+1];
         }
+        if (effectSlot < this.ids.length - 1)
+          this.ids[this.ids.length - 1] = lastID;
       }
     }
 
@@ -325,8 +324,8 @@ export class ZoomPatch
       this.edtbLength = this.edtbReversedBytes.length * PTCF_EDTB_REVERSED_BYTES_SIZE;
     }
 
-    if (effectSlot <= this.currentEffectSlot)
-      this.currentEffectSlot = Math.max(Math.min(this.currentEffectSlot, this.effectSettings.length - 1), 0)
+    if (effectSlot < this.currentEffectSlot)
+      this.currentEffectSlot = Math.max(Math.min(this.currentEffectSlot - 1, this.effectSettings.length - 1), 0)
 
     if (this.prm2EditEffectSlot !== null)
       this.prm2EditEffectSlot = this.currentEffectSlot;
@@ -372,20 +371,38 @@ export class ZoomPatch
       return;
     }
 
-    this.effectSettings.splice(effectSlot, 0, effectSettings);
+    
+    if (this.effectSettings.length === 0)
+      shouldLog(LogLevel.Warning) && console.warn(`${this.name}: this.effectSettings.length === 0. An empty patch should have one effect (slot 0) with ID 0 and all params 0`);
+    
+    let addEffectToEmptyPatch = effectSlot === 0 && this.effectSettings.length === 1 && this.effectSettings[0].id === 0;
+
+    if (addEffectToEmptyPatch) {
+      // An empty patch has one effect (slot 0) with ID 0 and all params 0
+      this.effectSettings[0] = effectSettings;
+    }
+    else
+      this.effectSettings.splice(effectSlot, 0, effectSettings);
 
     // Update IDs
     if (this.ids !== null) {
-      for (let i=effectSlot + 1; i<this.effectSettings.length; i++) {
-        this.ids[i] = this.ids[i-1];
+      if (addEffectToEmptyPatch) {
+        this.ids[0] = effectSettings.id;
       }
-      this.ids[effectSlot] = effectSettings.id;
+      else {
+        let oldIDs = this.ids;
+        this.ids = new Uint32Array(this.idBuffer, 0, this.effectSettings.length);
+        for (let i=this.effectSettings.length - 1; i > effectSlot; i--) {
+          this.ids[i] = this.ids[i-1];
+        }
+        this.ids[effectSlot] = effectSettings.id;
+      }
     }
 
-    if (this.numEffects !== null)
+    if (this.numEffects !== null && !addEffectToEmptyPatch)
       this.numEffects++;
 
-    if (this.msogNumEffects !== null)
+    if (this.msogNumEffects !== null && !addEffectToEmptyPatch)
       this.msogNumEffects = this.numEffects;
 
     if (this.edtbReversedBytes !== null) {
@@ -410,7 +427,15 @@ export class ZoomPatch
     if (this.edtbLength !== null && this.edtbReversedBytes !== null) {
       this.edtbLength = this.edtbReversedBytes.length * PTCF_EDTB_REVERSED_BYTES_SIZE;
     }
-    
+
+    if (effectSlot < this.currentEffectSlot)
+      this.currentEffectSlot = Math.max(Math.min(this.currentEffectSlot + 1, this.effectSettings.length - 1), 0)
+
+    if (this.prm2EditEffectSlot !== null)
+      this.prm2EditEffectSlot = this.currentEffectSlot;
+    else if (this.msogEditEffectSlot !== null)
+      this.msogEditEffectSlot = this.currentEffectSlot;
+        
     if (this.prm2EditEffectSlot !== null)
       this.prm2EditEffectSlotBits = ZoomPatch.effectSlotToPrm2BitPattern(this.prm2EditEffectSlot, this.effectSettings.length);
 
@@ -468,13 +493,12 @@ export class ZoomPatch
   }
 
   private static swapBits(bitPattern: number, bit1: number, bit2: number): number
-  {
-    let bitMask = ((~(1 << bit1)) & 0b11111111) | ((~(1 << bit2)) & 0b11111111)     
-    bitPattern &= bitMask;
-    
+  {    
     let bit1Value = (bitPattern & (1 << bit1)) >> bit1;
     let bit2Value = (bitPattern & (1 << bit2)) >> bit2;
 
+    let bitMask = ((~(1 << bit1)) & 0b11111111) & ((~(1 << bit2)) & 0b11111111)     
+    bitPattern &= bitMask;
     bitPattern |= (bit1Value << bit2) | (bit2Value << bit1);
 
     return bitPattern;
@@ -514,7 +538,7 @@ export class ZoomPatch
   ptcfUnknown: null | Uint8Array = null; // 6 bytes
   ptcfShortName: null | string = null; // For patches delivered with MS+ pedals, this is always the 10 first characters of nameName
   ids: null | Uint32Array = null;
-  idstore: Uint32Array = new Uint32Array(16); // storage buffer for ids. ids is a subarray of idstore.
+  idBuffer: ArrayBuffer = new ArrayBuffer(32 * 16); // storage buffer for ids. ids is a view into idBuffer.
   
   ptcfChunk: null | Uint8Array = null; // Raw unparsed PTCF chunk, including the "PTCF" ID and 4 bytes for the length value
   chunks: Map<string, Uint8Array> = new Map<string, Uint8Array>(); // Raw unparsed chunks
@@ -808,11 +832,10 @@ export class ZoomPatch
     this.maxNameLength = 10; // if NAME chunk is found, this will be changed below
 
     if (this.numEffects !== null) {
-      let idarray = this.readInt32Array(data, offset, this.numEffects, this.idstore);
+      this.ids = new Uint32Array(this.idBuffer, 0, this.numEffects);
+      let idarray = this.readInt32Array(data, offset, this.numEffects, this.ids);
       if (idarray === null)
         this.ids = null;
-      else
-        this.ids = this.idstore.subarray(0, this.numEffects);
 
       offset += this.numEffects * 4;
     }
@@ -1668,7 +1691,8 @@ export class ZoomPatch
     this.maxNumEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects. See FIXME below on msogNumEffects.
     this.msogEffectsReversedBytes = new Array<Uint8Array>(this.maxNumEffects);
     this.msogEffectSettings = new Array<EffectSettings>();
-    this.ids = this.idstore.subarray(0, this.maxNumEffects); // new Uint32Array(this.maxNumEffects);
+    this.ids = new Uint32Array(this.idBuffer, 0, this.maxNumEffects);
+
     for (let i=0; i<this.maxNumEffects; i++) { // Each effect section is 18 bytes (MSOG_REVERSED_BYTES_SIZE)
       // P0 = 13 bits. P1 = 13 bits. P2 = 13 bits. P3-P8 = 8 bits
       this.msogEffectsReversedBytes[i] = data.slice(offset, offset + MSOG_REVERSED_BYTES_SIZE).reverse(); offset += MSOG_REVERSED_BYTES_SIZE;

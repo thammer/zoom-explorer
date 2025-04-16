@@ -1899,7 +1899,9 @@ export class ZoomDevice implements IManagedMIDIDevice
           updatedSingleParameterValue = this.currentScreenCollection.setEffectParameterValue(this.currentPatch, this.effectIDMap, 
             this._currentEffectSlot, this._currentEffectParameterNumber, this._currentEffectParameterValue);
         }
-        if (!updatedSingleParameterValue)
+        if (updatedSingleParameterValue)
+          this.emitScreenChangedEvent();
+        else
           this.updateScreens(); // update everything as a last resort
       }
 

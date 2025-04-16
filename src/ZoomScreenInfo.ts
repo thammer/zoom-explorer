@@ -14,18 +14,43 @@ export class ZoomScreenParameter
   nameType: number = 0; // mostly for debugging, interpreted type is reflected in the invert and the name/value strings
   valueInvertByte: number = 0;
   nameInvertByte: number = 0;
+  
   public equals(other: ZoomScreenParameter): boolean
   {
     return this.name === other.name && this.valueString === other.valueString;
+  }
+
+  public clone(): ZoomScreenParameter
+  {
+    let screenParameter = new ZoomScreenParameter();
+    screenParameter.name = this.name;
+    screenParameter.valueString = this.valueString;
+    screenParameter.invert = this.invert;
+    screenParameter.unknownFlag = this.unknownFlag;
+    screenParameter.valueType = this.valueType;
+    screenParameter.nameType = this.nameType;
+    screenParameter.valueInvertByte = this.valueInvertByte;
+    screenParameter.nameInvertByte = this.nameInvertByte;
+    return screenParameter;
   }
 }
 
 export class ZoomScreen
 {
   parameters: Array<ZoomScreenParameter> = new Array<ZoomScreenParameter>();
+  
   public equals(other: ZoomScreen): boolean
   {
     return this.parameters.length === other.parameters.length && this.parameters.every( (element, index) => element.equals(other.parameters[index]) );
+  }
+
+  public clone() : ZoomScreen
+  {
+    let screen = new ZoomScreen();
+    screen.parameters = new Array<ZoomScreenParameter>(this.parameters.length);
+    for (let i=0; i<this.parameters.length; i++)
+      screen.parameters[i] = this.parameters[i].clone();
+    return screen;
   }
 }
 
