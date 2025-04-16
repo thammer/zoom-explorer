@@ -1016,7 +1016,7 @@ export class ZoomPatch
         let individualChecksFailed = false;
 
         if (! (individualChecksFailed = individualChecksFailed || this.verifyPrm2EffectSlotBits())) {
-          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2EffectSlotBits() failed. This is known to happen when deleting effects from a slot`);
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2EffectSlotBits() failed. This is known to happen when deleting effects from a slot on the pedal.`);
         }
 
         if (! (individualChecksFailed = individualChecksFailed || this.verifyPrm2PreampSlotBits()))
