@@ -316,7 +316,11 @@ export class ZoomPatch
         this.msogEffectsReversedBytes[0].fill(0);
       }
       else {
-        this.msogEffectsReversedBytes.splice(effectSlot, 1);
+        // edtbReversedBytes always has length maxNumEffects
+        for (let i = effectSlot; i < this.msogEffectsReversedBytes.length - 1; i++) {
+          this.msogEffectsReversedBytes[i] = this.msogEffectsReversedBytes[i + 1];
+        }
+        this.msogEffectsReversedBytes[this.msogEffectsReversedBytes.length - 1].fill(0);
       }
     }
 
@@ -522,6 +526,13 @@ export class ZoomPatch
   //                                  5.  4.  3.  2.  1.  0.
   //                                555044403330222011100000
   private static prm2BitPattern = 0b101010000110010000100000;
+  
+  /**
+   * 
+   * @param selectedEffectSlot 
+   * @param totalNumberOfSlots 
+   * @returns bitpattern corresponding to prm2Buffer[11] + (prm2Buffer[12] << 8)
+   */
   static effectSlotToPrm2BitPattern(selectedEffectSlot: number, totalNumberOfSlots: number): number
   {
     let maskedPattern = ZoomPatch.prm2BitPattern & (0b111111111111111111111111 >> (4 * (6 - totalNumberOfSlots))); 
@@ -974,7 +985,7 @@ export class ZoomPatch
           this.prm2Byte10Bit5 = this.prm2Buffer[10] & 0b00010000;
         }
         if (this.prm2Length > 12) {
-          this.prm2EditEffectSlotBits = (this.prm2Buffer[11] & 0b11111111) << 8 + (this.prm2Buffer[12] & 0b11111111);
+          this.prm2EditEffectSlotBits = (this.prm2Buffer[11] & 0b11111111) + ((this.prm2Buffer[12] & 0b11111111) << 8);
           // MS-50G+, patch 038 smooth, with TS_DRIVE deleted frm pedal, saw one incorrect value in prm2Buffer[12]
         }
         if (this.prm2Length > 13) {
@@ -1002,17 +1013,23 @@ export class ZoomPatch
           this.prm2Byte24 = this.prm2Buffer[24];          
         }
 
-        if (!this.verifyPrm2Buffer())
-          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2Buffer() failed`);
+        let individualChecksFailed = false;
 
-        if (!this.verifyPrm2PreampSlotBits())
+        if (! (individualChecksFailed = individualChecksFailed || this.verifyPrm2EffectSlotBits())) {
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2EffectSlotBits() failed. This is known to happen when deleting effects from a slot`);
+        }
+
+        if (! (individualChecksFailed = individualChecksFailed || this.verifyPrm2PreampSlotBits()))
           shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2PreampSlotBits() failed`);
 
-        if (!this.verifyPrm2BPMSlotBits())
+        if (! (individualChecksFailed = individualChecksFailed || this.verifyPrm2BPMSlotBits()))
           shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2BPMSlotBits() failed`);
 
-        if (!this.verifyPrm2LineSelSlotBits())
+        if (! (individualChecksFailed = individualChecksFailed || this.verifyPrm2LineSelSlotBits()))
           shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2LineSelSlotBits() failed`);
+
+        if ( (!individualChecksFailed) && this.verifyPrm2Buffer())
+          shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: verifyPrm2Buffer() failed.`);
 
         /*
         o prm2 unknown byte 9 is always 0x80. But scanning through patches on MS-50G+ gives 1 anomaly (warning) for this,
@@ -1158,6 +1175,14 @@ export class ZoomPatch
     if (prm2Length > 24) {
       prm2Buffer[24] = prm2Byte24;
     }
+  }
+
+  verifyPrm2EffectSlotBits(): boolean
+  {
+    if (this.prm2EditEffectSlot === null || this.edtbEffectSettings === null)
+      return false;
+
+    return this.prm2EditEffectSlotBits === ZoomPatch.effectSlotToPrm2BitPattern(this.prm2EditEffectSlot, this.edtbEffectSettings.length);
   }
 
   verifyPrm2PreampSlotBits(): boolean
@@ -1743,29 +1768,33 @@ export class ZoomPatch
     // on the pedal. The patch sent will have the correct effectSettings array, 
     // with id = 0 for the deleted effect, but the msogNumEffects and possibly msogEditEffectSlot
     // still have the old values, which are incorrect after the deletion.
-    // If the current patch is requested manually after this, the values will be correct.
+    // If the current patch is requested manually once more after this, the values will be correct.
+    //
+    // The same symptom exists when adding an effect. The added effect is reflected in the effectSettings array, but numEffects is one less than it should be.
+    // We might want to handle this problem somewhere else, not in readMSPatch(). B emore robust elsewhere wrt empty (id === 0) slots.
 
-    // It is possible to have an empty slot in the first slot and an actual effect in the second slot
-    // So we count from the back
-    let countNumEffects = this.maxNumEffects;
-    for (let i=this.ids.length - 1; i >= 0; i--) {
-      if (this.ids[i] === 0)
-        countNumEffects--;
-      else
-        break;
-    }
+    let [numEffectsMismatch, countNumEffects] = this.msNumEffectsMismatch(); // log a warning if there's a mismatch between msogNumEffects and number of effect slots with id !== 0
 
-    if (this.msogNumEffects !== countNumEffects) {
-      shouldLog(LogLevel.Warning) && console.warn(`msogNumEffects (${this.msogNumEffects}) != number of IDs that are not zero (${countNumEffects}). Changing msogNumEffects to ${countNumEffects}.`);
-      this.msogNumEffects = countNumEffects;
-    }
+    if (this.msogNumEffects === 0)
+      shouldLog(LogLevel.Warning) && console.warn("msogNumEffects === 0. Investigate.");
 
-    this.numEffects = this.msogNumEffects; // see note below and code below to fix this
+    // // It is possible to have an empty slot in the first slot and an actual effect in the second slot
+    // // So we count from the back
+    // let countNumEffects = this.maxNumEffects;
+    // for (let i=this.ids.length - 1; i >= 0; i--) {
+    //   if (this.ids[i] === 0)
+    //     countNumEffects--;
+    //   else
+    //     break;
+    // }
 
-    if (this.msogEditEffectSlot >= this.msogNumEffects) {
-      shouldLog(LogLevel.Warning) && console.warn(`msogEditEffectSlot (${this.msogEditEffectSlot}) >= msogNumEffects (${this.msogNumEffects}). Changing msogEditEffectSlot to ${this.msogNumEffects - 1}.`);
-      this.msogEditEffectSlot = this.msogNumEffects - 1;
-    }
+    // if (this.msogNumEffects !== countNumEffects) {
+    //   shouldLog(LogLevel.Warning) && console.warn(`msogNumEffects (${this.msogNumEffects}) != number of IDs that are not zero (${countNumEffects}).`);
+    //   // shouldLog(LogLevel.Warning) && console.warn(`msogNumEffects (${this.msogNumEffects}) != number of IDs that are not zero (${countNumEffects}). Changing msogNumEffects to ${countNumEffects}.`);
+    //   //      this.msogNumEffects = countNumEffects;
+    // }
+
+    this.numEffects = this.msogNumEffects;
 
     // FIXME: Think through the difference between num effects used in a patch and the max number of effects for a device
     // we need to read 6 effects here to get the offsets right...
@@ -1784,6 +1813,14 @@ export class ZoomPatch
 
     this.msogUnknown2 = data.slice(offset, offset + 1); offset += 1;
 
+    if (this.msogEditEffectSlot >= this.msogNumEffects && this.msogNumEffects > 0) {
+      shouldLog(LogLevel.Warning) && console.warn(`Edit effect slot mismatch in patch "${this.msogName}": msogEditEffectSlot (${this.msogEditEffectSlot}) >= msogNumEffects (${this.msogNumEffects}). Changing msogEditEffectSlot to ${this.msogNumEffects - 1}.`);
+      this.msogEditEffectSlot = this.msogNumEffects - 1;
+    }
+
+    if (numEffectsMismatch)
+      shouldLog(LogLevel.Warning) && console.warn(`Effect count mismatch in patch "${this.msogName}": msogNumEffects (${this.msogNumEffects}) != number of IDs that are not zero (${countNumEffects}).`);
+
     // tempo
     // dsp full
     // max effect number (numEffects?)
@@ -1794,6 +1831,32 @@ export class ZoomPatch
     // ids: null | Uint32Array = null;
   
     return offset;
+  }
+
+  /**
+   * Checks if there's a mismatch between msogNumEffects and number of effect slots with id !== 0.
+   * This happens on the MSOG pedals when an effect is deleted or addad to a slot on the pedal itself.
+   * @returns [mismatch, counted effects]
+   */
+  msNumEffectsMismatch(): [boolean, number]
+  {
+    if (this.ids === null)
+      return [false, 0];
+
+    // It is possible to have an empty slot in the first slot and an actual effect in the second slot
+    // So we count from the back
+    let countNumEffects = this.maxNumEffects;
+    for (let i=this.ids.length - 1; i >= 0; i--) {
+      if (this.ids[i] === 0)
+        countNumEffects--;
+      else
+        break;
+    }
+
+    // If all slots are empty, the pedal reports having 1 effect. So 1 is the minimal number of effects according to msogNumEffects.
+    let mismatch = this.msogNumEffects !== countNumEffects && ! (this.msogNumEffects === 1 && countNumEffects === 0);
+
+    return [mismatch, countNumEffects];
   }
 
   public static fromPatchData(data: Uint8Array, offset: number = 0) : ZoomPatch 

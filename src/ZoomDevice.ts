@@ -136,6 +136,8 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _disableMidiHandlers: boolean = false;
   private _isMappingParameters: boolean = false;
   private _cancelMapping: boolean = false;
+  private _msogPatchNumEffectsMismatchFixRequest: boolean = false;
+  private _msogPatchNumEffectsMismatchFixRequestThrottleTimeoutMilliseconds: number = 100;
 
   private _listeners: ZoomDeviceListenerType[] = new Array<ZoomDeviceListenerType>();
   private _openCloseListeners: MIDIDeviceOpenCloseListenerType[] = new Array<MIDIDeviceOpenCloseListenerType>();
@@ -1924,9 +1926,28 @@ export class ZoomDevice implements IManagedMIDIDevice
       if (log) shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Received patch dump for current patch, raw: ${bytesToHexString(data, " ")}`);
       this._currentPatch = undefined;
       this._currentPatchData = data;
-      if (this._autoUpdateScreens)
-        this.updateScreens();
-      this.emitCurrentPatchChangedEvent();
+  
+      let numEffectsMismatch = false;
+      let countNumEffects = 0;
+      if (!this._msogPatchNumEffectsMismatchFixRequest && this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1) && this.currentPatch !== undefined)
+        [numEffectsMismatch, countNumEffects] = this.currentPatch.msNumEffectsMismatch();
+  
+      if (numEffectsMismatch) {
+        shouldLog(LogLevel.Warning) && console.warn(`Effect count mismatch in patch "${this.currentPatch?.name}": msogNumEffects (${this.currentPatch?.numEffects}) != number of IDs that are not zero (${countNumEffects}). Requesting patch again.`);
+        this._msogPatchNumEffectsMismatchFixRequest = true;
+        // This is probably a bug in the MSOG pedals.
+        // It takes a short time for the pedal to update the patch with the correct
+        // msogPatchNumEffects, so we'll wait a bit before sending the request for the patch.
+        this._throttler.doItLater(() => {
+            this.requestCurrentPatch();
+        }, this._msogPatchNumEffectsMismatchFixRequestThrottleTimeoutMilliseconds);
+      }
+      else {
+        this._msogPatchNumEffectsMismatchFixRequest = false;
+        if (this._autoUpdateScreens)
+          this.updateScreens();
+        this.emitCurrentPatchChangedEvent();
+      }
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.storeCurrentPatchToMemorySlotV1)) {
       // Current (edit) patch stored to memory slot on device (MS series)
