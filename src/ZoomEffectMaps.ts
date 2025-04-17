@@ -125,7 +125,7 @@ export function replaceEffectNamesInMap(effectIDMap: EffectIDMap, nameMap: Map<n
         shouldLog(LogLevel.Warning) && console.warn(`ID ${id.toString(16).padStart(8, "0")} ("${effectName}") from effectIDMap was not found in nameMap`);
     }
     else {
-      shouldLog(LogLevel.Info) && console.log(`Replacing effect name in effect ${id.toString(16).padStart(8, "0")}: ${effectName} -> ${newName}`);
+      // shouldLog(LogLevel.Info) && console.log(`Replacing effect name in effect ${id.toString(16).padStart(8, "0")}: ${effectName} -> ${newName}`);
       effect.name = newName;
     }
   }
