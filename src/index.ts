@@ -9,8 +9,9 @@ import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel } from "./Logger.js";
-import { extendMSOGMapWithMS60BEffects } from "./ZoomEffectMaps.js";
+import { extendMSOGMapWithMS60BEffects, replaceEffectNamesInMap } from "./ZoomEffectMaps.js";
 import zoomEffectIDsMS200DPlus from "./zoom-effect-ids-ms200dp.js"
+import zoomEffectIDsFullNamesMS200DPlus from "./zoom-effect-ids-full-names-ms200dp.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -242,6 +243,8 @@ async function downloadEffectMaps() {
   
   shouldLog(LogLevel.Info) && console.log(`mapForMS200DPlus.size = ${mapForMS200DPlus.size}`);
   
+  replaceEffectNamesInMap(mapForMS200DPlus, zoomEffectIDsFullNamesMS200DPlus);
+
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
 

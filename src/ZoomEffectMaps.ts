@@ -110,49 +110,23 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
   }
 }
 
-
-
-// Currently unused
-// function earlyAttemptAtExtendMapWithMinMaxNumericalValues(map: EffectIDMap): void
-// {
-//   for (const [id, effect] of map) {
-//     let effectName = effect.name;
-//     let parameters = effect.parameters;
-//     for (let parameterNumber = 0; parameterNumber < parameters.length; parameterNumber++) {
-//       let parameter = parameters[parameterNumber];
-//       let parameterName = parameter.name;
-//       let values = parameter.values;
-//       let valueAsNumber: number;
-//       let lastValueAsNumber: number;
-//       let delta = 0;
-//       if (values.length == 0 || !isPositiveInteger(values[0])) {
-//         parameter.minNumericalValue = undefined;
-//         parameter.maxNumericalValue = undefined;
-//         continue;
-//       }
-
-//       valueAsNumber = Number.parseInt(values[0]);
-//       parameter.minNumericalValue = valueAsNumber;
-//       parameter.maxNumericalValue = valueAsNumber;
-//       lastValueAsNumber = valueAsNumber;
-
-//       for (let valueNumber = 1; valueNumber < values.length; valueNumber++) {
-//         let valueAsString = values[valueNumber];
-//         if (!isPositiveInteger(valueAsString)) {
-//           break;
-//         }
-//         valueAsNumber = Number.parseInt(valueAsString);
-//         if (valueNumber === 1)
-//           delta = valueAsNumber - lastValueAsNumber;
-
-//         if (valueAsNumber - lastValueAsNumber !== delta) {
-//           console.warn(`Values for parameter ${parameterName} effect ${effectName} ID ${id} are not evenly spaced`);
-//           parameter.minNumericalValue = undefined;
-//           parameter.maxNumericalValue = undefined;
-//           break;
-//         }
-//         lastValueAsNumber = valueAsNumber;
-//       }
-//     }
-//   }
-// }
+/**
+ * Replaces the effect names in effectIDMap with the names in nameMap, using the effect ID as key
+ * @param effectIDMap 
+ * @param nameMap 
+ */
+export function replaceEffectNamesInMap(effectIDMap: EffectIDMap, nameMap: Map<number, string>): void
+{
+  for (const [id, effect] of effectIDMap) {
+    let effectName = effect.name;
+    let newName = nameMap.get(id);
+    if (newName === undefined) {
+      if (id !== 0x07000ff0) // silently ignore the BPM effect
+        shouldLog(LogLevel.Warning) && console.warn(`ID ${id.toString(16).padStart(8, "0")} ("${effectName}") from effectIDMap was not found in nameMap`);
+    }
+    else {
+      shouldLog(LogLevel.Info) && console.log(`Replacing effect name in effect ${id.toString(16).padStart(8, "0")}: ${effectName} -> ${newName}`);
+      effect.name = newName;
+    }
+  }
+}
