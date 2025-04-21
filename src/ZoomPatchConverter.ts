@@ -12,11 +12,11 @@ export class ZoomPatchConverter
     }
   };
 
-  patchMap: Map<number, any>; // FIXME: Use proper type instead of any
+  patchConverterMap: Map<number, any>; // FIXME: Use proper type instead of any
 
   constructor()
   {
-    this.patchMap = new Map<number, any>(Object.entries(this.patchMapObj).map(([key, value]) => {
+    this.patchConverterMap = new Map<number, any>(Object.entries(this.patchMapObj).map(([key, value]) => {
       (value as any).msplusID = parseInt(value.msplusID, 16); 
       return [parseInt(key, 16), value as any];
     }));
@@ -61,7 +61,7 @@ export class ZoomPatchConverter
         let outputEffect = new EffectSettings();
 
         // Look up inputEffect.id and find a matching output ID
-        let map = this.patchMap.get(inputEffectID);
+        let map = this.patchConverterMap.get(inputEffectID);
 
         if (map === undefined) {
           shouldLog(LogLevel.Info) && console.log(`No conversion mapping found for effect ID ${inputEffectID} in slot ${slotNumber} patch "${inputPatch.name}". Inserting empty effect.`);
