@@ -79,7 +79,7 @@ const PTCF_EFFECT_GROUP_REVERB     = 9;
 const PTCF_EFFECT_GROUP_MASK = 0xFF000000;
 const PTCF_EFFECT_GROUP_SHIFT = 24;
 
-const PTCF_EDTB_REVERSED_BYTES_SIZE = 24;
+export const PTCF_EDTB_REVERSED_BYTES_SIZE = 24; // FIXME: don't export this, see ZoomPatchConverter.
 
 const MSOG_REVERSED_BYTES_SIZE = 18;
 
@@ -133,6 +133,7 @@ export class ZoomPatch
       else {
         // this.name.length is enforced in this.name setter
         this.nameName = this.name;
+        this.nameLength = this.nameName.length;
       }
     }
     if (this.PTCF !== null)
@@ -141,8 +142,14 @@ export class ZoomPatch
       this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
 
     if (this.TXE1 !== null) {
-      this.txe1DescriptionEnglish = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
-      this.txe1Length = this.txe1DescriptionEnglish.length;
+      if (this.descriptionEnglish.length === 0) {
+        this.txe1DescriptionEnglish = null;
+        this.txe1Length = 0;
+      }
+      else {
+        this.txe1DescriptionEnglish = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
+        this.txe1Length = this.txe1DescriptionEnglish.length;
+      }
     }
 
     if (this.PRM2 !== null)
@@ -1867,6 +1874,107 @@ export class ZoomPatch
     else
       offset = zoomPatch.readMSPatch(data, offset);
     zoomPatch.updateDerivedPropertiesFromPatchProperties();
+
+    return zoomPatch;
+  }
+
+  public static createEmptyPTCFPatch() : ZoomPatch
+  {
+    let zoomPatch = new ZoomPatch();
+
+    zoomPatch.PTCF = "PTCF";
+    zoomPatch.version = 2;
+    zoomPatch.numEffects = 1; 
+    zoomPatch.maxNumEffects = 6;
+    zoomPatch.maxNameLength = 28;
+    zoomPatch.name = "Empty";
+    zoomPatch.descriptionEnglish = "";
+    zoomPatch.tempo = 120;
+    zoomPatch.currentEffectSlot = 0;
+    // target is MS-50G+ / MS-70CDR+
+    //                  44444444333333332222222211111111 
+    zoomPatch.target= 0b00000000000001000000000000000000;
+    zoomPatch.ptcfUnknown = new Uint8Array([0, 0, 0, 0, 0, 0]);
+    zoomPatch.ptcfShortName = zoomPatch.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
+ 
+    zoomPatch.ids = new Uint32Array(zoomPatch.idBuffer, 0, 1);
+    zoomPatch.ids[0] = 0x00000000;
+
+    zoomPatch.TXJ1 = "TXJ1";
+    zoomPatch.txj1Length = 0;
+    zoomPatch.txj1DescriptionJapanese = new Uint8Array();
+
+    zoomPatch.TXE1 = "TXE1";
+    zoomPatch.txe1DescriptionEnglish = null;
+    zoomPatch.txe1Length = 0;
+
+    zoomPatch.EDTB = "EDTB";
+    let reversedBytes = new Uint8Array(PTCF_EDTB_REVERSED_BYTES_SIZE);
+    reversedBytes.fill(0);
+    zoomPatch.edtbReversedBytes = new Array<Uint8Array>();
+    zoomPatch.edtbReversedBytes.push(reversedBytes);
+    zoomPatch.edtbEffectSettings = new Array<EffectSettings>();
+    let effectSettings = new EffectSettings();
+    effectSettings.enabled = true;
+    effectSettings.parameters = new Array<number>(12);
+    effectSettings.parameters.fill(0); 
+    zoomPatch.edtbEffectSettings.push(effectSettings);
+    zoomPatch.edtbLength = zoomPatch.edtbReversedBytes.length * PTCF_EDTB_REVERSED_BYTES_SIZE;
+
+    zoomPatch.PRM2 = "PRM2";
+    zoomPatch.prm2InvalidEffectSlot = 0;
+    zoomPatch.prm2Byte2Lower6Bits = 0;
+    zoomPatch.prm2Byte3Upper4Bits = 0;
+    zoomPatch.prm2Byte9Lower5Bits = 0;
+    zoomPatch.prm2Byte10Bit5 = 0;
+    zoomPatch.prm2PatchVolume = 100;
+    zoomPatch.prm2EditEffectSlot = zoomPatch.currentEffectSlot;
+    zoomPatch.prm2EditEffectSlotBits = ZoomPatch.effectSlotToPrm2BitPattern(zoomPatch.prm2EditEffectSlot, zoomPatch.edtbEffectSettings.length);
+    zoomPatch.prm2Byte13 = 0;
+    zoomPatch.prm2Byte14 = 0;
+    zoomPatch.prm2PreampSlot = ZoomPatch.createPreampSlotBits(zoomPatch.edtbEffectSettings);
+    zoomPatch.prm2Byte20Bit1And8 = 0;
+    zoomPatch.prm2BPMSlot = ZoomPatch.createBPMSlotBits(zoomPatch.edtbEffectSettings);
+    zoomPatch.prm2Byte21Lower4Bits = 0;
+    zoomPatch.prm2Byte22Bits3To7 = 0;
+    zoomPatch.prm2LineSelSlot = ZoomPatch.createLineSelSlotBits(zoomPatch.edtbEffectSettings);
+    zoomPatch.prm2Byte23Upper3Bits = 0;
+    zoomPatch.prm2Byte24 = 0; 
+    zoomPatch.prm2Tempo = zoomPatch.tempo;
+    zoomPatch.prm2Buffer = new Uint8Array(32);
+    zoomPatch.setPrm2BufferFromDerivedValues(zoomPatch.prm2Buffer, true, zoomPatch.prm2InvalidEffectSlot, zoomPatch.prm2PatchVolume, zoomPatch.prm2EditEffectSlot,
+      zoomPatch.edtbEffectSettings.length, zoomPatch.prm2PreampSlot, zoomPatch.prm2BPMSlot, zoomPatch.prm2LineSelSlot, zoomPatch.prm2Tempo,
+      zoomPatch.prm2Byte2Lower6Bits, zoomPatch.prm2Byte3Upper4Bits,
+      zoomPatch.prm2Byte9Lower5Bits, zoomPatch.prm2Byte10Bit5,
+      zoomPatch.prm2Byte13, zoomPatch.prm2Byte14,
+      zoomPatch.prm2Byte20Bit1And8, zoomPatch.prm2Byte21Lower4Bits, zoomPatch.prm2Byte22Bits3To7,
+      zoomPatch.prm2Byte23Upper3Bits, zoomPatch.prm2Byte24);
+    zoomPatch.prm2Length = zoomPatch.prm2Buffer.length;
+    
+    zoomPatch.NAME = "NAME";
+    let enforceLength = zoomPatch.maxNameLength + 4;
+    zoomPatch.nameName = zoomPatch.name.slice(0, Math.min(zoomPatch.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
+    zoomPatch.nameLength = zoomPatch.nameName.length;
+
+    let ptcfToplevelDataLength = 
+      4 + // version = 4 bytes
+      4 + // numEffects = 4 bytes
+      4 + // target = 4 bytes
+      6 + // ptcfUnknown = 6 bytes
+      10 + // ptcfFhortName = 10 bytes
+      4 * zoomPatch.numEffects; // ids = 4 * numEffects 
+
+    let txj1TotalLength = 4 + 4 + zoomPatch.txj1Length;
+    let txe1TotalLength = 4 + 4 + zoomPatch.txe1Length;
+    let edtbTotalLength = 4 + 4 + zoomPatch.edtbLength;
+    let prm2TotalLength = 4 + 4 + zoomPatch.prm2Length;
+    let nameTotalLength = 4 + 4 + zoomPatch.nameLength;
+
+    let ptcfTotalLength = 4 + 4 + ptcfToplevelDataLength + txj1TotalLength + txe1TotalLength + edtbTotalLength + prm2TotalLength + nameTotalLength;
+
+    // We could consider calling buildPTCFChunk() here
+
+    zoomPatch.length = ptcfTotalLength;
 
     return zoomPatch;
   }

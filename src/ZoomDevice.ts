@@ -1053,7 +1053,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   public uploadPatchToCurrentPatch(patch: ZoomPatch, cacheCurrentPatch: boolean = true) 
   {
     let data: Uint8Array | undefined;
-    if (patch.ptcfChunk !== null)
+    if (patch.PTCF !== null)
       data = patch.buildPTCFChunk();
     else
       data = patch.buildMSDataBuffer();

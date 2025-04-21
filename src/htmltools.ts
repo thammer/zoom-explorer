@@ -106,18 +106,27 @@ export function supportsContentEditablePlaintextOnly(): boolean
  * @param fileDescription 
  * @returns [data, filename] where any of them can be undefined
  */
-export async function loadDataFromFile(fileEnding: string, fileDescription: string): Promise<[Uint8Array | undefined, string | undefined]>
+export async function loadDataFromFile(fileEndings: string[], fileDescriptions: string[]): Promise<[Uint8Array | undefined, string | undefined]>
 {
   return new Promise<[Uint8Array | undefined, string | undefined]> ( async (resolve, reject) => {
     let filename: string | undefined = undefined;
+    if (fileEndings.length !== fileDescriptions.length) {
+      console.error(`Length of fileEndings should be ewual to length of fileDescriptions`);
+      resolve([undefined, undefined]);
+    }
+
+    let types: FilePickerAcceptType[] = []; 
+    for (let i=0; i<fileEndings.length; i++) {
+      types.push( {
+        description: fileDescriptions[i],
+        accept: { "application/octet-stream" : [`.${fileEndings[i]}`]}
+      });
+    }
+
     try {
       if (window.showOpenFilePicker !== undefined) {
           const [fileHandle] = await window.showOpenFilePicker({
-          types: [
-            { description: fileDescription,
-              accept: { "application/octet-stream" : [`.${fileEnding}`]}
-            }
-          ] 
+          types: types 
         });
         filename = fileHandle.name;
         const file = await fileHandle.getFile();
@@ -126,12 +135,18 @@ export async function loadDataFromFile(fileEnding: string, fileDescription: stri
         resolve([data, filename]);
       } else {
         // Fallback to old-school file upload
+
+        let accept: string = "";
+        for (let i=0; i<fileEndings.length; i++) {
+          accept += "." + fileEndings[i] + (i < fileEndings.length -1 ? "," : "");
+        }
+    
         let input: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
         if (input === null) {
           input = document.createElement("input") as HTMLInputElement;
           input.id = "fileInput";
           input.type = "file";
-          input.accept = `.${fileEnding}`;
+          input.accept = accept;
           input.style.opacity = "0";
           let content = document.getElementById("content") as HTMLDivElement;
           content.appendChild(input);

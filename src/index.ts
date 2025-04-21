@@ -12,6 +12,7 @@ import { shouldLog, LogLevel } from "./Logger.js";
 import { extendMSOGMapWithMS60BEffects, replaceEffectNamesInMap } from "./ZoomEffectMaps.js";
 import zoomEffectIDsMS200DPlus from "./zoom-effect-ids-ms200dp.js"
 import zoomEffectIDsFullNamesMS200DPlus from "./zoom-effect-ids-full-names-ms200dp.js";
+import { ZoomPatchConverter } from "./ZoomPatchConverter.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -212,6 +213,24 @@ async function start()
   //   sendZoomCommand(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], commandIndex);
   // });
   // shouldLog(LogLevel.Info) && console.log("Call and response end");
+
+  let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
+  testButton.addEventListener("click", async (event) => {
+  
+    let lsb = 0;
+    let msb = 0
+    let device = zoomDevices[0];
+  
+    for (let i = 0; i < 128 * 128; i++) {
+      lsb = i &  0b0000000001111111;
+      msb = (i & 0b0011111110000000) >> 7;
+      let commandString = `31 00 01 ${lsb.toString(16).padStart(2, "0")} ${msb.toString(16).padStart(2, "0")}`;
+      console.log(`${i.toString(10).padStart(6)}:   ${commandString}`)
+      let command = hexStringToUint8Array(commandString);
+      await sleepForAWhile(50);
+      sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
+    }
+  });  
 
 }
 
@@ -1057,7 +1076,25 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   button.addEventListener("click", (event) => {
     if (savePatch.ptcfChunk !== null || savePatch.MSOG !== null) {
       let device = zoomDevices[0];
-      device.uploadPatchToCurrentPatch(savePatch);
+
+      let convertedPatch: ZoomPatch | undefined = undefined;
+      if (device.deviceName === "MS-70CDR+" && savePatch.MSOG !== null) {
+        shouldLog(LogLevel.Info) && console.log(`Converting patch "${savePatch.name}" from MS to MS+`);
+        convertedPatch = zoomPatchConverter.convert(savePatch);
+        if (convertedPatch === undefined) {
+          shouldLog(LogLevel.Warning) && console.warn(`Conversion failed for patch "${savePatch.name}"`);
+        }
+        else {
+          shouldLog(LogLevel.Info) && console.log(`Conversion succeeded for patch "${savePatch.name}"`);
+          savePatch = convertedPatch;
+        }
+      }
+
+      if (convertedPatch !== undefined) 
+        updatePatchInfoTable(savePatch);
+
+      currentZoomPatch = savePatch;
+      device.uploadPatchToCurrentPatch(currentZoomPatch);
     }
   });
   headerCell.appendChild(button);
@@ -1114,7 +1151,6 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       const blob = new Blob([sysexString]);
       await saveBlobToFile(blob, suggestedName, fileEnding, fileDescription);
     }
-
   });
   headerCell.appendChild(button);
 
@@ -1127,7 +1163,13 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let [fileEnding, shortFileEnding, fileDescription] = device.getSuggestedFileEndingForPatch();
     let data: Uint8Array | undefined;
     let filename: string | undefined;
-    [data, filename] = await loadDataFromFile(shortFileEnding, fileDescription);
+    let fileEndings: string[] = [shortFileEnding];
+    let fileDescriptions: string[] = [fileDescription];
+    if (device.deviceName === "MS-70CDR+") {
+      fileEndings.push("70cdr");
+      fileDescriptions.push("MS-70CDR patch file");
+    }
+    [data, filename] = await loadDataFromFile(fileEndings, fileDescriptions);
     if (data === undefined || filename === undefined)
       return;
     if (partialArrayStringMatch(data, "PTCF")) {
@@ -1671,6 +1713,8 @@ let currentZoomPatch: ZoomPatch | undefined = undefined;
 let zoomDevices: Array<ZoomDevice> = new Array<ZoomDevice>();
 
 let patchEditor = new ZoomPatchEditor();
+
+let zoomPatchConverter = new ZoomPatchConverter();
 
 let value = 511;
 
