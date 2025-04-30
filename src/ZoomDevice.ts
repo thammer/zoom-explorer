@@ -71,8 +71,7 @@ export type ParameterValueMap = {
   valuesUCNSP: null | Map<string, number>, // values in upper case and with no spaces, for fast lookup in getRawParameterValueFromString()
   max: number, // Counting the values from 0, this is the max value (could be viewed as the max value index)
   maxNumerical?: number, // the max value index before the values stop to be numbers (for example "time" that goes from milliseconds (numbers)  to note values (strings))
-  // minNumericalValue?: number, // Currently unused
-  // maxNumericalValue?: number // currently unused
+  default?: number; // default value  
 };
 
 export type EffectParameterMap = {
@@ -2384,17 +2383,20 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._disableMidiHandlers = true;
     this._isMappingParameters = true;
     
-    if (this.currentPatch === undefined || this.currentPatch.effectSettings === null) {
-      shouldLog(LogLevel.Error) && console.error("Cannot map parameters when currentPatch == undefined or currentPatch.effectSettings == null");
-      this._disableMidiHandlers = false;
-      this._isMappingParameters = false
-      return undefined;
-    }
+    // if (this.currentPatch === undefined || this.currentPatch.effectSettings === null) {
+    //   shouldLog(LogLevel.Error) && console.error("Cannot map parameters when currentPatch == undefined or currentPatch.effectSettings == null");
+    //   this._disableMidiHandlers = false;
+    //   this._isMappingParameters = false
+    //   return undefined;
+    // }
 
-    let patch = this.currentPatch.clone();
+    // let patch = this.currentPatch.clone();
+
+    let patch = ZoomPatch.createEmptyPTCFPatch();
+    this.uploadPatchToCurrentPatch(patch, false);
 
     if (patch.effectSettings === null) {
-      shouldLog(LogLevel.Error) && console.error("patch.effectSettings == null. This is a bug.");
+      shouldLog(LogLevel.Error) && console.error("patch.effectSettings === null. This is a bug.");
       this._disableMidiHandlers = false;
       this._isMappingParameters = false;
       return undefined;
@@ -2411,8 +2413,8 @@ export class ZoomDevice implements IManagedMIDIDevice
     let startTime = performance.now();
 
     let logLevel = getLogLevel();
-    if (logLevel & LogLevel.Midi)
-      setLogLevel(logLevel & ~LogLevel.Midi);
+    // if (logLevel & LogLevel.Midi)
+    //   setLogLevel(logLevel & ~LogLevel.Midi);
 
     let mappings: { [key: string]: EffectParameterMap } = {};
 
@@ -2452,7 +2454,19 @@ export class ZoomDevice implements IManagedMIDIDevice
         break;
 
       patch.effectSettings[0].id = id;
-      this.uploadPatchToCurrentPatch(patch, false);
+
+      //this.uploadPatchToCurrentPatch(patch, false);
+
+      let id7 = `${(id & 0x7f).toString(16).padStart(2, "0")}${((id >> 7) & 0x7f).toString(16).padStart(2, "0")}` +
+        `${((id >> 14) & 0x7f).toString(16).padStart(2, "0")}${((id >> 21) & 0x7f).toString(16).padStart(2, "0")}${((id >> 28) & 0x0f).toString(16).padStart(2, "0")}`
+      let id7c = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + 7);
+      id7c.set(ZoomDevice.messageTypes.parameterValueV2.bytes);
+      id7c.set(hexStringToUint8Array("0001" + id7), ZoomDevice.messageTypes.parameterValueV2.bytes.length);
+      let reply = await this.sendCommandAndGetReply(id7c, received => true);
+      if (reply === undefined)
+        shouldLog(LogLevel.Warning) && console.warn(`Unable to change effect for patch "${patch.name}" effect ID ${id}`);
+
+      let downloadedPatch = await this.downloadCurrentPatch();
 
       // let verifyPatch = await this.downloadCurrentPatch();
 
@@ -2529,6 +2543,16 @@ export class ZoomDevice implements IManagedMIDIDevice
         if (mappingsForParameterValue === undefined) {
           shouldLog(LogLevel.Info) && console.log(`Got no reply for parameter ${paramNumber}. Number of parameters for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}) is ${mappingsForEffect.parameters.length}`);
           break;
+        }
+        
+        let paramIndex = paramNumber - 2;
+
+        if (downloadedPatch === undefined || downloadedPatch.effectSettings === null || downloadedPatch.effectSettings.length < 1)
+        {
+          shouldLog(LogLevel.Warning) && console.warn(`Unable to get default parameters for patch "${patch.name}" parameter ${paramIndex}`);
+        }
+        else {
+          mappingsForParameterValue.default = downloadedPatch.effectSettings[0].parameters[paramIndex]; 
         }
 
         mappingsForEffect.parameters.push(mappingsForParameterValue);

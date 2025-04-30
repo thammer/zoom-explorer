@@ -13,6 +13,10 @@ import { extendMSOGMapWithMS60BEffects, replaceEffectNamesInMap } from "./ZoomEf
 import zoomEffectIDsMS200DPlus from "./zoom-effect-ids-ms200dp.js"
 import zoomEffectIDsFullNamesMS200DPlus from "./zoom-effect-ids-full-names-ms200dp.js";
 import { ZoomPatchConverter } from "./ZoomPatchConverter.js";
+import zoomEffectIDsAllZDL7 from "./zoom-effect-ids-allzdl7.js";
+import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
+import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
+import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -329,9 +333,6 @@ mapEffectsButton.addEventListener("click", async (event) => {
   let text = `
     <p>You're about to start mapping all parameters for all effects on your pedal.</p>
 
-    <p>This is only relevant for the MS-200D+ pedal, so if you have any other pedal, this mapping probably won't work. 
-    Also, mapping has already been done for the MS-50G+, MS-60B+, and MS-70CDR+ pedals, so there's no need to map these again.</p>
-
     <p>The mapping process will generate a mapping file that is needed for the patch editor to work for your pedal.
     This mapping file will be added to future releases of ZoomExplorer.</p>
 
@@ -360,25 +361,25 @@ mapEffectsButton.addEventListener("click", async (event) => {
       return;
 
     // Select the patch with fewest effect slots in use (1 or more)
-    if (zoomDevice.currentPatch === undefined || zoomDevice.currentPatch.effectSettings === null || 
-      zoomDevice.currentPatch.effectSettings.length != 1 || zoomDevice.currentPatch.effectSettings[0].id === 0)
-    {
-      if (zoomDevice.patchList.length <1)
-        await updatePatchList();
+    // if (zoomDevice.currentPatch === undefined || zoomDevice.currentPatch.effectSettings === null || 
+    //   zoomDevice.currentPatch.effectSettings.length != 1 || zoomDevice.currentPatch.effectSettings[0].id === 0)
+    // {
+    //   if (zoomDevice.patchList.length <1)
+    //     await updatePatchList();
 
-      let mostSuitableMemorySlot = 0;
-      let minNumSlots = 10;
-      let memorySlot = 0;
-      while (memorySlot < zoomDevice.patchList.length) {
-        let patch = zoomDevice.patchList[memorySlot];
-        if (patch.effectSettings !== null && patch.effectSettings[0].id !== 0 && patch.effectSettings.length <= minNumSlots) {
-          mostSuitableMemorySlot = memorySlot;
-          minNumSlots = patch.effectSettings.length;
-        }
-        memorySlot++;
-      }
-      zoomDevice.setCurrentMemorySlot(mostSuitableMemorySlot)
-    }
+    //   let mostSuitableMemorySlot = 0;
+    //   let minNumSlots = 10;
+    //   let memorySlot = 0;
+    //   while (memorySlot < zoomDevice.patchList.length) {
+    //     let patch = zoomDevice.patchList[memorySlot];
+    //     if (patch.effectSettings !== null && patch.effectSettings[0].id !== 0 && patch.effectSettings.length <= minNumSlots) {
+    //       mostSuitableMemorySlot = memorySlot;
+    //       minNumSlots = patch.effectSettings.length;
+    //     }
+    //     memorySlot++;
+    //   }
+    //   zoomDevice.setCurrentMemorySlot(mostSuitableMemorySlot)
+    // }
 
     zoomDevice.setAutoSave(false);   
     zoomDevice.setCurrentEffectSlot(0); // set current effect slot to 0, to give the user a chance to monitor the mapping 
@@ -388,9 +389,17 @@ mapEffectsButton.addEventListener("click", async (event) => {
     mapEffectsButton.innerText = "Cancel";
     isMappingEffects = true;
 
-    let effectList: Map<number, string> = zoomEffectIDsMS200DPlus;
+    let effectList: Map<number, string> = zoomDevice.deviceName === "MS-50G+" ? zoomEffectIDsMS50GPlus : 
+      zoomDevice.deviceName === "MS-60B+" ? zoomEffectIDsMS60BPlus :
+      zoomDevice.deviceName === "MS-70CDR+" ? zoomEffectIDsMS70CDRPlus :
+      zoomDevice.deviceName === "MS-200D+" ? zoomEffectIDsMS200DPlus : zoomEffectIDsAllZDL7;
 
-    mappings = await zoomDevice.mapParameters(effectList, "zoomEffectIDsMS200DP", (effectName: string, effectID: number, totalNumEffects: number) => {
+      let effectListName: string = zoomDevice.deviceName === "MS-50G+" ? "zoomEffectIDsMS50GPlus" : 
+      zoomDevice.deviceName === "MS-60B+" ? "zoomEffectIDsMS60BPlus" :
+      zoomDevice.deviceName === "MS-70CDR+" ? "zoomEffectIDsMS70CDRPlus" :
+      zoomDevice.deviceName === "MS-200D+" ? "zoomEffectIDsMS200DPlus" : "zoomEffectIDsAllZDL7";
+
+    mappings = await zoomDevice.mapParameters(effectList, effectListName, (effectName: string, effectID: number, totalNumEffects: number) => {
       mapEffectsButton.innerText = `Mapping ${effectName} ${effectID}/${totalNumEffects}. Click to Cancel.`;
     });
 
