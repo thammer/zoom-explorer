@@ -1,6 +1,7 @@
 {
   "01000010": {
     "name": "Comp",
+    "screenName": "Comp",
     "parameters": [
       {
         "name": "Sense",
@@ -17,7 +18,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "ATTCK",
@@ -25,7 +28,9 @@
           "SLOW",
           "FAST"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tone",
@@ -42,7 +47,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "VOL",
@@ -149,12 +156,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "01000020": {
     "name": "RackComp",
+    "screenName": "RackComp",
     "parameters": [
       {
         "name": "THRSH",
@@ -211,7 +221,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Ratio",
@@ -227,7 +239,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "ATTCK",
@@ -243,7 +257,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "VOL",
@@ -350,12 +366,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "01000030": {
     "name": "GrayComp",
+    "screenName": "GrayComp",
     "parameters": [
       {
         "name": "SUSTN",
@@ -462,7 +481,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 63
       },
       {
         "name": "Lo",
@@ -569,7 +590,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Hi",
@@ -676,7 +699,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -783,12 +808,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 88
       }
     ]
   },
   "01000040": {
     "name": "OptComp",
+    "screenName": "OptComp",
     "parameters": [
       {
         "name": "Drive",
@@ -805,7 +833,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Lo",
@@ -912,7 +942,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Hi",
@@ -1019,7 +1051,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -1126,12 +1160,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       }
     ]
   },
   "01000048": {
     "name": "160 Comp",
+    "screenName": "160 Comp",
     "parameters": [
       {
         "name": "THRSHLD",
@@ -1198,7 +1235,9 @@
           "-1",
           "0"
         ],
-        "max": 60
+        "max": 60,
+        "valuesUCNSP": null,
+        "default": 38
       },
       {
         "name": "Ratio",
@@ -1295,7 +1334,9 @@
           "9.9",
           "10.0"
         ],
-        "max": 90
+        "max": 90,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Knee",
@@ -1303,7 +1344,9 @@
           "SOFT",
           "HARD"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "VOL",
@@ -1410,12 +1453,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "01000055": {
     "name": "DualComp",
+    "screenName": "DualComp",
     "parameters": [
       {
         "name": "FREQ",
@@ -1431,7 +1477,9 @@
           "1.2kHz",
           "1.5kHz"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "LoComp",
@@ -1488,7 +1536,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 15
       },
       {
         "name": "HiComp",
@@ -1545,7 +1595,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "VOL",
@@ -1652,12 +1704,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 75
       }
     ]
   },
   "0100005a": {
     "name": "MB Comp",
+    "screenName": "MB Comp",
     "parameters": [
       {
         "name": "Comp",
@@ -1764,7 +1819,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "LoTHR",
@@ -1871,7 +1928,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "HiTHR",
@@ -1978,7 +2037,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -2085,12 +2146,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       }
     ]
   },
   "01000065": {
     "name": "Limiter",
+    "screenName": "Limiter",
     "parameters": [
       {
         "name": "THRSH",
@@ -2147,7 +2211,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Ratio",
@@ -2163,7 +2229,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 3
       },
       {
         "name": "REL",
@@ -2179,7 +2247,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "VOL",
@@ -2286,12 +2356,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 72
       }
     ]
   },
   "0100006a": {
     "name": "Orange Limi",
+    "screenName": "Orange Li",
     "parameters": [
       {
         "name": "VOL",
@@ -2398,12 +2471,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "01000070": {
     "name": "ZNR",
+    "screenName": "ZNR",
     "parameters": [
       {
         "name": "DETCT",
@@ -2411,7 +2487,9 @@
           "GTRIN",
           "EFXIN"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Depth",
@@ -2518,7 +2596,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "THRSH",
@@ -2625,7 +2705,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Decay",
@@ -2732,12 +2814,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "01000080": {
     "name": "NoiseGate",
+    "screenName": "NoiseGate",
     "parameters": [
       {
         "name": "DETCT",
@@ -2745,7 +2830,9 @@
           "GTRIN",
           "EFXIN"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Depth",
@@ -2852,7 +2939,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "THRSH",
@@ -2959,7 +3048,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 54
       },
       {
         "name": "Decay",
@@ -3066,12 +3157,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "01000088": {
     "name": "Dirty Gate",
+    "screenName": "Dirty Gat",
     "parameters": [
       {
         "name": "THRSH",
@@ -3102,7 +3196,9 @@
           "24",
           "25"
         ],
-        "max": 24
+        "max": 24,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "VOL",
@@ -3209,12 +3305,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "01000090": {
     "name": "SlowATTCK",
+    "screenName": "SlowATTCK",
     "parameters": [
       {
         "name": "Time",
@@ -3270,7 +3369,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Curve",
@@ -3287,7 +3388,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "Tone",
@@ -3394,7 +3497,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL",
@@ -3501,12 +3606,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "02000010": {
     "name": "AutoWah",
+    "screenName": "AutoWah",
     "parameters": [
       {
         "name": "Mode",
@@ -3514,7 +3622,9 @@
           "DOWN",
           "UP"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Sense",
@@ -3530,7 +3640,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "RESO",
@@ -3547,7 +3659,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -3654,12 +3768,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "02000020": {
     "name": "Reso FLTR",
+    "screenName": "Reso FLTR",
     "parameters": [
       {
         "name": "Mode",
@@ -3667,7 +3784,9 @@
           "DOWN",
           "UP"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Sense",
@@ -3683,7 +3802,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "RESO",
@@ -3700,7 +3821,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -3807,12 +3930,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "02000025": {
     "name": "A-Filter",
+    "screenName": "A-Filter",
     "parameters": [
       {
         "name": "Mode",
@@ -3820,7 +3946,9 @@
           "UP",
           "DOWN"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Sense",
@@ -3836,7 +3964,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Peak",
@@ -3853,7 +3983,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Dry",
@@ -3960,12 +4092,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 10
       }
     ]
   },
   "0200002a": {
     "name": "Z TronFLT",
+    "screenName": "Z TronFLT",
     "parameters": [
       {
         "name": "Sense",
@@ -3991,7 +4126,9 @@
           " 9",
           "10"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 16
       },
       {
         "name": "RESO",
@@ -4008,7 +4145,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Dry",
@@ -4115,7 +4254,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "VOL",
@@ -4222,12 +4363,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 83
       }
     ]
   },
   "02000030": {
     "name": "LowPassFL",
+    "screenName": "LowPassFL",
     "parameters": [
       {
         "name": "FREQ",
@@ -4334,7 +4478,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 56
       },
       {
         "name": "Sense",
@@ -4542,7 +4688,9 @@
           "SLW99",
           "SLW100"
         ],
-        "max": 201
+        "max": 201,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "RESO",
@@ -4570,7 +4718,9 @@
           "4P-9",
           "4P-10"
         ],
-        "max": 21
+        "max": 21,
+        "valuesUCNSP": null,
+        "default": 3
       },
       {
         "name": "BAL",
@@ -4677,12 +4827,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       }
     ]
   },
   "02000035": {
     "name": "BassA-Wah",
+    "screenName": "BassA-Wah",
     "parameters": [
       {
         "name": "Sense",
@@ -4708,7 +4861,9 @@
           " 9",
           "10"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 11
       },
       {
         "name": "RESO",
@@ -4725,7 +4880,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Dry",
@@ -4832,7 +4989,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -4939,12 +5098,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "02000040": {
     "name": "CryFilter",
+    "screenName": "CryFilter",
     "parameters": [
       {
         "name": "Range",
@@ -4960,7 +5122,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "RESO",
@@ -4977,7 +5141,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Sense",
@@ -5003,7 +5169,9 @@
           " 9",
           "10"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 16
       },
       {
         "name": "BAL",
@@ -5110,12 +5278,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       }
     ]
   },
   "02000048": {
     "name": "Bass Cry",
+    "screenName": "Bass Cry",
     "parameters": [
       {
         "name": "Range",
@@ -5131,7 +5302,9 @@
           "9",
           "10"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 3
       },
       {
         "name": "RESO",
@@ -5148,7 +5321,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Sense",
@@ -5174,7 +5349,9 @@
           " 9",
           "10"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 17
       },
       {
         "name": "BAL",
@@ -5281,12 +5458,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       }
     ]
   },
   "02000060": {
     "name": "LFO FLTR",
+    "screenName": "LFO FLTR",
     "parameters": [
       {
         "name": "Depth",
@@ -5393,7 +5573,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Rate",
@@ -5477,7 +5659,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 57
       },
       {
         "name": "RESO",
@@ -5494,7 +5678,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Wave",
@@ -5504,12 +5690,15 @@
           "SAWUP",
           "SAWDOWN"
         ],
-        "max": 3
+        "max": 3,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "02000070": {
     "name": "SeqFLTR",
+    "screenName": "SeqFLTR",
     "parameters": [
       {
         "name": "Step",
@@ -5522,7 +5711,9 @@
           "7",
           "8"
         ],
-        "max": 6
+        "max": 6,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "PTTRN",
@@ -5536,7 +5727,9 @@
           "7",
           "8"
         ],
-        "max": 7
+        "max": 7,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Speed",
@@ -5620,7 +5813,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "RESO",
@@ -5637,12 +5832,15 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       }
     ]
   },
   "02000080": {
     "name": "RndmFLTR",
+    "screenName": "RndmFLTR",
     "parameters": [
       {
         "name": "Type",
@@ -5651,7 +5849,9 @@
           "BPF",
           "LPF"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Speed",
@@ -5735,7 +5935,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 34
       },
       {
         "name": "BAL",
@@ -5842,7 +6044,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "VOL",
@@ -5949,12 +6153,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "02000090": {
     "name": "StepFLTR",
+    "screenName": "StepFLTR",
     "parameters": [
       {
         "name": "Depth",
@@ -6061,7 +6268,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Rate",
@@ -6146,7 +6355,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "RESO",
@@ -6163,7 +6374,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Shape",
@@ -6180,12 +6393,15 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       }
     ]
   },
   "02000095": {
     "name": "Comb Filter",
+    "screenName": "Comb Filt",
     "parameters": [
       {
         "name": "Freq",
@@ -6241,7 +6457,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Reso",
@@ -6268,7 +6486,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 15
       },
       {
         "name": "HiDMP",
@@ -6285,7 +6505,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Mix",
@@ -6392,7 +6614,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "VOL",
@@ -6499,12 +6723,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "0200009a": {
     "name": "SlowFLTR",
+    "screenName": "SlowFLTR",
     "parameters": [
       {
         "name": "Time",
@@ -6560,7 +6787,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Curve",
@@ -6577,7 +6806,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "Reso",
@@ -6594,7 +6825,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Type",
@@ -6602,7 +6835,9 @@
           "2Pole",
           "4Pole"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Mode",
@@ -6610,7 +6845,9 @@
           "Up",
           "Down"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "VOL",
@@ -6717,12 +6954,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "020000a0": {
     "name": "Gt GEQ",
+    "screenName": "Gt GEQ",
     "parameters": [
       {
         "name": "160Hz",
@@ -6777,7 +7017,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "400Hz",
@@ -6832,7 +7074,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "800Hz",
@@ -6887,7 +7131,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "3.2kHz",
@@ -6942,7 +7188,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "6.4kHz",
@@ -6997,7 +7245,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "12kHz",
@@ -7052,7 +7302,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "VOL",
@@ -7159,7 +7411,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Hidden-1",
@@ -7167,20 +7421,25 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
-        "name": "Hidden-2",
+        "name": "Hidden-1",
         "values": [
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "020000c0": {
     "name": "St Gt GEQ",
+    "screenName": "St Gt GEQ",
     "parameters": [
       {
         "name": "160Hz",
@@ -7235,7 +7494,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "400Hz",
@@ -7290,7 +7551,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "800Hz",
@@ -7345,7 +7608,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "3.2kHz",
@@ -7400,7 +7665,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "6.4kHz",
@@ -7455,7 +7722,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "12kHz",
@@ -7510,7 +7779,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "VOL",
@@ -7617,7 +7888,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Hidden-1",
@@ -7625,20 +7898,25 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
-        "name": "Hidden-2",
+        "name": "Hidden-1",
         "values": [
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "020000d0": {
     "name": "ParaEQ",
+    "screenName": "ParaEQ",
     "parameters": [
       {
         "name": "FREQ",
@@ -7675,7 +7953,9 @@
           " 16kHz",
           " 20kHz"
         ],
-        "max": 30
+        "max": 30,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Q",
@@ -7749,7 +8029,9 @@
           " 15.5 ",
           " 16.0 "
         ],
-        "max": 67
+        "max": 67,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Gain",
@@ -7804,7 +8086,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "VOL",
@@ -7911,12 +8195,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "020000d4": {
     "name": "BassGEQ",
+    "screenName": "BassGEQ",
     "parameters": [
       {
         "name": "50Hz",
@@ -7971,7 +8258,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "120Hz",
@@ -8026,7 +8315,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "400Hz",
@@ -8081,7 +8372,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "500Hz",
@@ -8136,7 +8429,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "800Hz",
@@ -8191,7 +8486,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "4.5kHz",
@@ -8246,7 +8543,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "10kHz",
@@ -8301,7 +8600,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "VOL",
@@ -8408,7 +8709,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Hidden-1",
@@ -8416,12 +8719,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "020000d8": {
     "name": "St Ba GEQ",
+    "screenName": "St Ba GEQ",
     "parameters": [
       {
         "name": "50Hz",
@@ -8476,7 +8782,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "120Hz",
@@ -8531,7 +8839,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "400Hz",
@@ -8586,7 +8896,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "500Hz",
@@ -8641,7 +8953,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "800Hz",
@@ -8696,7 +9010,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "4.5kHz",
@@ -8751,7 +9067,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "10kHz",
@@ -8806,7 +9124,9 @@
           "11.5",
           "12.0"
         ],
-        "max": 48
+        "max": 48,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "VOL",
@@ -8913,7 +9233,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Hidden-1",
@@ -8921,12 +9243,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "020000dc": {
     "name": "BassPEQ",
+    "screenName": "BassPEQ",
     "parameters": [
       {
         "name": "FREQ",
@@ -8970,7 +9295,9 @@
           " 16kHz",
           " 20kHz"
         ],
-        "max": 37
+        "max": 37,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Q",
@@ -9044,7 +9371,9 @@
           " 15.5 ",
           " 16.0 "
         ],
-        "max": 67
+        "max": 67,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Gain",
@@ -9131,7 +9460,9 @@
           "19.5",
           "20.0"
         ],
-        "max": 80
+        "max": 80,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "VOL",
@@ -9238,12 +9569,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "020000e0": {
     "name": "Exciter",
+    "screenName": "Exciter",
     "parameters": [
       {
         "name": "Bass",
@@ -9350,7 +9684,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Treble",
@@ -9457,7 +9793,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "VOL",
@@ -9564,7 +9902,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "ON/OFF",
@@ -9572,12 +9912,15 @@
           "LATCH",
           "UnLATCH"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "020000f0": {
     "name": "Bottom B",
+    "screenName": "Bottom B",
     "parameters": [
       {
         "name": "Bass",
@@ -9594,7 +9937,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Treble",
@@ -9611,7 +9956,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "VOL",
@@ -9718,12 +10065,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 48
       }
     ]
   },
   "02000110": {
     "name": "Splitter",
+    "screenName": "Splitter",
     "parameters": [
       {
         "name": "FREQ",
@@ -9745,7 +10095,9 @@
           "2.0kHz",
           "2.5kHz"
         ],
-        "max": 15
+        "max": 15,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Lo",
@@ -9802,7 +10154,9 @@
           "98",
           "100"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 16
       },
       {
         "name": "Hi",
@@ -9859,7 +10213,9 @@
           "98",
           "100"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "VOL",
@@ -9966,12 +10322,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000011": {
     "name": "Chorus",
+    "screenName": "Chorus",
     "parameters": [
       {
         "name": "Depth",
@@ -10078,7 +10437,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Rate",
@@ -10134,7 +10495,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Tone",
@@ -10151,7 +10514,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Mix",
@@ -10258,7 +10623,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -10365,12 +10732,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000020": {
     "name": "CloneCho",
+    "screenName": "CloneCho",
     "parameters": [
       {
         "name": "Depth",
@@ -10378,7 +10748,9 @@
           "1",
           "2"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Rate",
@@ -10485,7 +10857,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 23
       },
       {
         "name": "Tone",
@@ -10592,7 +10966,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Mix",
@@ -10699,12 +11075,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       }
     ]
   },
   "06000031": {
     "name": "ChorusOne",
+    "screenName": "ChorusOne",
     "parameters": [
       {
         "name": "Depth",
@@ -10811,7 +11190,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Rate",
@@ -10918,7 +11299,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Tone",
@@ -11025,7 +11408,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -11132,7 +11517,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 42
       },
       {
         "name": "Output",
@@ -11140,12 +11527,15 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "06000038": {
     "name": "CoronaCho",
+    "screenName": "CoronaCho",
     "parameters": [
       {
         "name": "DEPTH",
@@ -11252,7 +11642,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "SPEED",
@@ -11359,7 +11751,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "TONE",
@@ -11466,7 +11860,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "MIX",
@@ -11573,7 +11969,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 65
       },
       {
         "name": "DRY",
@@ -11581,12 +11979,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "06000041": {
     "name": "TriChorus",
+    "screenName": "TriChorus",
     "parameters": [
       {
         "name": "Depth",
@@ -11693,7 +12094,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Speed",
@@ -11800,7 +12203,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "Tone",
@@ -11907,7 +12312,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Mix",
@@ -12014,7 +12421,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Dry",
@@ -12022,12 +12431,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "06000051": {
     "name": "AnalogCho",
+    "screenName": "AnalogCho",
     "parameters": [
       {
         "name": "Depth",
@@ -12134,7 +12546,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "Rate",
@@ -12241,7 +12655,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 54
       },
       {
         "name": "Mix",
@@ -12348,7 +12764,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 82
       },
       {
         "name": "LO",
@@ -12455,7 +12873,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "HI",
@@ -12562,7 +12982,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 49
       },
       {
         "name": "Output",
@@ -12570,12 +12992,15 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "06000053": {
     "name": "VintageCE",
+    "screenName": "VintageCE",
     "parameters": [
       {
         "name": "Comp",
@@ -12591,7 +13016,9 @@
           "8",
           "9"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Rate",
@@ -12647,7 +13074,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Mix",
@@ -12754,7 +13183,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -12861,12 +13292,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000056": {
     "name": "CE_Cho5",
+    "screenName": "CE_Cho5",
     "parameters": [
       {
         "name": "DEPTH",
@@ -12973,7 +13407,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 67
       },
       {
         "name": "RATE",
@@ -13080,7 +13516,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 31
       },
       {
         "name": "OUTPUT",
@@ -13088,7 +13526,9 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "MIX",
@@ -13215,7 +13655,9 @@
           "119",
           "120"
         ],
-        "max": 120
+        "max": 120,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "LO",
@@ -13322,7 +13764,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 43
       },
       {
         "name": "HI",
@@ -13429,12 +13873,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       }
     ]
   },
   "06000057": {
     "name": "Ba Chorus",
+    "screenName": "Ba Chorus",
     "parameters": [
       {
         "name": "Depth",
@@ -13541,7 +13988,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 42
       },
       {
         "name": "Rate",
@@ -13597,7 +14046,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 22
       },
       {
         "name": "LoCut",
@@ -13614,7 +14065,9 @@
           "630Hz",
           "800Hz"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Mix",
@@ -13721,7 +14174,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 57
       },
       {
         "name": "Pre DLY",
@@ -13729,7 +14184,9 @@
           "OFF",
           "ON "
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "VOL",
@@ -13836,12 +14293,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000059": {
     "name": "Ensemble",
+    "screenName": "Ensemble",
     "parameters": [
       {
         "name": "Depth",
@@ -13948,7 +14408,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Rate",
@@ -14004,7 +14466,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 29
       },
       {
         "name": "Tone",
@@ -14021,7 +14485,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Mix",
@@ -14128,7 +14594,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "VOL",
@@ -14235,12 +14703,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "0600005c": {
     "name": "Ba_Ensmbl",
+    "screenName": "Ba_Ensmbl",
     "parameters": [
       {
         "name": "Depth",
@@ -14347,7 +14818,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 48
       },
       {
         "name": "Rate",
@@ -14403,7 +14876,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 22
       },
       {
         "name": "Tone",
@@ -14420,7 +14895,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Mix",
@@ -14527,7 +15004,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "VOL",
@@ -14634,12 +15113,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000061": {
     "name": "StereoCho",
+    "screenName": "StereoCho",
     "parameters": [
       {
         "name": "Depth",
@@ -14746,7 +15228,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Rate",
@@ -14802,7 +15286,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 29
       },
       {
         "name": "Tone",
@@ -14819,7 +15305,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Mix",
@@ -14926,7 +15414,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "VOL",
@@ -15033,12 +15523,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000071": {
     "name": "BendCho",
+    "screenName": "BendCho",
     "parameters": [
       {
         "name": "Mode",
@@ -15046,7 +15539,9 @@
           "UP",
           "DOWN"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -15153,7 +15648,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Time",
@@ -15210,7 +15707,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "BAL",
@@ -15317,7 +15816,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Tone",
@@ -15334,12 +15835,15 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       }
     ]
   },
   "06000075": {
     "name": "SilkyCho",
+    "screenName": "SilkyCho",
     "parameters": [
       {
         "name": "Depth",
@@ -15446,7 +15950,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "Rate",
@@ -15553,7 +16059,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Tone",
@@ -15660,7 +16168,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "CHO Mix",
@@ -15767,7 +16277,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "LO-PIT",
@@ -15824,7 +16336,9 @@
           "24",
           "25"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 31
       },
       {
         "name": "HI-PIT",
@@ -15881,7 +16395,9 @@
           "24",
           "25"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 33
       },
       {
         "name": "LO Mix",
@@ -15988,7 +16504,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 38
       },
       {
         "name": "HI Mix",
@@ -16095,7 +16613,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Pre DLY",
@@ -16152,12 +16672,15 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 27
       }
     ]
   },
   "0600007a": {
     "name": "MirageCho",
+    "screenName": "MirageCho",
     "parameters": [
       {
         "name": "Depth",
@@ -16264,7 +16787,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Rate",
@@ -16371,7 +16896,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 38
       },
       {
         "name": "Tone",
@@ -16478,7 +17005,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -16585,7 +17114,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 55
       },
       {
         "name": "Pre DLY",
@@ -16611,7 +17142,9 @@
           "19",
           "20"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "VOL",
@@ -16718,12 +17251,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000081": {
     "name": "Detune",
+    "screenName": "Detune",
     "parameters": [
       {
         "name": "Cent",
@@ -16780,7 +17316,9 @@
           "24",
           "25"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 35
       },
       {
         "name": "Pre DLY",
@@ -16837,7 +17375,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tone",
@@ -16854,7 +17394,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Mix",
@@ -16961,7 +17503,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "VOL",
@@ -17068,12 +17612,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000085": {
     "name": "Ba Detune",
+    "screenName": "Ba Detune",
     "parameters": [
       {
         "name": "Cent",
@@ -17130,7 +17677,9 @@
           "48",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 35
       },
       {
         "name": "Pre DLY",
@@ -17187,7 +17736,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tone",
@@ -17204,7 +17755,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Mix",
@@ -17311,7 +17864,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "LoCut",
@@ -17328,7 +17883,9 @@
           "630Hz",
           "800Hz"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "VOL",
@@ -17435,12 +17992,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "0600008a": {
     "name": "Tremolo",
+    "screenName": "Tremolo",
     "parameters": [
       {
         "name": "Wave",
@@ -17476,7 +18036,9 @@
           "TRI 8",
           "TRI 9"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 21
       },
       {
         "name": "Depth",
@@ -17583,7 +18145,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Rate",
@@ -17668,7 +18232,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 33
       },
       {
         "name": "VOL",
@@ -17775,12 +18341,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 92
       }
     ]
   },
   "06000090": {
     "name": "ORG Trem",
+    "screenName": "ORG Trem",
     "parameters": [
       {
         "name": "Wave",
@@ -17789,7 +18358,9 @@
           "TUBE",
           "SQR"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -17896,7 +18467,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "Rate",
@@ -18013,7 +18586,9 @@
           "&#119135;.",
           "&#119135;x2"
         ],
-        "max": 110
+        "max": 110,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -18120,12 +18695,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 62
       }
     ]
   },
   "06000098": {
     "name": "DuoTrem",
+    "screenName": "DuoTrem",
     "parameters": [
       {
         "name": "Wave A",
@@ -18161,7 +18739,9 @@
           "TRI 8",
           "TRI 9"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "Wave B",
@@ -18197,7 +18777,9 @@
           "TRI 8",
           "TRI 9"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 21
       },
       {
         "name": "Depth A",
@@ -18304,7 +18886,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Depth B",
@@ -18411,7 +18995,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "Rate A",
@@ -18496,7 +19082,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "Rate B",
@@ -18581,7 +19169,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Link",
@@ -18590,7 +19180,9 @@
           " Para",
           "  STR"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "VOL",
@@ -18697,12 +19289,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "060000a1": {
     "name": "Phaser",
+    "screenName": "Phaser",
     "parameters": [
       {
         "name": "Color",
@@ -18712,7 +19307,9 @@
           "INV 4",
           "INV 8"
         ],
-        "max": 3
+        "max": 3,
+        "valuesUCNSP": null,
+        "default": 3
       },
       {
         "name": "Depth",
@@ -18819,7 +19416,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Rate",
@@ -18903,7 +19502,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 11
       },
       {
         "name": "RESO",
@@ -19010,7 +19611,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -19117,12 +19720,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "060000b0": {
     "name": "StonePha",
+    "screenName": "StonePha",
     "parameters": [
       {
         "name": "Color",
@@ -19130,7 +19736,9 @@
           "1",
           "2"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -19237,7 +19845,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Rate",
@@ -19344,7 +19954,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "RESO",
@@ -19451,12 +20063,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       }
     ]
   },
   "060000c0": {
     "name": "WarpPhase",
+    "screenName": "WarpPhase",
     "parameters": [
       {
         "name": "Mode",
@@ -19464,7 +20079,9 @@
           "GO",
           "BACK"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Speed",
@@ -19548,7 +20165,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "RESO",
@@ -19565,7 +20184,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "VOL",
@@ -19672,12 +20293,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "060000d0": {
     "name": "Duo Phase",
+    "screenName": "Duo Phase",
     "parameters": [
       {
         "name": "Depth A",
@@ -19783,7 +20407,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 62
       },
       {
         "name": "Rate A",
@@ -19867,7 +20493,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "RESO A",
@@ -19884,7 +20512,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Link",
@@ -19893,7 +20523,9 @@
           "Parallel",
           "Stereo"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth B",
@@ -19999,7 +20631,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 36
       },
       {
         "name": "Rate B",
@@ -20057,7 +20691,9 @@
           "SyncA",
           "RvrsA"
         ],
-        "max": 51
+        "max": 51,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "RESO B",
@@ -20074,7 +20710,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "VOL",
@@ -20181,7 +20819,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Hidden-1",
@@ -20189,12 +20829,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "060000e1": {
     "name": "TheVibe",
+    "screenName": "TheVibe",
     "parameters": [
       {
         "name": "Speed",
@@ -20251,7 +20894,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "Depth",
@@ -20358,7 +21003,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Mode",
@@ -20366,7 +21013,9 @@
           "VIBRT",
           "CHORS"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "VOL",
@@ -20473,7 +21122,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Wave",
@@ -20580,7 +21231,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Bias",
@@ -20687,12 +21340,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 48
       }
     ]
   },
   "060000e5": {
     "name": "Flanger",
+    "screenName": "Flanger",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -20749,7 +21405,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Depth",
@@ -20856,7 +21514,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 47
       },
       {
         "name": "Rate",
@@ -20941,7 +21601,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Reso",
@@ -20968,7 +21630,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 18
       },
       {
         "name": "Mix",
@@ -21075,7 +21739,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 65
       },
       {
         "name": "VOL",
@@ -21182,12 +21848,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "060000ea": {
     "name": "BaFlanger",
+    "screenName": "BaFlanger",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -21244,7 +21913,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Depth",
@@ -21351,7 +22022,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 76
       },
       {
         "name": "Rate",
@@ -21436,7 +22109,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Reso",
@@ -21463,7 +22138,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 15
       },
       {
         "name": "LoCut",
@@ -21480,7 +22157,9 @@
           "630Hz",
           "800Hz"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Mix",
@@ -21587,7 +22266,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL",
@@ -21694,12 +22375,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 76
       }
     ]
   },
   "060000f1": {
     "name": "VinFLNGR",
+    "screenName": "VinFLNGR",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -21756,7 +22440,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Depth",
@@ -21863,7 +22549,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 47
       },
       {
         "name": "Rate",
@@ -21948,7 +22636,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "RESO",
@@ -21975,7 +22665,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 18
       },
       {
         "name": "Mix",
@@ -22082,12 +22774,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 65
       }
     ]
   },
   "060000f5": {
     "name": "BaVinFLNG",
+    "screenName": "BaVinFLNG",
     "parameters": [
       {
         "name": "Depth",
@@ -22194,7 +22889,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 47
       },
       {
         "name": "Rate",
@@ -22279,7 +22976,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "RESO",
@@ -22306,7 +23005,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 18
       },
       {
         "name": "LoCut",
@@ -22323,12 +23024,15 @@
           "630Hz",
           "800Hz"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "060000fa": {
     "name": "BF_Flanger2",
+    "screenName": "BF_Flange",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -22435,7 +23139,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "DEPTH",
@@ -22542,7 +23248,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "RATE",
@@ -22649,7 +23357,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "RESO",
@@ -22756,12 +23466,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       }
     ]
   },
   "06000100": {
     "name": "Kick FLNG",
+    "screenName": "Kick FLNG",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -22868,7 +23581,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Depth",
@@ -22975,7 +23690,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 61
       },
       {
         "name": "Rate",
@@ -23082,7 +23799,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 41
       },
       {
         "name": "RESO",
@@ -23189,7 +23908,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 73
       },
       {
         "name": "Mix",
@@ -23296,7 +24017,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 63
       },
       {
         "name": "Reset-F",
@@ -23403,7 +24126,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "ON/OFF",
@@ -23411,12 +24136,15 @@
           "LATCH",
           "UnLATCH"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "06000108": {
     "name": "DynaFLNGR",
+    "screenName": "DynaFLNGR",
     "parameters": [
       {
         "name": "Sense",
@@ -23442,7 +24170,9 @@
           " 9",
           "10"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -23549,7 +24279,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Rate",
@@ -23634,7 +24366,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 38
       },
       {
         "name": "Reso",
@@ -23661,7 +24395,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 15
       },
       {
         "name": "VOL",
@@ -23768,12 +24504,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000111": {
     "name": "Vibrato",
+    "screenName": "Vibrato",
     "parameters": [
       {
         "name": "Depth",
@@ -23880,7 +24619,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Rate",
@@ -23965,7 +24706,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Tone",
@@ -23982,7 +24725,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "BAL",
@@ -24089,7 +24834,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 72
       },
       {
         "name": "VOL",
@@ -24196,12 +24943,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 84
       }
     ]
   },
   "06000120": {
     "name": "SwellVibe",
+    "screenName": "SwellVibe",
     "parameters": [
       {
         "name": "Depth",
@@ -24308,7 +25058,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 37
       },
       {
         "name": "Speed",
@@ -24443,7 +25195,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 128
+        "max": 128,
+        "valuesUCNSP": null,
+        "default": 57
       },
       {
         "name": "Rise",
@@ -24550,7 +25304,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "Vol",
@@ -24657,12 +25413,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000131": {
     "name": "Octaver",
+    "screenName": "Octaver",
     "parameters": [
       {
         "name": "OCT1",
@@ -24769,7 +25528,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "OCT2",
@@ -24876,7 +25637,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 15
       },
       {
         "name": "Tone",
@@ -24893,7 +25656,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Dry",
@@ -25000,7 +25765,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "CHARA",
@@ -25107,7 +25874,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL",
@@ -25214,12 +25983,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000138": {
     "name": "BaOctaver",
+    "screenName": "BaOctaver",
     "parameters": [
       {
         "name": "OCT",
@@ -25326,7 +26098,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "Dry",
@@ -25433,7 +26207,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "LO",
@@ -25450,7 +26226,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "MId",
@@ -25467,7 +26245,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "HI",
@@ -25484,7 +26264,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "VOL",
@@ -25591,12 +26373,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000148": {
     "name": "Ba AnaOct",
+    "screenName": "Ba AnaOct",
     "parameters": [
       {
         "name": "OCT1",
@@ -25703,7 +26488,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 65
       },
       {
         "name": "OCT2",
@@ -25810,7 +26597,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "MOD",
@@ -25917,7 +26706,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "Dry",
@@ -26024,12 +26815,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 86
       }
     ]
   },
   "06000150": {
     "name": "PolyOct",
+    "screenName": "PolyOct",
     "parameters": [
       {
         "name": "Lo",
@@ -26136,7 +26930,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Hi",
@@ -26243,7 +27039,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Wet",
@@ -26350,7 +27148,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Dry",
@@ -26457,12 +27257,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000161": {
     "name": "HPS",
+    "screenName": "HPS",
     "parameters": [
       {
         "name": "Scale",
@@ -26478,7 +27281,9 @@
           "5",
           "6"
         ],
-        "max": 9
+        "max": 9,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Key",
@@ -26496,7 +27301,9 @@
           "A#",
           "B "
         ],
-        "max": 11
+        "max": 11,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tone",
@@ -26513,7 +27320,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Mix",
@@ -26620,7 +27429,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "VOL",
@@ -26727,12 +27538,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000171": {
     "name": "PolyShift",
+    "screenName": "PolyShift",
     "parameters": [
       {
         "name": "Shift",
@@ -26764,7 +27578,9 @@
           "12",
           "24"
         ],
-        "max": 25
+        "max": 25,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Tone",
@@ -26871,7 +27687,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "Wet",
@@ -26978,7 +27796,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Dry",
@@ -27085,12 +27905,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "06000180": {
     "name": "GEMINOS",
+    "screenName": "GEMINOS",
     "parameters": [
       {
         "name": "Tight",
@@ -27197,7 +28020,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mode",
@@ -27209,7 +28034,9 @@
           "ST-2",
           "ST-3"
         ],
-        "max": 5
+        "max": 5,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Wet",
@@ -27316,7 +28143,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "Dry",
@@ -27423,12 +28252,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 75
       }
     ]
   },
   "06000190": {
     "name": "RingMod",
+    "screenName": "RingMod",
     "parameters": [
       {
         "name": "FREQ",
@@ -27484,7 +28316,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 27
       },
       {
         "name": "Tone",
@@ -27501,7 +28335,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "BAL",
@@ -27608,7 +28444,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -27715,12 +28553,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 88
       }
     ]
   },
   "060001a1": {
     "name": "Slicer",
+    "screenName": "Slicer",
     "parameters": [
       {
         "name": "PTTRN",
@@ -27746,7 +28587,9 @@
           "19",
           "20"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Speed",
@@ -27830,7 +28673,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "THRSH",
@@ -27887,7 +28732,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "BAL",
@@ -27994,7 +28841,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL",
@@ -28101,12 +28950,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 87
       }
     ]
   },
   "07000011": {
     "name": "AutoPan",
+    "screenName": "AutoPan",
     "parameters": [
       {
         "name": "Rate",
@@ -28191,7 +29043,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 78
+        "max": 78,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Width",
@@ -28298,7 +29152,9 @@
           "R49",
           "R50"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Clip",
@@ -28315,7 +29171,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -28332,7 +29190,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "VOL",
@@ -28439,12 +29299,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "07000020": {
     "name": "LoopRoll",
+    "screenName": "LoopRoll",
     "parameters": [
       {
         "name": "Time",
@@ -32457,7 +33320,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 4006
+        "max": 4006,
+        "valuesUCNSP": null,
+        "default": 3992
       },
       {
         "name": "Duty",
@@ -32539,7 +33404,9 @@
           "99",
           "100"
         ],
-        "max": 75
+        "max": 75,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "BAL",
@@ -32646,7 +33513,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "ON/OFF",
@@ -32654,12 +33523,15 @@
           "LATCH",
           "UnLATCH"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "07000040": {
     "name": "Bomber",
+    "screenName": "Bomber",
     "parameters": [
       {
         "name": "Decay",
@@ -32765,7 +33637,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 49
       },
       {
         "name": "Tone",
@@ -32782,7 +33656,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Mix",
@@ -32889,7 +33765,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "TRGGR",
@@ -32897,12 +33775,15 @@
           "INPUT",
           "FOOT SW"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "07000050": {
     "name": "BitCrush",
+    "screenName": "BitCrush",
     "parameters": [
       {
         "name": "Bit",
@@ -32921,7 +33802,9 @@
           "15",
           "16"
         ],
-        "max": 12
+        "max": 12,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Sample",
@@ -32978,7 +33861,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Tone",
@@ -32995,7 +33880,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Bal",
@@ -33102,7 +33989,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "VOL",
@@ -33209,12 +34098,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "07000060": {
     "name": "MonoSynth",
+    "screenName": "MonoSynth",
     "parameters": [
       {
         "name": "Wave",
@@ -33224,7 +34116,9 @@
           "SawUp",
           "SawDn"
         ],
-        "max": 3
+        "max": 3,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Speed",
@@ -33331,7 +34225,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tone",
@@ -33348,7 +34244,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Synth",
@@ -33455,7 +34353,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Dry",
@@ -33562,7 +34462,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL",
@@ -33669,12 +34571,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "07000070": {
     "name": "Z-Organ",
+    "screenName": "Z-Organ",
     "parameters": [
       {
         "name": "HPF",
@@ -33691,7 +34596,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 3
       },
       {
         "name": "LPF",
@@ -33708,7 +34615,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Upper",
@@ -33815,7 +34724,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Lower",
@@ -33922,7 +34833,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Dry",
@@ -34029,7 +34942,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "VOL",
@@ -34136,12 +35051,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "07000080": {
     "name": "RtCloset",
+    "screenName": "RtCloset",
     "parameters": [
       {
         "name": "Mode",
@@ -34149,7 +35067,9 @@
           "Slow",
           "Fast"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Drive",
@@ -34256,7 +35176,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Bal",
@@ -34363,7 +35285,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -34470,12 +35394,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "07000f00": {
     "name": "LineSel",
+    "screenName": "LineSel",
     "parameters": [
       {
         "name": "EFX LVL",
@@ -34632,7 +35559,9 @@
           "149",
           "150"
         ],
-        "max": 150
+        "max": 150,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "OUT LVL",
@@ -34789,12 +35718,15 @@
           "149",
           "150"
         ],
-        "max": 150
+        "max": 150,
+        "valuesUCNSP": null,
+        "default": 100
       }
     ]
   },
   "08000011": {
     "name": "Delay",
+    "screenName": "Delay",
     "parameters": [
       {
         "name": "Time",
@@ -35763,7 +36695,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 962
+        "max": 962,
+        "valuesUCNSP": null,
+        "default": 946
       },
       {
         "name": "Mode",
@@ -35772,7 +36706,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -35879,7 +36815,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Mix",
@@ -35986,7 +36924,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "HiDMP",
@@ -36003,7 +36943,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "VOL",
@@ -36110,7 +37052,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -36118,12 +37062,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000021": {
     "name": "AnalogDly",
+    "screenName": "AnalogDly",
     "parameters": [
       {
         "name": "Time",
@@ -37092,7 +38039,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 962
+        "max": 962,
+        "valuesUCNSP": null,
+        "default": 946
       },
       {
         "name": "Mode",
@@ -37101,7 +38050,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -37208,7 +38159,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 28
       },
       {
         "name": "Mix",
@@ -37315,7 +38268,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "HiDMP",
@@ -37332,7 +38287,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -37439,7 +38396,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "P-P",
@@ -37447,7 +38406,9 @@
           "MONO",
           "P-P"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tail",
@@ -37455,12 +38416,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000031": {
     "name": "TapeEcho",
+    "screenName": "TapeEcho",
     "parameters": [
       {
         "name": "Time",
@@ -38229,7 +39193,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 762
+        "max": 762,
+        "valuesUCNSP": null,
+        "default": 746
       },
       {
         "name": "Mode",
@@ -38238,7 +39204,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -38345,7 +39313,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 64
       },
       {
         "name": "Mix",
@@ -38452,7 +39422,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 56
       },
       {
         "name": "HiDMP",
@@ -38469,7 +39441,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "VOL",
@@ -38576,7 +39550,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -38584,12 +39560,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000041": {
     "name": "TapeEcho3",
+    "screenName": "TapeEcho3",
     "parameters": [
       {
         "name": "Time",
@@ -39431,7 +40410,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 835
+        "max": 835,
+        "valuesUCNSP": null,
+        "default": 827
       },
       {
         "name": "Mode",
@@ -39440,7 +40421,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -39547,7 +40530,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Mix",
@@ -39654,7 +40639,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Gain",
@@ -39761,7 +40748,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Hi",
@@ -39868,7 +40857,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 62
       },
       {
         "name": "Lo",
@@ -39975,7 +40966,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 47
       },
       {
         "name": "VOL",
@@ -40082,7 +41075,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "P-Amp",
@@ -40090,7 +41085,9 @@
           " OFF",
           " ON "
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Hidden-1",
@@ -40098,12 +41095,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000048": {
     "name": "Ac TpEcho",
+    "screenName": "Ac TpEcho",
     "parameters": [
       {
         "name": "Time",
@@ -40764,7 +41764,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 654
+        "max": 654,
+        "valuesUCNSP": null,
+        "default": 646
       },
       {
         "name": "Mode",
@@ -40773,7 +41775,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -40880,7 +41884,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Mix",
@@ -40987,7 +41993,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Tail",
@@ -40995,12 +42003,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000051": {
     "name": "DualDelay",
+    "screenName": "DualDelay",
     "parameters": [
       {
         "name": "TimeA",
@@ -41709,7 +42720,9 @@
           "&#119135;x5",
           "&#119135;x6"
         ],
-        "max": 702
+        "max": 702,
+        "valuesUCNSP": null,
+        "default": 696
       },
       {
         "name": "TimeB",
@@ -42418,7 +43431,9 @@
           "&#119135;x5",
           "&#119135;x6"
         ],
-        "max": 702
+        "max": 702,
+        "valuesUCNSP": null,
+        "default": 695
       },
       {
         "name": "Mode",
@@ -42426,7 +43441,9 @@
           "TIME",
           "BPM SYNC"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "BAL",
@@ -42533,7 +43550,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "REP A",
@@ -42650,7 +43669,9 @@
           "109",
           "110"
         ],
-        "max": 110
+        "max": 110,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "REP B",
@@ -42767,7 +43788,9 @@
           "109",
           "110"
         ],
-        "max": 110
+        "max": 110,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "DlyMx",
@@ -42874,7 +43897,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "FLTR",
@@ -43081,7 +44106,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Depth",
@@ -43189,7 +44216,9 @@
           "ST-49",
           "ST-50"
         ],
-        "max": 101
+        "max": 101,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Speed",
@@ -43246,7 +44275,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "Hidden-1",
@@ -43254,12 +44285,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000058": {
     "name": "MultiTapD",
+    "screenName": "MultiTapD",
     "parameters": [
       {
         "name": "Time",
@@ -44124,7 +45158,9 @@
           "&#119135;x11",
           "&#119135;x12"
         ],
-        "max": 858
+        "max": 858,
+        "valuesUCNSP": null,
+        "default": 839
       },
       {
         "name": "Mode",
@@ -44133,7 +45169,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "PTTRN",
@@ -44147,7 +45185,9 @@
           "7",
           "8"
         ],
-        "max": 7
+        "max": 7,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Mix",
@@ -44254,7 +45294,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Tone",
@@ -44271,7 +45313,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "VOL",
@@ -44378,7 +45422,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -44386,12 +45432,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000061": {
     "name": "SoftEcho",
+    "screenName": "SoftEcho",
     "parameters": [
       {
         "name": "MOD",
@@ -44399,7 +45448,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Time",
@@ -44968,7 +46019,9 @@
           "580",
           "581"
         ],
-        "max": 562
+        "max": 562,
+        "valuesUCNSP": null,
+        "default": 387
       },
       {
         "name": "Repeat",
@@ -45075,7 +46128,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 47
       },
       {
         "name": "Mix",
@@ -45182,7 +46237,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 69
       },
       {
         "name": "Width",
@@ -45239,7 +46296,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 33
       },
       {
         "name": "Speed",
@@ -45296,7 +46355,9 @@
           "49",
           "50"
         ],
-        "max": 50
+        "max": 50,
+        "valuesUCNSP": null,
+        "default": 28
       },
       {
         "name": "Tail",
@@ -45304,12 +46365,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000068": {
     "name": "SmoothDly",
+    "screenName": "SmoothDly",
     "parameters": [
       {
         "name": "Time",
@@ -46170,7 +47234,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 854
+        "max": 854,
+        "valuesUCNSP": null,
+        "default": 846
       },
       {
         "name": "Mode",
@@ -46179,7 +47245,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -46286,7 +47354,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 39
       },
       {
         "name": "Mix",
@@ -46393,7 +47463,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 49
       },
       {
         "name": "TONE",
@@ -46500,7 +47572,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 83
       },
       {
         "name": "Tail",
@@ -46508,12 +47582,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000071": {
     "name": "SlapBackD",
+    "screenName": "SlapBackD",
     "parameters": [
       {
         "name": "Time",
@@ -46820,7 +47897,9 @@
           "300",
           "Sync"
         ],
-        "max": 300
+        "max": 300,
+        "valuesUCNSP": null,
+        "default": 98
       },
       {
         "name": "Repeat",
@@ -46927,7 +48006,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 29
       },
       {
         "name": "Mix",
@@ -47034,7 +48115,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "SubDv",
@@ -47043,7 +48126,9 @@
           "&#119136;.",
           "P-P"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Output",
@@ -47051,7 +48136,9 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "DRY",
@@ -47059,7 +48146,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Tail",
@@ -47067,12 +48156,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "08000075": {
     "name": "StompDly",
+    "screenName": "StompDly",
     "parameters": [
       {
         "name": "Time",
@@ -47693,7 +48785,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 614
+        "max": 614,
+        "valuesUCNSP": null,
+        "default": 359
       },
       {
         "name": "Mode",
@@ -47701,7 +48795,9 @@
           "TIME",
           "BPM SYNC"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Repeat",
@@ -47808,7 +48904,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Mix",
@@ -47935,7 +49033,9 @@
           "119",
           "120"
         ],
-        "max": 120
+        "max": 120,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Output",
@@ -47943,7 +49043,9 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "HI-DMP",
@@ -47960,7 +49062,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Tail",
@@ -47968,12 +49072,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "0800007a": {
     "name": "StereoDly",
+    "screenName": "StereoDly",
     "parameters": [
       {
         "name": "Time L",
@@ -48734,7 +49841,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 754
+        "max": 754,
+        "valuesUCNSP": null,
+        "default": 164
       },
       {
         "name": "Time R",
@@ -49495,7 +50604,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 754
+        "max": 754,
+        "valuesUCNSP": null,
+        "default": 504
       },
       {
         "name": "Mode",
@@ -49504,7 +50615,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Mix",
@@ -49611,7 +50724,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "REP L",
@@ -49718,7 +50833,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 55
       },
       {
         "name": "REP R",
@@ -49825,7 +50942,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 37
       },
       {
         "name": "VOL L",
@@ -49932,7 +51051,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL R",
@@ -50039,7 +51160,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "VOL",
@@ -50146,7 +51269,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -50154,12 +51279,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000080": {
     "name": "P-P Delay",
+    "screenName": "P-P Delay",
     "parameters": [
       {
         "name": "Time",
@@ -51128,7 +52256,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 962
+        "max": 962,
+        "valuesUCNSP": null,
+        "default": 946
       },
       {
         "name": "Mode",
@@ -51137,7 +52267,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -51244,7 +52376,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Mix",
@@ -51351,12 +52485,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       }
     ]
   },
   "08000091": {
     "name": "ReverseDL",
+    "screenName": "ReverseDL",
     "parameters": [
       {
         "name": "Time",
@@ -52108,7 +53245,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 745
+        "max": 745,
+        "valuesUCNSP": null,
+        "default": 630
       },
       {
         "name": "Mode",
@@ -52117,7 +53256,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Repeat",
@@ -52224,7 +53365,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "BAL",
@@ -52331,7 +53474,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "HiDMP",
@@ -52348,7 +53493,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -52455,7 +53602,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -52463,12 +53612,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000a1": {
     "name": "ModDelay",
+    "screenName": "ModDelay",
     "parameters": [
       {
         "name": "Time",
@@ -53229,7 +54381,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 754
+        "max": 754,
+        "valuesUCNSP": null,
+        "default": 746
       },
       {
         "name": "Mode",
@@ -53238,7 +54392,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -53345,7 +54501,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -53452,7 +54610,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 62
       },
       {
         "name": "Rate",
@@ -53508,7 +54668,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "VOL",
@@ -53615,7 +54777,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -53623,12 +54787,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000a8": {
     "name": "ModDelay2",
+    "screenName": "ModDelay2",
     "parameters": [
       {
         "name": "Time",
@@ -54389,7 +55556,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 754
+        "max": 754,
+        "valuesUCNSP": null,
+        "default": 746
       },
       {
         "name": "Mode",
@@ -54398,7 +55567,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -54505,7 +55676,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -54612,7 +55785,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       },
       {
         "name": "Depth",
@@ -54719,7 +55894,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Rate",
@@ -54775,7 +55952,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 16
       },
       {
         "name": "VOL",
@@ -54882,7 +56061,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -54890,12 +56071,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000b1": {
     "name": "FilterDly",
+    "screenName": "FilterDly",
     "parameters": [
       {
         "name": "Time",
@@ -55664,7 +56848,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 762
+        "max": 762,
+        "valuesUCNSP": null,
+        "default": 746
       },
       {
         "name": "Mode",
@@ -55673,7 +56859,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -55780,7 +56968,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -55887,7 +57077,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "Depth",
@@ -55994,7 +57186,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Rate",
@@ -56050,7 +57244,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "RESO",
@@ -56067,7 +57263,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -56174,7 +57372,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -56182,12 +57382,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000b5": {
     "name": "FilterPPD",
+    "screenName": "FilterPPD",
     "parameters": [
       {
         "name": "Time A",
@@ -56939,7 +58142,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 745
+        "max": 745,
+        "valuesUCNSP": null,
+        "default": 500
       },
       {
         "name": "Time B",
@@ -57691,7 +58896,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 745
+        "max": 745,
+        "valuesUCNSP": null,
+        "default": 250
       },
       {
         "name": "Mode",
@@ -57700,7 +58907,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Repeat",
@@ -57817,7 +59026,9 @@
           "109",
           "110"
         ],
-        "max": 110
+        "max": 110,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "Mix",
@@ -57924,7 +59135,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "DLY Mix",
@@ -58031,7 +59244,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "Slur",
@@ -58048,7 +59263,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 3
       },
       {
         "name": "Filter",
@@ -58155,7 +59372,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Depth",
@@ -58183,7 +59402,9 @@
           "S-9",
           "S-10"
         ],
-        "max": 21
+        "max": 21,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Wave",
@@ -58237,12 +59458,15 @@
           "Sq15",
           "Sq16"
         ],
-        "max": 47
+        "max": 47,
+        "valuesUCNSP": null,
+        "default": 35
       }
     ]
   },
   "080000ba": {
     "name": "LoFiDelay",
+    "screenName": "LoFiDelay",
     "parameters": [
       {
         "name": "Time",
@@ -58992,7 +60216,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 743
+        "max": 743,
+        "valuesUCNSP": null,
+        "default": 735
       },
       {
         "name": "Mode",
@@ -59001,7 +60227,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -59108,7 +60336,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "MIX",
@@ -59215,7 +60445,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Sample",
@@ -59236,7 +60468,9 @@
           "1/2",
           "1/1"
         ],
-        "max": 14
+        "max": 14,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Bit",
@@ -59263,7 +60497,9 @@
           "24",
           "32"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "Blend",
@@ -59370,7 +60606,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Damp",
@@ -59387,7 +60625,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Filter",
@@ -59402,7 +60642,9 @@
           "7",
           "8"
         ],
-        "max": 8
+        "max": 8,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Vinyl",
@@ -59427,12 +60669,15 @@
           "S:8",
           "S:9"
         ],
-        "max": 18
+        "max": 18,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000c1": {
     "name": "Pitch DLY",
+    "screenName": "Pitch DLY",
     "parameters": [
       {
         "name": "Pitch",
@@ -59469,7 +60714,9 @@
           "  11 ",
           "  12 "
         ],
-        "max": 30
+        "max": 30,
+        "valuesUCNSP": null,
+        "default": 21
       },
       {
         "name": "Time",
@@ -60215,7 +61462,9 @@
           "1990",
           "2000"
         ],
-        "max": 739
+        "max": 739,
+        "valuesUCNSP": null,
+        "default": 89
       },
       {
         "name": "Repeat",
@@ -60322,7 +61571,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Mix",
@@ -60429,7 +61680,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tone",
@@ -60446,7 +61699,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -60553,7 +61808,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -60561,12 +61818,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000c8": {
     "name": "TremDelay",
+    "screenName": "TremDelay",
     "parameters": [
       {
         "name": "Time",
@@ -61258,7 +62518,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 685
+        "max": 685,
+        "valuesUCNSP": null,
+        "default": 677
       },
       {
         "name": "Mode",
@@ -61267,7 +62529,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -61374,7 +62638,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "MIX",
@@ -61481,7 +62747,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Wave",
@@ -61492,7 +62760,9 @@
           "SawUp",
           "SawDn"
         ],
-        "max": 4
+        "max": 4,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -61599,7 +62869,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Speed",
@@ -61640,7 +62912,9 @@
           "24/1",
           "32/1"
         ],
-        "max": 34
+        "max": 34,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "Damp",
@@ -61657,7 +62931,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "HPF",
@@ -61684,7 +62960,9 @@
           "800",
           "900"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Grit",
@@ -61701,12 +62979,15 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 2
       }
     ]
   },
   "080000d1": {
     "name": "PhaseDly",
+    "screenName": "PhaseDly",
     "parameters": [
       {
         "name": "Time",
@@ -62475,7 +63756,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 762
+        "max": 762,
+        "valuesUCNSP": null,
+        "default": 746
       },
       {
         "name": "Mode",
@@ -62484,7 +63767,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -62591,7 +63876,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Mix",
@@ -62698,7 +63985,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 56
       },
       {
         "name": "Color",
@@ -62708,7 +63997,9 @@
           "INV 4",
           "INV 8"
         ],
-        "max": 3
+        "max": 3,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Depth",
@@ -62815,7 +64106,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Rate",
@@ -62899,7 +64192,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 77
+        "max": 77,
+        "valuesUCNSP": null,
+        "default": 59
       },
       {
         "name": "RESO",
@@ -63006,7 +64301,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 48
       },
       {
         "name": "VOL",
@@ -63113,7 +64410,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -63121,7 +64420,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Hidden-1",
@@ -63129,12 +64430,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000d8": {
     "name": "DriveEcho",
+    "screenName": "DriveEcho",
     "parameters": [
       {
         "name": "Time",
@@ -63875,7 +65179,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 734
+        "max": 734,
+        "valuesUCNSP": null,
+        "default": 726
       },
       {
         "name": "Mode",
@@ -63884,7 +65190,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -63991,7 +65299,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Mix",
@@ -64098,7 +65408,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Drive",
@@ -64205,7 +65517,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 39
       },
       {
         "name": "Wow",
@@ -64312,7 +65626,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "DRY",
@@ -64320,7 +65636,9 @@
           "DRIVE",
           "THRU"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Output",
@@ -64328,7 +65646,9 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tail",
@@ -64336,12 +65656,15 @@
           " OFF",
           " ON "
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000e1": {
     "name": "A-Pan DLY",
+    "screenName": "A-Pan DLY",
     "parameters": [
       {
         "name": "Time",
@@ -65060,7 +66383,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 712
+        "max": 712,
+        "valuesUCNSP": null,
+        "default": 222
       },
       {
         "name": "Mode",
@@ -65069,7 +66394,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Repeat",
@@ -65176,7 +66503,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 87
       },
       {
         "name": "Mix",
@@ -65283,7 +66612,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 53
       },
       {
         "name": "Link",
@@ -65291,7 +66622,9 @@
           "PAN-DLY",
           "DLY-PAN"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Cycle",
@@ -65350,7 +66683,9 @@
           "49",
           "50"
         ],
-        "max": 52
+        "max": 52,
+        "valuesUCNSP": null,
+        "default": 26
       },
       {
         "name": "Width",
@@ -65457,7 +66792,9 @@
           "R49",
           "R50"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -65474,7 +66811,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Clip",
@@ -65491,7 +66830,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "VOL",
@@ -65598,7 +66939,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Hidden-1",
@@ -65606,20 +66949,25 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
-        "name": "Hidden-2",
+        "name": "Hidden-1",
         "values": [
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "080000f1": {
     "name": "SlwAtkDly",
+    "screenName": "SlwAtkDly",
     "parameters": [
       {
         "name": "Swell",
@@ -65675,7 +67023,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Time",
@@ -66426,7 +67776,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 744
+        "max": 744,
+        "valuesUCNSP": null,
+        "default": 489
       },
       {
         "name": "Mode",
@@ -66435,7 +67787,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Repeat",
@@ -66542,7 +67896,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 71
       },
       {
         "name": "Mix",
@@ -66649,7 +68005,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 64
       },
       {
         "name": "Depth",
@@ -66756,7 +68114,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       },
       {
         "name": "Output",
@@ -66764,7 +68124,9 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Tail",
@@ -66772,12 +68134,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "080000f8": {
     "name": "DynaDelay",
+    "screenName": "DynaDelay",
     "parameters": [
       {
         "name": "Time",
@@ -67538,7 +68903,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 754
+        "max": 754,
+        "valuesUCNSP": null,
+        "default": 746
       },
       {
         "name": "Mode",
@@ -67547,7 +68914,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -67654,7 +69023,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Mix",
@@ -67761,7 +69132,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Sense",
@@ -67787,7 +69160,9 @@
           " 9",
           "10"
         ],
-        "max": 19
+        "max": 19,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "VOL",
@@ -67894,7 +69269,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -67902,12 +69279,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000101": {
     "name": "ICE Delay",
+    "screenName": "ICE Delay",
     "parameters": [
       {
         "name": "INTVL",
@@ -67944,7 +69324,9 @@
           "OCT+5",
           "2 OCT"
         ],
-        "max": 30
+        "max": 30,
+        "valuesUCNSP": null,
+        "default": 28
       },
       {
         "name": "Time",
@@ -68576,7 +69958,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 625
+        "max": 625,
+        "valuesUCNSP": null,
+        "default": 618
       },
       {
         "name": "Mode",
@@ -68585,7 +69969,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -68692,7 +70078,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "Mix",
@@ -68799,7 +70187,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 36
       },
       {
         "name": "Blend",
@@ -68826,7 +70216,9 @@
           "19",
           "20"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 16
       },
       {
         "name": "Smear",
@@ -68853,7 +70245,9 @@
           "19",
           "20"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "DAMP",
@@ -68870,7 +70264,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "HPF",
@@ -68897,7 +70293,9 @@
           "800",
           "900"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Slice",
@@ -68905,7 +70303,9 @@
           "SHORT",
           "LONG"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Hidden-1",
@@ -68913,12 +70313,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000110": {
     "name": "HoldDelay",
+    "screenName": "HoldDelay",
     "parameters": [
       {
         "name": "Time",
@@ -69887,7 +71290,9 @@
           "&#119135;x15",
           "&#119135;x16"
         ],
-        "max": 962
+        "max": 962,
+        "valuesUCNSP": null,
+        "default": 946
       },
       {
         "name": "Mode",
@@ -69896,7 +71301,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 2
       },
       {
         "name": "Repeat",
@@ -70003,7 +71410,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Hi-DMP",
@@ -70020,7 +71429,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "Tone",
@@ -70127,7 +71538,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Mix",
@@ -70234,7 +71647,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "P-P",
@@ -70242,7 +71657,9 @@
           "MONO",
           "P-P"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tail",
@@ -70250,12 +71667,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "08000120": {
     "name": "TrgHldDly",
+    "screenName": "TrgHldDly",
     "parameters": [
       {
         "name": "Time",
@@ -70907,7 +72327,9 @@
           "&#119135;x7",
           "&#119135;x8"
         ],
-        "max": 645
+        "max": 645,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Mode",
@@ -70916,7 +72338,9 @@
           "LONG",
           "BPM SYNC"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Duty",
@@ -70998,7 +72422,9 @@
           "99",
           "100"
         ],
-        "max": 75
+        "max": 75,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "Mix",
@@ -71105,7 +72531,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Sense",
@@ -71142,7 +72570,9 @@
           "29",
           "30"
         ],
-        "max": 30
+        "max": 30,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "VOL",
@@ -71249,7 +72679,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -71257,12 +72689,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000011": {
     "name": "RoomREV",
+    "screenName": "RoomREV",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -71368,7 +72803,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Decay",
@@ -71404,7 +72841,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Mix",
@@ -71511,7 +72950,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Tone",
@@ -71528,7 +72969,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "VOL",
@@ -71635,7 +73078,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -71643,12 +73088,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000020": {
     "name": "BrghtRoom",
+    "screenName": "BrghtRoom",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -71754,7 +73202,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Decay",
@@ -71790,7 +73240,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Tone",
@@ -71807,7 +73259,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Mix",
@@ -71914,12 +73368,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       }
     ]
   },
   "09000028": {
     "name": "TiledRoom",
+    "screenName": "TiledRoom",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -72025,7 +73482,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Decay",
@@ -72061,7 +73520,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "Tone",
@@ -72078,7 +73539,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 4
       },
       {
         "name": "Mix",
@@ -72185,7 +73648,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "VOL",
@@ -72292,7 +73757,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -72300,12 +73767,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000031": {
     "name": "SpringREV",
+    "screenName": "SpringREV",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -72411,7 +73881,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Decay",
@@ -72447,7 +73919,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "Tone",
@@ -72464,7 +73938,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Mix",
@@ -72571,7 +74047,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -72678,7 +74156,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -72686,12 +74166,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000036": {
     "name": "Spring Reve",
+    "screenName": "Spring Re",
     "parameters": [
       {
         "name": "Dwell",
@@ -72798,7 +74281,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 35
       },
       {
         "name": "Tone",
@@ -72905,7 +74390,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 58
       },
       {
         "name": "Mix",
@@ -73012,7 +74499,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 51
       },
       {
         "name": "VOL",
@@ -73119,12 +74608,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       }
     ]
   },
   "09000040": {
     "name": "FD Spring",
+    "screenName": "FD Spring",
     "parameters": [
       {
         "name": "Color",
@@ -73132,7 +74624,9 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Lo",
@@ -73239,7 +74733,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Hi",
@@ -73346,7 +74842,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Mix",
@@ -73453,12 +74951,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       }
     ]
   },
   "09000051": {
     "name": "Plate REV",
+    "screenName": "Plate REV",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -73664,7 +75165,9 @@
           "199",
           "200"
         ],
-        "max": 199
+        "max": 199,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Decay",
@@ -73771,7 +75274,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "Color",
@@ -73878,7 +75383,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 58
       },
       {
         "name": "Mix",
@@ -73985,7 +75492,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 44
       },
       {
         "name": "LoDMP",
@@ -74092,7 +75601,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 97
       },
       {
         "name": "HiDMP",
@@ -74199,7 +75710,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 95
       },
       {
         "name": "VOL",
@@ -74306,7 +75819,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -74314,12 +75829,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000061": {
     "name": "Hall REV",
+    "screenName": "Hall REV",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -74425,7 +75943,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 48
       },
       {
         "name": "Decay",
@@ -74461,7 +75981,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Mix",
@@ -74568,7 +76090,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "Tone",
@@ -74585,7 +76109,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "VOL",
@@ -74692,7 +76218,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -74700,12 +76228,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000070": {
     "name": "BrghtHall",
+    "screenName": "BrghtHall",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -74811,7 +76342,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 48
       },
       {
         "name": "Decay",
@@ -74847,7 +76380,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Tone",
@@ -74864,7 +76399,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Mix",
@@ -74971,12 +76508,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 46
       }
     ]
   },
   "09000081": {
     "name": "HD Hall",
+    "screenName": "HD Hall",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -75182,7 +76722,9 @@
           "199",
           "200"
         ],
-        "max": 199
+        "max": 199,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Decay",
@@ -75289,7 +76831,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       },
       {
         "name": "Mix",
@@ -75396,7 +76940,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 62
       },
       {
         "name": "Tail",
@@ -75404,7 +76950,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "LoDMP",
@@ -75511,7 +77059,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 32
       },
       {
         "name": "HiDMP",
@@ -75618,12 +77168,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       }
     ]
   },
   "09000091": {
     "name": "ChurchREV",
+    "screenName": "ChurchREV",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -75830,7 +77383,9 @@
           "199",
           "200"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 96
       },
       {
         "name": "Decay",
@@ -75937,7 +77492,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 49
       },
       {
         "name": "TONE",
@@ -76044,7 +77601,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 61
       },
       {
         "name": "Mix",
@@ -76151,7 +77710,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 46
       },
       {
         "name": "HiDMP",
@@ -76258,7 +77819,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 86
       },
       {
         "name": "Dry",
@@ -76266,7 +77829,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Tail",
@@ -76274,12 +77839,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000098": {
     "name": "Arena",
+    "screenName": "Arena",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -76385,7 +77953,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 89
       },
       {
         "name": "Decay",
@@ -76421,7 +77991,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 14
       },
       {
         "name": "Tone",
@@ -76438,7 +78010,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 7
       },
       {
         "name": "Mix",
@@ -76545,7 +78119,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 56
       },
       {
         "name": "VOL",
@@ -76652,7 +78228,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -76660,12 +78238,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090000a1": {
     "name": "Ambience",
+    "screenName": "Ambience",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -76872,7 +78453,9 @@
           "199",
           "200"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 29
       },
       {
         "name": "Decay",
@@ -76979,7 +78562,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "TONE",
@@ -77086,7 +78671,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Mix",
@@ -77193,7 +78780,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Dry",
@@ -77201,7 +78790,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Tail",
@@ -77209,12 +78800,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090000b1": {
     "name": "Chamber",
+    "screenName": "Chamber",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -77421,7 +79015,9 @@
           "199",
           "200"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 24
       },
       {
         "name": "Decay",
@@ -77528,7 +79124,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Tone",
@@ -77635,7 +79233,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 73
       },
       {
         "name": "Mix",
@@ -77742,7 +79342,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 48
       },
       {
         "name": "Tail",
@@ -77750,12 +79352,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "090000c1": {
     "name": "AirReverb",
+    "screenName": "AirReverb",
     "parameters": [
       {
         "name": "Size",
@@ -77861,7 +79466,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "Reflect",
@@ -77878,7 +79485,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 5
       },
       {
         "name": "Tone",
@@ -77895,7 +79504,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Mix",
@@ -78002,7 +79613,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "VOL",
@@ -78109,7 +79722,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -78117,12 +79732,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090000d1": {
     "name": "EarlyRef",
+    "screenName": "EarlyRef",
     "parameters": [
       {
         "name": "Decay",
@@ -78158,7 +79776,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 14
       },
       {
         "name": "Shape",
@@ -78185,7 +79805,9 @@
           "9",
           "10"
         ],
-        "max": 20
+        "max": 20,
+        "valuesUCNSP": null,
+        "default": 20
       },
       {
         "name": "Tone",
@@ -78202,7 +79824,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Mix",
@@ -78309,7 +79933,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "VOL",
@@ -78416,7 +80042,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -78424,12 +80052,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090000d8": {
     "name": "Slap Back R",
+    "screenName": "Slap Back",
     "parameters": [
       {
         "name": "Decay",
@@ -78465,7 +80096,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 9
       },
       {
         "name": "Time",
@@ -79482,7 +81115,9 @@
           "&#119135;x3",
           "&#119135;x4"
         ],
-        "max": 1010
+        "max": 1010,
+        "valuesUCNSP": null,
+        "default": 379
       },
       {
         "name": "Repeat",
@@ -79589,7 +81224,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 43
       },
       {
         "name": "Mix",
@@ -79696,7 +81333,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 48
       },
       {
         "name": "D-R BAL",
@@ -79803,7 +81442,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Tone",
@@ -79820,7 +81461,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 10
       },
       {
         "name": "VOL",
@@ -79927,7 +81570,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -79935,12 +81580,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090000e1": {
     "name": "GateRevrb",
+    "screenName": "GateRevrb",
     "parameters": [
       {
         "name": "Color",
@@ -79951,7 +81599,9 @@
           "4",
           "5"
         ],
-        "max": 4
+        "max": 4,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Decay",
@@ -80058,7 +81708,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 55
       },
       {
         "name": "Tone",
@@ -80165,7 +81817,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "BAL",
@@ -80272,7 +81926,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Tail",
@@ -80280,12 +81936,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090000f0": {
     "name": "HoldRevrb",
+    "screenName": "HoldRevrb",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -80491,7 +82150,9 @@
           "199",
           "200"
         ],
-        "max": 199
+        "max": 199,
+        "valuesUCNSP": null,
+        "default": 8
       },
       {
         "name": "Decay",
@@ -80598,7 +82259,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "Mix",
@@ -80705,7 +82368,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 44
       },
       {
         "name": "Tail",
@@ -80713,7 +82378,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Color",
@@ -80820,7 +82487,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 58
       },
       {
         "name": "Lo-DMP",
@@ -80927,7 +82596,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 97
       },
       {
         "name": "Hi-DMP",
@@ -81034,7 +82705,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 95
       },
       {
         "name": "Hidden-1",
@@ -81042,12 +82715,15 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000101": {
     "name": "SpaceHole",
+    "screenName": "SpaceHole",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -82054,7 +83730,9 @@
           "999",
           "1000"
         ],
-        "max": 1000
+        "max": 1000,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Decay",
@@ -82261,7 +83939,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Repeat",
@@ -82368,7 +84048,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       },
       {
         "name": "Mix",
@@ -82475,7 +84157,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Depth",
@@ -82582,7 +84266,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 58
       },
       {
         "name": "Speed",
@@ -82689,7 +84375,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 39
       },
       {
         "name": "Low",
@@ -82896,7 +84584,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 87
       },
       {
         "name": "High",
@@ -83103,7 +84793,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 82
       },
       {
         "name": "Size",
@@ -83210,7 +84902,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 29
       },
       {
         "name": "Hidden-1",
@@ -83218,20 +84912,25 @@
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
-        "name": "Hidden-2",
+        "name": "Hidden-1",
         "values": [
           "0",
           "1"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000111": {
     "name": "ParticleR",
+    "screenName": "ParticleR",
     "parameters": [
       {
         "name": "Mode",
@@ -83240,7 +84939,9 @@
           "CRITICAL",
           "HAZARD"
         ],
-        "max": 2
+        "max": 2,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Decay",
@@ -83347,7 +85048,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 75
       },
       {
         "name": "Gain",
@@ -83454,7 +85157,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Mix",
@@ -83561,7 +85266,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 60
       },
       {
         "name": "Mono",
@@ -83569,7 +85276,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tail",
@@ -83577,12 +85286,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       }
     ]
   },
   "09000120": {
     "name": "ModReverb",
+    "screenName": "ModReverb",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -83688,7 +85400,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 29
       },
       {
         "name": "Decay",
@@ -83724,7 +85438,9 @@
           "29",
           "30"
         ],
-        "max": 29
+        "max": 29,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "Tone",
@@ -83741,7 +85457,9 @@
           "9",
           "10"
         ],
-        "max": 10
+        "max": 10,
+        "valuesUCNSP": null,
+        "default": 6
       },
       {
         "name": "Mix",
@@ -83848,7 +85566,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       },
       {
         "name": "Depth",
@@ -83955,7 +85675,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 38
       },
       {
         "name": "Rate",
@@ -84011,7 +85733,9 @@
           "49",
           "50"
         ],
-        "max": 49
+        "max": 49,
+        "valuesUCNSP": null,
+        "default": 19
       },
       {
         "name": "VOL",
@@ -84118,7 +85842,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Tail",
@@ -84126,12 +85852,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000130": {
     "name": "LO-FI Rever",
+    "screenName": "LO-FI Rev",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -84139,7 +85868,9 @@
           "SHORT",
           "LONG"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Decay",
@@ -84246,7 +85977,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "Tone",
@@ -84353,7 +86086,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 95
       },
       {
         "name": "Mix",
@@ -84460,7 +86195,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 44
       },
       {
         "name": "Dry",
@@ -84468,7 +86205,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 1
       },
       {
         "name": "Tail",
@@ -84476,12 +86215,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000140": {
     "name": "Cave Reverb",
+    "screenName": "Cave Reve",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -84688,7 +86430,9 @@
           "199",
           "200"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 62
       },
       {
         "name": "Decay",
@@ -84795,7 +86539,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 52
       },
       {
         "name": "Tone",
@@ -84902,7 +86648,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 54
       },
       {
         "name": "Mix",
@@ -85009,7 +86757,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Tail",
@@ -85017,12 +86767,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000150": {
     "name": "Reverse Rev",
+    "screenName": "Reverse R",
     "parameters": [
       {
         "name": "Decay",
@@ -85129,7 +86882,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Tone",
@@ -85236,7 +86991,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Dry",
@@ -85244,7 +87001,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Mix",
@@ -85351,7 +87110,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Tail",
@@ -85359,12 +87120,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000160": {
     "name": "Echo Reverb",
+    "screenName": "Echo Reve",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -85571,7 +87335,9 @@
           "199",
           "200"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 125
       },
       {
         "name": "Decay",
@@ -85678,7 +87444,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 25
       },
       {
         "name": "Tone",
@@ -85785,7 +87553,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Mix",
@@ -85892,7 +87662,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Output",
@@ -85900,7 +87672,9 @@
           "MONO",
           "STEREO"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Tail",
@@ -85908,12 +87682,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000170": {
     "name": "Tremolo Rev",
+    "screenName": "Tremolo R",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -86420,7 +88197,9 @@
           "499",
           "500"
         ],
-        "max": 500
+        "max": 500,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Decay",
@@ -86527,7 +88306,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Size",
@@ -86634,7 +88415,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -86741,7 +88524,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       },
       {
         "name": "Wave",
@@ -86753,7 +88538,9 @@
           "RAMP",
           "SQR"
         ],
-        "max": 5
+        "max": 5,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Depth",
@@ -86959,7 +88746,9 @@
           "ST98",
           "ST99"
         ],
-        "max": 199
+        "max": 199,
+        "valuesUCNSP": null,
+        "default": 199
       },
       {
         "name": "Rate",
@@ -87184,7 +88973,9 @@
           "&#119135;x19",
           "&#119135;x20"
         ],
-        "max": 218
+        "max": 218,
+        "valuesUCNSP": null,
+        "default": 28
       },
       {
         "name": "LO",
@@ -87391,7 +89182,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "HI",
@@ -87598,12 +89391,15 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 100
       }
     ]
   },
   "09000180": {
     "name": "Holy Reverb",
+    "screenName": "Holy Reve",
     "parameters": [
       {
         "name": "Mix",
@@ -87710,7 +89506,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Tail",
@@ -87718,12 +89516,15 @@
           "OFF",
           "ON "
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "09000190": {
     "name": "Dyna Reverb",
+    "screenName": "Dyna Reve",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -87830,7 +89631,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "Decay",
@@ -87937,7 +89740,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 82
       },
       {
         "name": "Sense",
@@ -88144,7 +89949,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 172
       },
       {
         "name": "Mix",
@@ -88251,7 +90058,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 40
       },
       {
         "name": "Color",
@@ -88358,7 +90167,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 76
       },
       {
         "name": "Tail",
@@ -88366,12 +90177,15 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       }
     ]
   },
   "090001a0": {
     "name": "Shimmer Rev",
+    "screenName": "Shimmer R",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -88477,7 +90291,9 @@
           "99",
           "100"
         ],
-        "max": 99
+        "max": 99,
+        "valuesUCNSP": null,
+        "default": 39
       },
       {
         "name": "Decay",
@@ -88584,7 +90400,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 90
       },
       {
         "name": "Mix",
@@ -88691,7 +90509,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Tail",
@@ -88699,7 +90519,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "LO-DMP",
@@ -88806,7 +90628,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "HI-DMP",
@@ -88913,12 +90737,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 74
       }
     ]
   },
   "090001a8": {
     "name": "Shimmer2",
+    "screenName": "Shimmer2",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -89124,7 +90951,9 @@
           "199",
           "200"
         ],
-        "max": 199
+        "max": 199,
+        "valuesUCNSP": null,
+        "default": 39
       },
       {
         "name": "Decay",
@@ -89231,7 +91060,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 72
       },
       {
         "name": "Mix",
@@ -89338,7 +91169,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 65
       },
       {
         "name": "Tail",
@@ -89346,7 +91179,9 @@
           "OFF",
           "ON"
         ],
-        "max": 1
+        "max": 1,
+        "valuesUCNSP": null,
+        "default": 0
       },
       {
         "name": "LO-DMP",
@@ -89453,7 +91288,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "HI-DMP",
@@ -89560,12 +91397,15 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 45
       }
     ]
   },
   "090001b0": {
     "name": "Mangled Spa",
+    "screenName": "Mangled S",
     "parameters": [
       {
         "name": "Pre DLY",
@@ -90072,7 +91912,9 @@
           "499",
           "500"
         ],
-        "max": 500
+        "max": 500,
+        "valuesUCNSP": null,
+        "default": 80
       },
       {
         "name": "Decay",
@@ -90179,7 +92021,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Size",
@@ -90286,7 +92130,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Mix",
@@ -90393,7 +92239,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 38
       },
       {
         "name": "Clip",
@@ -90500,7 +92348,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "Depth",
@@ -90607,7 +92457,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 50
       },
       {
         "name": "LO",
@@ -90814,7 +92666,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 97
       },
       {
         "name": "HI",
@@ -91021,7 +92875,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 101
       },
       {
         "name": "VOL",
@@ -91228,12 +93084,15 @@
           "199",
           "200"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 85
       }
     ]
   },
   "090001c0": {
     "name": "Dual Reverb",
+    "screenName": "Dual Reve",
     "parameters": [
       {
         "name": "Pre DLY A",
@@ -91990,7 +93849,9 @@
           "749",
           "750"
         ],
-        "max": 750
+        "max": 750,
+        "valuesUCNSP": null,
+        "default": 350
       },
       {
         "name": "Pre DLY B",
@@ -92747,7 +94608,9 @@
           "749",
           "750"
         ],
-        "max": 750
+        "max": 750,
+        "valuesUCNSP": null,
+        "default": 700
       },
       {
         "name": "A-B Mix",
@@ -92772,7 +94635,9 @@
           "A1B9",
           "A0B9"
         ],
-        "max": 18
+        "max": 18,
+        "valuesUCNSP": null,
+        "default": 14
       },
       {
         "name": "Mix",
@@ -92879,7 +94744,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Decay A",
@@ -92986,7 +94853,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 15
       },
       {
         "name": "Decay B",
@@ -93093,7 +94962,9 @@
           "99",
           "100"
         ],
-        "max": 100
+        "max": 100,
+        "valuesUCNSP": null,
+        "default": 30
       },
       {
         "name": "Tone A",
@@ -93300,7 +95171,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 100
       },
       {
         "name": "Tone B",
@@ -93507,7 +95380,9 @@
           "99",
           "100"
         ],
-        "max": 200
+        "max": 200,
+        "valuesUCNSP": null,
+        "default": 70
       },
       {
         "name": "Size",
@@ -93546,7 +95421,9 @@
           "A1B2",
           "A1B1"
         ],
-        "max": 32
+        "max": 32,
+        "valuesUCNSP": null,
+        "default": 21
       }
     ]
   },
