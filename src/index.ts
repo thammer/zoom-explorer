@@ -404,6 +404,13 @@ mapEffectsButton.addEventListener("click", async (event) => {
     });
 
     isMappingEffects = false;
+
+    if (mappings === undefined) {
+      mapEffectsButton.innerText = origonalMapEffectsLabel;
+      infoDialog.show(`Mapping failed. See log for details.`);
+      return;
+    }
+    
     mapEffectsButton.innerText = "Save mappings";
 
     infoDialog.show(`Mapping completed. Please click the "Save mappings" button and email the file to h@mmer.no together with the name of your pedal.`);

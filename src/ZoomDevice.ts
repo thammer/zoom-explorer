@@ -2457,6 +2457,10 @@ export class ZoomDevice implements IManagedMIDIDevice
 
       //this.uploadPatchToCurrentPatch(patch, false);
 
+      let effectSettings: EffectSettings = patch.effectSettings[0];
+
+      shouldLog(LogLevel.Info) && console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length} parameters`);
+
       let id7 = `${(id & 0x7f).toString(16).padStart(2, "0")}${((id >> 7) & 0x7f).toString(16).padStart(2, "0")}` +
         `${((id >> 14) & 0x7f).toString(16).padStart(2, "0")}${((id >> 21) & 0x7f).toString(16).padStart(2, "0")}${((id >> 28) & 0x0f).toString(16).padStart(2, "0")}`
       let id7c = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + 7);
@@ -2494,11 +2498,13 @@ export class ZoomDevice implements IManagedMIDIDevice
       }
 
       if (screenCollection.screens.length < 1) {
-        shouldLog(LogLevel.Error) && console.error(`*** screenCollection.screens.length ${screenCollection.screens.length} is out of range while verifying patch, aborting mapping ***`);
-        setLogLevel(logLevel); // enable MIDI logging again
-        this._disableMidiHandlers = false;
-        this._isMappingParameters = false;
-        return undefined;
+        shouldLog(LogLevel.Warning) && console.warn(`*** screenCollection.screens.length ${screenCollection.screens.length} is out of range while verifying patch, skipping mapping for effect ***`);
+        counter++;
+        continue;
+        // setLogLevel(logLevel); // enable MIDI logging again
+        // this._disableMidiHandlers = false;
+        // this._isMappingParameters = false;
+        // return undefined;
       }
 
       let screen = screenCollection.screens[0].parameters;
@@ -2512,10 +2518,6 @@ export class ZoomDevice implements IManagedMIDIDevice
  //       counter++;
  //       continue;
       }
-
-      let effectSettings: EffectSettings = patch.effectSettings[0];
-
-      shouldLog(LogLevel.Info) && console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length} parameters`);
 
       if (progressCallback) {
         progressCallback(`${effectList.get(id)}`, counter, numEffects);
