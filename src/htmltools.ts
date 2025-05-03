@@ -261,7 +261,7 @@ export function htmlToElement(html: string): HTMLElement
 export function getColorFromEffectID(effectID: number): string
 {
   let effectGroup = (effectID >> 24) & 0xFF;
-  let color:string = effectGroup === 0x00 ? "#E8E69E" : // yellow (BPM is the only known module with ID 0)
+  let color:string = effectGroup === 0x00 ? "#FFFFFF" : // white (for THRU/Empty/Blank)
     effectGroup === 0x01 ? "#C8B4D7" : // purple
     effectGroup === 0x02 ? "#FFE2BF" : // orange
     effectGroup === 0x03 ? "#F7BFB9" : // red
