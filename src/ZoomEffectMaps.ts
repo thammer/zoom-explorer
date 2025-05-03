@@ -78,7 +78,7 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
       let valueAsNumber: number;
       let lastValueAsNumber: number;
       let delta = 0;
-      if (values.length == 0 || !isNumerical(values[0])) {
+      if (values.length === 0 || !isNumerical(values[0])) {
         parameter.maxNumerical = undefined;
         continue;
       }
@@ -94,12 +94,17 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
         }
         parameter.maxNumerical = valueNumber;
         valueAsNumber = Number.parseFloat(valueAsString);
-        if (valueNumber === 1)
+        if (valueNumber === 1) {
           delta = valueAsNumber - lastValueAsNumber;
+          parameter.maxLinearNumerical = valueNumber;
+        }
 
-        if (valueAsNumber - lastValueAsNumber !== delta) {
+        if (valueAsNumber - lastValueAsNumber === delta) {
+          parameter.maxLinearNumerical = valueNumber;
+        } 
+        else {
           // console.info(`Values for parameter ${parameterName} effect ${effectName} ID ${id} are not evenly spaced. Previous delta ${delta}, current delta ${valueAsNumber - lastValueAsNumber}`);
-          delta = valueAsNumber - lastValueAsNumber;
+          // delta = valueAsNumber - lastValueAsNumber;
         }
         lastValueAsNumber = valueAsNumber;
       }
@@ -129,4 +134,10 @@ export function replaceEffectNamesInMap(effectIDMap: EffectIDMap, nameMap: Map<n
       effect.name = newName;
     }
   }
+}
+
+export function addThruEffectToMap(effectIDMap: EffectIDMap): void
+{
+  if (!effectIDMap.has(0x00000000))
+    effectIDMap.set(0x00000000, { name: "THRU", screenName: "THRU", parameters: [] });
 }
