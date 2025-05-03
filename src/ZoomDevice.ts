@@ -71,6 +71,9 @@ export type ParameterValueMap = {
   valuesUCNSP: null | Map<string, number>, // values in upper case and with no spaces, for fast lookup in getRawParameterValueFromString()
   max: number, // Counting the values from 0, this is the max value (could be viewed as the max value index)
   maxNumerical?: number, // the max value index before the values stop to be numbers (for example "time" that goes from milliseconds (numbers)  to note values (strings))
+                         // maxNumerical is undefined if all values are strings, or if we have no values
+  maxLinearNumerical?: number, // the max value index before the numerical values stop increasing in a linear fashion
+                               // maxLinearNumerical is undefined if all values are strings, or if we have no values, or if values doesn't increase lineary from the start 
   default?: number; // default value  
 };
 
@@ -2283,6 +2286,10 @@ export class ZoomDevice implements IManagedMIDIDevice
     return map;
   }
 
+  public getRawParameterValueFromString(effectID: number, parameterNumber: number, valueString: string): [rawValue: number, maxValue: number] 
+  {
+    return ZoomDevice.getRawParameterValueFromStringAndMap(this.effectIDMap, effectID, parameterNumber, valueString);
+  }
 
   /**
    * Returns the raw value (zero-based) and maximum value (zero-based) for a given effect ID, parameter number, and value string.
@@ -2292,9 +2299,9 @@ export class ZoomDevice implements IManagedMIDIDevice
    * @param {string} valueString - The value string to search for.
    * @return {[number, number]} An array containing the raw value and maximum value. Returns [0, -1] if a mapping for valueString is not found.
    */
-  public getRawParameterValueFromString(effectID: number, parameterNumber: number, valueString: string): [rawValue: number, maxValue: number] 
+  public static getRawParameterValueFromStringAndMap(effectIDMap: EffectIDMap | undefined, effectID: number, parameterNumber: number, valueString: string): [rawValue: number, maxValue: number] 
   {
-    if (this.effectIDMap === undefined)
+    if (effectIDMap === undefined)
       return [0, -1];
 
     if (parameterNumber === 0) {
@@ -2302,7 +2309,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       return [valueString === "0" ? 0 : 1, 1];
     }
 
-    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let effectMapping: EffectParameterMap | undefined = effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
     if (effectMapping !== undefined) {
       if (parameterIndex < effectMapping.parameters.length) {
@@ -2321,7 +2328,12 @@ export class ZoomDevice implements IManagedMIDIDevice
 
   public getStringFromRawParameterValue(effectID: number, parameterNumber: number, rawValue: number): string
   {
-    if (this.effectIDMap === undefined)
+    return ZoomDevice.getStringFromRawParameterValueAndMap(this.effectIDMap, effectID, parameterNumber, rawValue);
+  }
+
+  public static getStringFromRawParameterValueAndMap(effectIDMap: EffectIDMap | undefined, effectID: number, parameterNumber: number, rawValue: number): string
+  {
+    if (effectIDMap === undefined)
       return "";
 
     if (parameterNumber === 0) {
@@ -2329,7 +2341,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       return rawValue === 0 ? "0" : "1";
     }
 
-    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let effectMapping: EffectParameterMap | undefined = effectIDMap.get(effectID);
     let parameterIndex = parameterNumber - 2;
     if (effectMapping !== undefined) {
       if (parameterIndex < effectMapping.parameters.length) {
@@ -2339,6 +2351,58 @@ export class ZoomDevice implements IManagedMIDIDevice
       }
     }
     return "";
+  }
+
+  public static getEffectIDMapForDevice(deviceName: string): EffectIDMap | undefined
+  {
+    return ZoomDevice._effectIDMaps.get(deviceName);
+  }
+
+  public static setEffectDefaultsForPatch(patch: ZoomPatch, effectIDMap: EffectIDMap, slotNumber?: number, parameterIndex?: number)
+  {
+    if (patch.effectSettings === null) {
+      shouldLog(LogLevel.Error) && console.error(`patch.effectSettings == null for patch ${patch.name}`);
+      return;
+    }
+
+    let slotStart = slotNumber ?? 0 ;
+    let slotEnd = slotNumber === undefined ? patch.effectSettings.length : slotNumber + 1;
+    
+    for (let slot = slotStart; slot < slotEnd; slot++) {      
+      ZoomDevice.setDefaultsForEffect(patch.effectSettings[slot], effectIDMap, parameterIndex);
+    }
+  }
+
+  public static setDefaultsForEffect(effectSettings: EffectSettings, effectIDMap: EffectIDMap, parameterIndex?: number)
+  {    
+    let effectMapping: EffectParameterMap | undefined = effectIDMap.get(effectSettings.id);
+    if (effectMapping === undefined) {
+      shouldLog(LogLevel.Warning) && console.warn(`No mapping found for effect ID ${effectSettings.id.toString(16).padStart(8, "0")}`);
+      return;
+    }
+
+    if (parameterIndex !== undefined && parameterIndex >= effectMapping.parameters.length) {
+      shouldLog(LogLevel.Error) && console.error(`parameterIndex (${parameterIndex}) >= number of parameters in map for effect ID ${effectSettings.id.toString(16).padStart(8, "0")}`);
+      return;
+    }
+
+    let parameterStart = parameterIndex ?? 0;
+    let parameterEnd = parameterIndex === undefined ? effectMapping.parameters.length : parameterIndex + 1;
+
+    for (let parameter = parameterStart; parameter < parameterEnd; parameter++) {
+      let parameterMapping: ParameterValueMap = effectMapping.parameters[parameter];
+      if (parameterMapping === undefined) {
+        shouldLog(LogLevel.Warning) && console.warn(`No mapping found for effect ID ${effectSettings.id.toString(16).padStart(8, "0")} parameter ${parameter}`);
+        continue;
+      }
+      if (parameterMapping.default === undefined) {
+        shouldLog(LogLevel.Warning) && console.warn(`No default value found for effect ID ${effectSettings.id.toString(16).padStart(8, "0")} parameter ${parameter}`);
+        continue;
+      }
+
+      let parameterValue = parameterMapping.default;
+      effectSettings.parameters[parameter] = parameterValue;
+    }
   }
 
   public getEffectNameAndNumParameters(effectID: number): [effectName: string | undefined, numParameters: number | undefined]
