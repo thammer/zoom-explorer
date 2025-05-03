@@ -262,6 +262,8 @@
           margin-right: auto;
           margin-top: auto;
           margin-bottom: auto;
+          padding-left: 3px;
+          padding-right: 3px;
       }
       table.editEffectTable td {
           text-align: center;
@@ -402,16 +404,17 @@
             <br/>
             <br/>
 
-          <table id="patchTable">
-            <tr>
-                <th>
-                </th>
-            </tr>
-            <tr>
-                <td>Patch info</td>
-            </tr>
-          </table>
+        <table id="patchTable">
+          <tr>
+              <th>
+              </th>
+          </tr>
+          <tr>
+              <td>Patch info</td>
+          </tr>
+        </table>
 
+        <div id="patchEditors">    
           <table id="editPatchTableID" class="editPatchTable">
             <tr>
               <th class="editPatchTableNumber">Patch 00:</th>
@@ -419,10 +422,10 @@
               <th class="editPatchTableTempoValue" id="editPatchTableTempoValueID">42</th>
               <th class="editPatchTableTempoLabel">BPM</th>
             </tr>
-          <tr>
-              <th colspan="4" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
-          </tr>
-          <tr>
+            <tr>
+                <th colspan="4" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
+            </tr>
+            <tr>
               <td colspan="4">
                   <table>
                       <tr>
@@ -434,7 +437,7 @@
                                 <div>
                                     <button class="material-symbols-outlined effectOnOffButton">radio_button_unchecked</button>
                                     <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
-                                    <span class="editEffectTableEffectName">LPF</span>
+                                    <span class="editEffectTableEffectName">LowPassFilter</span>
                                     <button class="material-symbols-outlined effectActionButton">play_arrow</button>
                                     <button class="material-symbols-outlined effectActionButton">delete</button>
                                 </div>
@@ -563,6 +566,7 @@
                 </td>
               </tr>
             </table>
+          </div>
             
             <table id="patchesTable">
               <tr>

@@ -1,6 +1,6 @@
 import { getColorFromEffectID, htmlToElement, supportsContentEditablePlaintextOnly } from "./htmltools.js";
 import { LogLevel, shouldLog } from "./Logger.js";
-import { ZoomDevice } from "./ZoomDevice.js";
+import { EffectIDMap, ZoomDevice } from "./ZoomDevice.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 
@@ -41,9 +41,14 @@ export class ZoomPatchEditor
   private mouseDownX: number = 0;
   private mouseDownY: number = 0;
 
-  constructor()
+  constructor(patchEditorID?: string)
   {
-    this.patchEditorTable = document.getElementById("editPatchTableID") as HTMLTableElement;
+    // this.patchEditorTable = document.getElementById("editPatchTableID") as HTMLTableElement;
+    if (patchEditorID !== undefined)
+      this.patchEditorTable = document.getElementById(patchEditorID) as HTMLTableElement;
+    else
+      this.patchEditorTable = this.createHTML();
+
     let lastRow = this.patchEditorTable.rows[this.patchEditorTable.rows.length -1] as HTMLTableRowElement;
     let lastCell = lastRow.children[0] as HTMLTableCellElement;
     this.effectsTable = lastCell.children[0] as HTMLTableElement;
@@ -97,6 +102,42 @@ export class ZoomPatchEditor
       }
     });
   }
+
+  createHTML(): HTMLTableElement
+  {
+    let html = `
+        <table id="editPatchTableID" class="editPatchTable">
+          <tr>
+            <th class="editPatchTableNumber">Patch 00:</th>
+            <th class="editPatchTableName" id="editPatchTableNameID">Patch Name</th>
+            <th class="editPatchTableTempoValue" id="editPatchTableTempoValueID">42</th>
+            <th class="editPatchTableTempoLabel">BPM</th>
+          </tr>
+          <tr>
+              <th colspan="4" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
+          </tr>
+          <tr>
+              <td colspan="4">
+                  <table>
+                    <tr>
+                      <td>
+                      </td>
+                    </tr>
+                  </table>
+              </td>
+          </tr>
+        </table>
+    `;
+
+    let htmlElement = htmlToElement(html) as HTMLTableElement; 
+    return htmlElement;
+  }
+
+  public get htmlElement(): HTMLTableElement
+  {
+    return this.patchEditorTable;
+  }
+
 
   hide()
   {
@@ -260,6 +301,13 @@ export class ZoomPatchEditor
   public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
+    this.updateFromMap(device.effectIDMap, device.numParametersPerPage, screenCollection, patch, `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`, 
+      previousScreenCollection, previousPatch);
+  }
+
+  public updateFromMap(effectIDMap: EffectIDMap | undefined, numParametersPerPage: number, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, patchNumberText: string, 
+    previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
+  {
     function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
       return ! ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || 
                 (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
@@ -268,7 +316,7 @@ export class ZoomPatchEditor
     shouldLog(LogLevel.Info) && console.log(`ZoomPatchEditor.update() - ${debugCounter++}`);	
 
     if (patch !== undefined) {
-      this.patchNumberCell.textContent = `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`;
+      this.patchNumberCell.textContent = patchNumberText;
       let newPatchName = patch.nameTrimmed;
       if (this.patchNameCell.textContent !== newPatchName) {
         this.patchNameCell.textContent = newPatchName;
@@ -289,7 +337,7 @@ export class ZoomPatchEditor
     if (screenCollection === undefined)
       return;
 
-    let maxNumParamsPerLine = device.numParametersPerPage;
+    let maxNumParamsPerLine = numParametersPerPage;
 
     // let offset = 6;
     // let screenCollection: ZoomScreenCollection = ZoomScreenCollection.fromScreenData(data, offset);
@@ -520,7 +568,7 @@ export class ZoomPatchEditor
           td.id = this.encodeEffectAndParameterNumber(effectSlot, parameterNumber);
 
           if (effectID !== -1) {
-            let [rawValue, maxValue] = device.getRawParameterValueFromString(effectID, parameterNumber, valueString);
+            let [rawValue, maxValue] = ZoomDevice.getRawParameterValueFromStringAndMap(effectIDMap, effectID, parameterNumber, valueString);
             let percentage: number;
             if (maxValue === -1)
               percentage = 0;
@@ -544,17 +592,17 @@ export class ZoomPatchEditor
       this.effectSlotOnOffCallback(effectSlot, !button.classList.contains("on"));
   }
 
-onEffectSlotMoveButtonClick(event: MouseEvent, direction: "left" | "right"): any
-{
-  let button = event.target as HTMLButtonElement;
-  if (button.dataset.effectSlot === undefined)
-    return; // this should never happen
-  let effectSlot = Number.parseInt(button.dataset.effectSlot);
-  if (this.effectSlotMoveCallback !== undefined)
-    this.effectSlotMoveCallback(effectSlot, direction);
-}
+  onEffectSlotMoveButtonClick(event: MouseEvent, direction: "left" | "right"): any
+  {
+    let button = event.target as HTMLButtonElement;
+    if (button.dataset.effectSlot === undefined)
+      return; // this should never happen
+    let effectSlot = Number.parseInt(button.dataset.effectSlot);
+    if (this.effectSlotMoveCallback !== undefined)
+      this.effectSlotMoveCallback(effectSlot, direction);
+  }
 
-onEffectSlotDeleteButtonClick(event: MouseEvent): any
+  onEffectSlotDeleteButtonClick(event: MouseEvent): any
   {
     let button = event.target as HTMLButtonElement;
     if (button.dataset.effectSlot === undefined)
