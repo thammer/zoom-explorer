@@ -195,10 +195,6 @@ export class ZoomScreenCollection
     let numEffects = patch.numEffects ?? patch.effectSettings.length;
     for (let effectSlot = 0; effectSlot< numEffects; effectSlot++) {
       let effectSettings = patch.effectSettings[effectSlot];
-      if (effectSettings.id === 0) {
-        shouldLog(LogLevel.Info) && console.log(`Ignoring effectSettings.id == 0 for effectSlot ${effectSlot} in patch ${patch.name}`);
-        continue;
-      }
       let effectMap = effectsMap.get(effectSettings.id);
       if (effectMap === undefined) {
         shouldLog(LogLevel.Error) && console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${patch.name}`);
