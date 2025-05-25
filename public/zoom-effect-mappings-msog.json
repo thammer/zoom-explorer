@@ -10998,7 +10998,7 @@
         "default": 25
       },
       {
-        "name": "DRV",
+        "name": "DRY",
         "values": [
           "DRIV",
           "THRU"
@@ -45017,8 +45017,8 @@
       {
         "name": "Mode",
         "values": [
-          "OFF",
-          "ON"
+          "MONO",
+          "STR"
         ],
         "max": 1,
         "default": 0
@@ -119502,8 +119502,8 @@
       {
         "name": "Mode",
         "values": [
-          "OFF",
-          "ON"
+          "MONO",
+          "STR"
         ],
         "max": 1,
         "default": 0

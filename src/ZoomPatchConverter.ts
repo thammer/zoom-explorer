@@ -1,6 +1,6 @@
 import { LogLevel, shouldLog } from "./Logger.js";
 import zoomPatchConverterMap from "./zoom-patch-converter-map.js";
-import { ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
+import { EffectParameterMap, ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
 import { EffectSettings, PTCF_EDTB_REVERSED_BYTES_SIZE, ZoomPatch } from "./ZoomPatch.js";
 
 
@@ -9,6 +9,9 @@ export class ZoomPatchConverter
 
   private patchConverterMap: Map<number, any>; // FIXME: Use proper type instead of any
 
+  // Maps from parameter name in input effect to parameter name in output effect
+  // This has precedence over matching parameter names in the output effect, in case the output effect
+  // already has a parameter of the same name as the input effect parameter name
   private parameterMapObj = {
     "ABMix" : "A-B Mix",
     "Bal"   : "Mix",
@@ -88,9 +91,11 @@ export class ZoomPatchConverter
     "WaveB" : "Wave B",
   };
 
-  // Parameter name mappings specific for a particular effect
+  // Parameter name mappings specific for a particular input effect
   private effectParameterNameMapObj = {
     "ANA234Cho"  : { "LEVEL" : "Mix" },
+    "Ba Octave"  : { "Tone"  : "HI" },
+    "Bomber"     : { "THRSH" : "TRGGR" },
     "CE-Cho5"    : { "MODE"  : "OUTPUT"},
     "CentaGold"  : { "OUT"   : "VOL" },
     "DualComp"   : { "Hi"    : "HiComp", "Lo"    : "LoComp" },
@@ -111,11 +116,44 @@ export class ZoomPatchConverter
     "PitchSHFT"  : { "Bal"   : "Wet",   "Level" : "Dry" },
   }
 
+  // Maps from values in input effect parameter to values in output effect parameter
   private valueStringMapObj = {
+    "-Oct"  : "-OCT",
+    "-M7"   : "-11",
+    "-m7"   : "-10",
+    "-M6"   : "-9",
+    "-m6"   : "-8",
+    "-P5"   : "-7",
+    "-Tri"  : "-6",
+    "-P4"   : "-5",
+    "-M3"   : "-4",
+    "-m3"   : "-3",
+    "-M2"   : "-2",
+    "-m2"   : "-1",
+    "-50c"  : "-0.5",
+    "-25c"  : "-0.25",
+    "Uni"   : "0",
+    "+25c"  : "0.25",
+    "+50c"  : "0.5",
+    "+m2"   : "1",
+    "+M2"   : "2",
+    "+m3"   : "3",
+    "+M3"   : "4",
+    "+P4"   : "5",
+    "+Tri"  : "6",
+    "+P5"   : "7",
+    "+m6"   : "8",
+    "+M6"   : "9",
+    "+m7"   : "10",
+    "+M7"   : "11",
+    "+Oct"  : "OCT",
+    "Oc+5"  : "OCT+5",
+    "2Oct"  : "2 OCT",
     "HZD"   : "HAZARD",
     "Close" : "Down",
     "CRTCL" : "CRITICAL",
     "D-P"   : "DLY-PAN",
+    "DRIV"  : "DRIVE",
     "M-0"   : "MN-0",
     "M-1"   : "MN-1",
     "M-2"   : "MN-2",
@@ -249,11 +287,15 @@ export class ZoomPatchConverter
     "&#119135; x20" : "&#119135;x20",
   };
 
+    // Maps from values in input effect parameter to values in output effect parameter, for a specific input effect
   private effectValueStringMapObj = {
     "CE-Cho5"   : { "STR"   : "STEREO" },
     "SuperCho"  : { "STR"   : "STEREO" },
+    "Echo"      : { "RAMP"  : "SawUp", "SAW" : "SawDn" },
+    "TremDelay" : { "SIN"   : "Sine",  "RAMP" : "SawUp", "SAW" : "SawDn" },
   }
 
+  // Skip value interpolation for these output parameters
   private skipInterpolation = new Set<string>([
     "Duty",
     "Rise",
@@ -273,7 +315,7 @@ export class ZoomPatchConverter
   private parameterNameConverterMap: Map<string, string>;
   private effectParameterNameConverterMap: Map<string, Map<string, string>>; 
   private valueStringConverterMap: Map<string, string>;
-  // private effectValueStringConverterMap: Map<string, Map<string, string>>;
+  private effectValueStringConverterMap: Map<string, Map<string, string>>;
 
   constructor()
   {
@@ -285,10 +327,11 @@ export class ZoomPatchConverter
         return [effectName, parameterMap];
       }));
     this.valueStringConverterMap = new Map<string, string>(Object.entries(this.valueStringMapObj));
-      // this.effectValueStringConverterMap = new Map<string, Map<string, string>>(Object.entries(this.effectValueStringMapObj).map(([effectName, valueMapObj]) => {
-      //   let valueMap: Map<string, string> = new Map<string, string>(Object.entries(valueMapObj));
-      //   return [effectName, valueMap];
-      // }));
+
+    this.effectValueStringConverterMap = new Map<string, Map<string, string>>(Object.entries(this.effectValueStringMapObj).map(([effectName, valueMapObj]) => {
+      let valueMap: Map<string, string> = new Map<string, string>(Object.entries(valueMapObj));
+      return [effectName, valueMap];
+    }));
   }
 
   public canMapEffect(inputEffectID: number): boolean
@@ -356,19 +399,48 @@ export class ZoomPatchConverter
       }
     }
 
-    // Look for parameter name mappings in the value map and in the parameterNameConverterMap
+    // Look for parameter name mappings in the parameterNameConverterMap
     if (outputParameterIndex === -1) {
-      outputParameterIndex = outputEffectMap.parameters.findIndex(parameterMap => {
-        return parameterMap.name.toLowerCase() === inParamMap.name.toLowerCase() || 
-        parameterMap.name.toLowerCase() === this.parameterNameConverterMap.get(inParamMap.name)?.toLowerCase();
-      });
+      outputParameterIndex = outputEffectMap.parameters.findIndex(parameterMap => 
+        parameterMap.name.toLowerCase() === this.parameterNameConverterMap.get(inParamMap.name)?.toLowerCase());
     }
 
+    // Look for parameter name mappings in the value map
+    if (outputParameterIndex === -1) {
+      outputParameterIndex = outputEffectMap.parameters.findIndex(parameterMap =>
+        parameterMap.name.toLowerCase() === inParamMap.name.toLowerCase());
+    }
+    
     let alternatives = "";
     if (outputParameterIndex === -1) {
       for (let i=0; i<outputEffectMap.parameters.length; i++) {
         let parameterMap = outputEffectMap.parameters[i];
         alternatives += ` "${parameterMap.name}"`;
+      }
+    }
+
+    if (outputParameterIndex !== -1) {
+      let outParamMap = outputEffectMap.parameters[outputParameterIndex];
+      for (let inParamVal = 0; inParamVal < inParamMap.values.length; inParamVal++) {
+        if (inParamMap.maxNumerical === undefined || inParamVal > inParamMap.maxNumerical) {
+          // The input value is a text-value, not a numerical value
+          let inParamValString = inParamMap.values[inParamVal]; 
+          let index = this.findIndexOfInputParameterValueStringInOutputParameterMap(inputEffectMap.name, inParamValString, outParamMap);
+
+          if (index !== -1) {
+            let outParamValString = outParamMap.values[index];
+            let [value, max] = ZoomDevice.getRawParameterValueFromStringAndMap(effectIDMapPlus, outputEffectID, outputParameterIndex + 2, outParamValString);
+            if (max !== -1) {
+              // Mapping succeeded
+            }
+            else {
+              alternatives += `Raw value failed for "${outParamValString}. "`;
+            }
+          }
+          else {
+            alternatives += `Missing value string "${inParamValString}". `;
+          }
+        }        
       }
     }
 
@@ -527,12 +599,16 @@ export class ZoomPatchConverter
               }
             }
 
-            // Look for parameter name mappings in the value map and in the parameterNameConverterMap
+            // Look for parameter name mappings in the parameterNameConverterMap
             if (outputParameterIndex === -1) {
-              outputParameterIndex = outputEffectMap.parameters.findIndex(parameterMap => {
-                return parameterMap.name.toLowerCase() === inParamMap.name.toLowerCase() || 
-                parameterMap.name.toLowerCase() === this.parameterNameConverterMap.get(inParamMap.name)?.toLowerCase();
-              });
+              outputParameterIndex = outputEffectMap.parameters.findIndex(parameterMap => 
+                parameterMap.name.toLowerCase() === this.parameterNameConverterMap.get(inParamMap.name)?.toLowerCase());
+            }
+
+            // Look for parameter name mappings in the value map
+            if (outputParameterIndex === -1) {
+              outputParameterIndex = outputEffectMap.parameters.findIndex(parameterMap =>
+                parameterMap.name.toLowerCase() === inParamMap.name.toLowerCase());
             }
 
             if (outputParameterIndex === -1) {
@@ -571,7 +647,17 @@ export class ZoomPatchConverter
             // }
             // else
 
-            if (inputEffectMap.name === "GateRev") {
+            //     "Bomber"     : { "THRSH" : "TRGGR" },
+
+
+            if (inputEffectMap.name === "Bomber" && inParamMap.name === "THRSH") {
+              outParamVal = 0; // Always be triggered by the input
+            }
+            else if (inputEffectMap.name === "DualDigiD" || inParamMap.name === "TimeA" || inParamMap.name === "TimeB") {
+              if (inParamVal > inParamMap.max - 2)
+                outParamVal = outParamMap.max; // quarter note x7 and x8 isn't supported on the MS+
+            }
+            else if (inputEffectMap.name === "GateRev") {
               if (inParamMap.name === "Level") {
                 gateRevLevel = inParamVal;
               }
@@ -665,11 +751,13 @@ export class ZoomPatchConverter
             if (outParamVal === undefined && (inParamMap.maxNumerical === undefined || inParamVal > inParamMap.maxNumerical)) {
               // The input value is a text-value, not a numerical value
               let inParamValString = inParamMap.values[inParamVal];
-              // let index = outParamMap.values.indexOf(inParamValString)
-              let index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === inParamValString.trim().toLowerCase())
-              if (index === -1 && this.valueStringConverterMap.has(inParamValString))
-                index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === this.valueStringConverterMap.get(inParamValString)!.trim().toLowerCase())
-              // index = outParamMap.values.indexOf(this.valueStringConverterMap.get(inParamValString)!);
+
+              // let index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === inParamValString.trim().toLowerCase())
+              // if (index === -1 && this.valueStringConverterMap.has(inParamValString))
+              //   index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === this.valueStringConverterMap.get(inParamValString)!.trim().toLowerCase())
+
+              let index = this.findIndexOfInputParameterValueStringInOutputParameterMap(inputEffectMap.name, inParamValString, outParamMap);
+
               if (index !== -1) {
                 let outParamValString = outParamMap.values[index];
                 let [value, max] = ZoomDevice.getRawParameterValueFromStringAndMap(effectIDMapPlus, outputEffect.id, outputParameterIndex + 2, outParamValString);
@@ -677,7 +765,7 @@ export class ZoomPatchConverter
                   outParamVal = value;
                 }
                 else {
-                  explanation = `Unable to calculate numerical value for output value string "$outnParamValString}"`
+                  explanation = `Unable to calculate numerical value for output value string "${outParamValString}"`
                 }
               }
               else {
@@ -957,5 +1045,23 @@ export class ZoomPatchConverter
       outParamVal = lowBoundIndex;
     }
     return outParamVal;
+  }
+
+  private findIndexOfInputParameterValueStringInOutputParameterMap(inputEffectName: string, inParamValString: string, outParamMap: ParameterValueMap) {
+    let index = -1;
+
+    // First check if we have a value mapping that is specific for effect + parameter
+    let valueStringConverterMap = this.effectValueStringConverterMap.get(inputEffectName);
+    if (valueStringConverterMap !== undefined)
+      index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === valueStringConverterMap.get(inParamValString)?.trim().toLowerCase());
+
+    // Then check if we have a value mapping that is specific for a parameter
+    if (index === -1)
+      index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === this.valueStringConverterMap.get(inParamValString)?.trim().toLowerCase());
+
+    // And finally check if we have an output value with the same name
+    if (index === -1)
+      index = outParamMap.values.findIndex(value => value.trim().toLowerCase() === inParamValString.trim().toLowerCase());
+    return index;
   }
 }
