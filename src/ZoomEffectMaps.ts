@@ -83,7 +83,10 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
         continue;
       }
 
+      parameter.valuesNumerical = [];
+
       valueAsNumber = Number.parseInt(values[0]);
+      parameter.valuesNumerical.push(valueAsNumber);
       parameter.maxNumerical = 0;
       lastValueAsNumber = valueAsNumber;
 
@@ -94,6 +97,7 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
         }
         parameter.maxNumerical = valueNumber;
         valueAsNumber = Number.parseFloat(valueAsString);
+        parameter.valuesNumerical.push(valueAsNumber);
         if (valueNumber === 1) {
           delta = valueAsNumber - lastValueAsNumber;
           parameter.maxLinearNumerical = valueNumber;
@@ -109,7 +113,7 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
         lastValueAsNumber = valueAsNumber;
       }
       if (parameter.maxNumerical !== undefined && parameter.maxNumerical !== parameter.max) {
-        console.log(`${effectName.padEnd(12)} ${parameterName.padEnd(10)} ${parameter.maxNumerical.toString().padEnd(5)}: ${parameter.values[parameter.maxNumerical].padEnd(5)} -> ${parameter.values[parameter.maxNumerical + 1]}`);
+        shouldLog(LogLevel.Info) && console.log(`${effectName.padEnd(12)} ${parameterName.padEnd(10)} ${parameter.maxNumerical.toString().padEnd(5)}: ${parameter.values[parameter.maxNumerical].padEnd(5)} -> ${parameter.values[parameter.maxNumerical + 1]}`);
       }
     }
   }

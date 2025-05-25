@@ -69,6 +69,7 @@ export type ParameterValueMap = {
   name: string, 
   values: Array<string>,
   valuesUCNSP: null | Map<string, number>, // values in upper case and with no spaces, for fast lookup in getRawParameterValueFromString()
+  valuesNumerical?: Array<number>, // numerical values
   max: number, // Counting the values from 0, this is the max value (could be viewed as the max value index)
   maxNumerical?: number, // the max value index before the values stop to be numbers (for example "time" that goes from milliseconds (numbers)  to note values (strings))
                          // maxNumerical is undefined if all values are strings, or if we have no values
@@ -79,6 +80,7 @@ export type ParameterValueMap = {
 
 export type EffectParameterMap = {
   name: string,
+  pedal?: Map<string, number>,
   screenName: null | string,
   parameters: Array<ParameterValueMap>
 };

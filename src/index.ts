@@ -3,7 +3,7 @@ import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { getChannelMessage, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
 import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
-import { EffectIDMap, EffectParameterMap, ZoomDevice } from "./ZoomDevice.js";
+import { EffectIDMap, EffectParameterMap, ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
 import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
@@ -221,22 +221,65 @@ async function start()
   let testButton: HTMLButtonElement = document.getElementById("testButton") as HTMLButtonElement;
   testButton.addEventListener("click", async (event) => {
   
-    let lsb = 0;
-    let msb = 0
-    let device = zoomDevices[0];
+  //   let lsb = 0;
+  //   let msb = 0
+  //   let device = zoomDevices[0];
   
-    for (let i = 0; i < 128 * 128; i++) {
-      lsb = i &  0b0000000001111111;
-      msb = (i & 0b0011111110000000) >> 7;
-      let commandString = `31 00 01 ${lsb.toString(16).padStart(2, "0")} ${msb.toString(16).padStart(2, "0")}`;
-      console.log(`${i.toString(10).padStart(6)}:   ${commandString}`)
-      let command = hexStringToUint8Array(commandString);
-      await sleepForAWhile(50);
-      sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
+  //   for (let i = 0; i < 128 * 128; i++) {
+  //     lsb = i &  0b0000000001111111;
+  //     msb = (i & 0b0011111110000000) >> 7;
+  //     let commandString = `31 00 01 ${lsb.toString(16).padStart(2, "0")} ${msb.toString(16).padStart(2, "0")}`;
+  //     console.log(`${i.toString(10).padStart(6)}:   ${commandString}`)
+  //     let command = hexStringToUint8Array(commandString);
+  //     await sleepForAWhile(50);
+  //     sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
+  //   }
+
+  
+    let effectIDMapOG = ZoomDevice.getEffectIDMapForDevice("MS-70CDR");
+    if (effectIDMapOG === undefined) {
+      shouldLog(LogLevel.Error) && console.error(`No effect ID map found for device MS-70CDR`);
+      return;
     }
+    
+    console.log("MS-70CDR to MS-70CDR+ non-mapped effects");
+
+    effectIDMapOG.forEach((effectMap, effectID) => {
+      if (effectMap.pedal !== undefined && effectMap.pedal.has("MS-70CDR")) {
+        let mapped = zoomPatchConverter.canMapEffect(effectID);
+        if (!mapped)
+          console.log(`${mapped ? "o" : "-" } ${effectMap.name.padEnd(12, " ")}`);   
+      }
+    });
+
+    console.log("MS-70CDR to MS-70CDR+ non-mapped parameters");
+
+    effectIDMapOG.forEach((effectMap, inputEffectID) => {
+      if (effectMap.pedal !== undefined && effectMap.pedal.has("MS-70CDR")) {
+        let mapped = zoomPatchConverter.canMapEffect(inputEffectID);
+        if (mapped) {
+          let [outputEffectID, outputEffectName] = zoomPatchConverter.getMappedEffect(inputEffectID);
+          effectMap.parameters.forEach((parameterMap) => {
+            let [mapped, alternatives] = zoomPatchConverter.canMapParameter(inputEffectID, parameterMap.name);
+            if (!mapped) {
+              console.log(`${effectMap.name.padEnd(12, " ")} -> ${outputEffectName.padEnd(12, " ")} - ${parameterMap.name.padEnd(10, " ")}. Alternatives: ${alternatives}.`);
+            }
+          });
+        };
+      };
+    });
+
   });  
 
-}
+};
+
+type EffectParameterMapInput = {
+  name: string,
+  pedal?: { [key: string]: number }, // object with pedal name as key and version as value 
+  screenName: null | string,
+  parameters: Array<ParameterValueMap>
+};
+
 
 async function downloadEffectMaps() {
 
@@ -274,7 +317,14 @@ async function downloadEffectMaps() {
   shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
   startTime = performance.now();
 
-  mapForMSOG = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+  mapForMSOG = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => {
+    let numericalKey = parseInt(key, 16);
+    let inputValue = value as EffectParameterMapInput;
+    let map: EffectParameterMap = { name: inputValue.name, screenName: inputValue.screenName, parameters: inputValue.parameters };
+    if (inputValue.pedal !== undefined)
+      map.pedal = new Map<string, number>(Object.entries(inputValue.pedal));
+    return [numericalKey, map];
+  }));
 
   shouldLog(LogLevel.Info) && console.log(`mapForMSOG.size = ${mapForMSOG.size}`);
 
@@ -282,13 +332,12 @@ async function downloadEffectMaps() {
   shouldLog(LogLevel.Info) && console.log(`mapForMSOG.size (after extending with MS-60B IDs) = ${mapForMSOG.size}`);
   
   // merge maps
-  let mapForMS50GPlusAndMS70CDRPlus: Map<number, EffectParameterMap>;
   mapForMS50GPlusAndMS70CDRPlus = mapForMS50GPlus;
   mapForMS70CDRPlus.forEach((value, key) => {
     // if (mapForMS50GPlusAndMS70CDRPlus.has(key)) {
     //   shouldLog(LogLevel.Warning) && console.warn(`Warning: Overriding effect ${mapForMS50GPlusAndMS70CDRPlus.get(key)!.name} for MS-50G+ with MS-70CDR+ effect "${value.name}" 0x${key.toString(16).padStart(8, "0")}`);
     // }
-    mapForMS50GPlusAndMS70CDRPlus.set(key, value);
+    mapForMS50GPlusAndMS70CDRPlus!.set(key, value);
   });
   
   addThruEffectToMap(mapForMS50GPlusAndMS70CDRPlus);
@@ -299,6 +348,31 @@ async function downloadEffectMaps() {
   extendMapWithMaxNumericalValueIndex(mapForMS50GPlusAndMS70CDRPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS60BPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS200DPlus);
+
+  // print some stats
+  console.log("MS-50G+ and MS-70CDR+ VOL defaults");
+  mapForMS50GPlusAndMS70CDRPlus.forEach((effectMap, key) => {
+    effectMap.parameters.forEach((parameterMap) => {
+      // if (parameterMap.maxNumerical !== undefined && parameterMap.maxNumerical > 151) {
+      //   console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} has max numerical value ${parameterMap.maxNumerical.toString().padStart(4, " ")}`);
+      // }
+      if (parameterMap.name.toLowerCase() === "vol") {
+        console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} default value ${parameterMap.default?.toString().padStart(4, " ")}`);
+      }
+    })
+  });
+
+  console.log("MS-OG Level defaults");
+  mapForMSOG.forEach((effectMap, key) => {
+    effectMap.parameters.forEach((parameterMap) => {
+      // if (parameterMap.maxNumerical !== undefined && parameterMap.maxNumerical > 151) {
+      //   console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} has max numerical value ${parameterMap.maxNumerical.toString().padStart(4, " ")}`);
+      // }
+      if (parameterMap.name.toLowerCase() === "level") {
+        console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} default value ${parameterMap.default?.toString().padStart(4, " ")}`);
+      }
+    })
+  });
 
   ZoomDevice.setEffectIDMap(["MS-50G", "MS-60B", "MS-70CDR"], mapForMSOG);
   ZoomDevice.setEffectIDMap(["MS-50G+", "MS-70CDR+"], mapForMS50GPlusAndMS70CDRPlus);
@@ -1097,7 +1171,8 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       let convertedPatch: ZoomPatch | undefined = undefined;
       if (device.deviceName === "MS-70CDR+" && savePatch.MSOG !== null) {
         shouldLog(LogLevel.Info) && console.log(`Converting patch "${savePatch.name}" from MS to MS+`);
-        convertedPatch = zoomPatchConverter.convert(savePatch);
+        let unmappedSlotParameterList: [slot: number, effectNumber: number, unmapped: boolean][];
+        [convertedPatch, unmappedSlotParameterList] = zoomPatchConverter.convert(savePatch);
         if (convertedPatch === undefined) {
           shouldLog(LogLevel.Warning) && console.warn(`Conversion failed for patch "${savePatch.name}"`);
         }
@@ -1184,18 +1259,21 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let fileDescriptions: string[] = [fileDescription];
     if (device.deviceName === "MS-70CDR+") {
       // just for development to save some time loading MSOG pathes
-      // fileEndings = ["70cdr"].concat(fileEnding);
-      // fileDescriptions = ["MS-70CDR patch file"].concat(fileDescription); 
-      // fileEndings = ["50g"].concat(fileEnding);
-      // fileDescriptions = ["MS-50G patch file"].concat(fileDescription); 
-      fileEndings.push("70cdr");
-      fileDescriptions.push("MS-70CDR patch file");
-      fileEndings.push("50g");
-      fileDescriptions.push("MS-50G patch file");
+      fileEndings = ["50g"].concat(fileEnding);
+      fileDescriptions = ["MS-50G patch file"].concat(fileDescription); 
+      fileEndings = ["70cdr"].concat(fileEnding);
+      fileDescriptions = ["MS-70CDR patch file"].concat(fileDescription); 
+      // fileEndings.push("70cdr");
+      // fileDescriptions.push("MS-70CDR patch file");
+      // fileEndings.push("50g");
+      // fileDescriptions.push("MS-50G patch file");
     }
     [data, filename] = await loadDataFromFile(fileEndings, fileDescriptions);
     if (data === undefined || filename === undefined)
       return;
+
+    currentZoomPatchToConvert = undefined;
+
     if (partialArrayStringMatch(data, "PTCF")) {
         let patch = ZoomPatch.fromPatchData(data);
         updatePatchInfoTable(patch);
@@ -1222,6 +1300,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
         updatePatchInfoTable(patch);
 
         if (patch.MSOG !== null && (device.deviceName === "MS-70CDR+" || device.deviceName === "MS-50G+") && mapForMSOG !== undefined) {
+          currentZoomPatchToConvert = patch;
           let screens = ZoomScreenCollection.fromPatchAndMappings(patch, mapForMSOG);
           loadedPatchEditor.updateFromMap(mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
           loadedPatchEditor.show();
@@ -1249,6 +1328,9 @@ function updatePatchInfoTable(patch: ZoomPatch) {
           loadedPatchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
             handleEffectSlotDelete(patch, undefined, mapForMSOG, effectSlot);
           });
+
+          // Update the main patch editor with the converted patch
+          convertPatchAndUpdateEditor(patch);
         }
         else
           loadedPatchEditor.hide();
@@ -1701,6 +1783,32 @@ function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectS
   }
 
   updatePatchInfoTable(zoomPatch);
+
+  if (currentZoomPatchToConvert !== undefined && zoomDevice === undefined) {
+    convertPatchAndUpdateEditor(currentZoomPatchToConvert);
+  }
+}
+
+function convertPatchAndUpdateEditor(patch: ZoomPatch)
+{
+    // Update the main patch editor with the converted patch
+    let convertedPatch: ZoomPatch | undefined = undefined;
+    shouldLog(LogLevel.Info) && console.log(`Converting patch "${patch.name}" from MS to MS+`);
+    let unmappedSlotParameterList: [slot: number, effectNumber: number, unmapped: boolean][];
+    [convertedPatch, unmappedSlotParameterList] = zoomPatchConverter.convert(patch);
+    if (convertedPatch === undefined) {
+      shouldLog(LogLevel.Warning) && console.warn(`Conversion failed for patch "${patch.name}"`);
+    }
+    else {
+      shouldLog(LogLevel.Info) && console.log(`Conversion succeeded for patch "${patch.name}"`);
+      if (mapForMS50GPlusAndMS70CDRPlus !== undefined) {
+        let convertedPatchScreens = ZoomScreenCollection.fromPatchAndMappings(convertedPatch, mapForMS50GPlusAndMS70CDRPlus);
+        patchEditor.updateFromMap(mapForMS50GPlusAndMS70CDRPlus, 4, convertedPatchScreens, convertedPatch, "MS-70CDR+ patch:", undefined, undefined);
+        loadedPatchEditor.clearAllCellHighlights();
+        loadedPatchEditor.addCellHighlights(unmappedSlotParameterList);
+      }
+    }
+
 }
 
 async function downloadJSONResource(filename: string): Promise<any>
@@ -1774,7 +1882,10 @@ patchEditors.insertBefore(loadedPatchEditor.htmlElement, patchEditors.firstChild
 loadedPatchEditor.hide();
 
 let zoomPatchConverter = new ZoomPatchConverter();
+let currentZoomPatchToConvert: ZoomPatch | undefined = undefined;
+
 let mapForMSOG: Map<number, EffectParameterMap> | undefined = undefined;
+let mapForMS50GPlusAndMS70CDRPlus: Map<number, EffectParameterMap> | undefined = undefined;
 
 let value = 511;
 

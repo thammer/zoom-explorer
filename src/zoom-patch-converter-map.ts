@@ -1,7 +1,7 @@
 /*
   Maps between MSOG patch IDs and MS+ patch IDs
 
- cat msplus-to-msog-effect-mapping.csv | sed -e 's/0x//g' | cut -d, -f 1,2,5,4 | grep -v ",," | sed -e 's/\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)/  "\1": {\n    msogName: "\2",\n    msplusName: "\3",\n  msplusID:    "\4",\n},/g' > patchMapObj.json
+  cat msplus-to-msog-effect-mapping.csv | sed -e 's/0x//g' | cut -d, -f 1,2,5,4 | grep -v ",," | sed -e 's/\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)/  "\1": {\n    msogName:   "\2",\n    msplusName: "\3",\n    msplusID:   "\4",\n  },/g' > patchMapObj.json
 */
 
 let patchMapObj = {
@@ -24,6 +24,11 @@ let patchMapObj = {
     msogName:   "A-Pan DLY",
     msplusName: "A-PanDLY",
     msplusID:   "080000e1",
+  },
+  "060001f0": {
+    msogName:   "ANA234Cho",
+    msplusName: "AnalogCho",
+    msplusID:   "06000051",
   },
   "09000070": {
     msogName:   "Air",
@@ -95,6 +100,21 @@ let patchMapObj = {
     msplusName: "BassPEQ",
     msplusID:   "020000dc",
   },
+  "06000138": {
+    msogName:   "Ba Pitch",
+    msplusName: "PolyShift",
+    msplusID:   "06000171",
+  },
+  "02000058": {
+    msogName:   "BaAutoWah",
+    msplusName: "BassA-Wah",
+    msplusID:   "02000035",
+  },
+  "060000e8": {
+    msogName:   "BaFlanger",
+    msplusName: "BaFlanger",
+    msplusID:   "060000ea",
+  },
   "06000150": {
     msogName:   "BendCho",
     msplusName: "BendCho",
@@ -159,6 +179,11 @@ let patchMapObj = {
     msogName:   "CoronaCho",
     msplusName: "CoronaCho",
     msplusID:   "06000038",
+  },
+  "06000200": {
+    msogName:   "CoronaTri",
+    msplusName: "TriChorus",
+    msplusID:   "06000041",
   },
   "02000070": {
     msogName:   "Cry",
@@ -265,6 +290,11 @@ let patchMapObj = {
     msplusName: "GateRevrb",
     msplusID:   "090000e1",
   },
+  "02000010": {
+    msogName:   "GraphicEQ",
+    msplusName: "GtGEQ",
+    msplusID:   "020000a0",
+  },
   "01000090": {
     msogName:   "GrayComp",
     msplusName: "GrayComp",
@@ -272,6 +302,11 @@ let patchMapObj = {
   },
   "09000008": {
     msogName:   "HD Hall",
+    msplusName: "HDHall",
+    msplusID:   "09000081",
+  },
+  "0900000c": {
+    msogName:   "HD Reverb",
     msplusName: "HDHall",
     msplusID:   "09000081",
   },
@@ -315,6 +350,11 @@ let patchMapObj = {
     msplusName: "LineSel",
     msplusID:   "07000f00",
   },
+  "01000020": {
+    msogName:   "M Comp",
+    msplusName: "RackComp",
+    msplusID:   "01000020",
+  },
   "090001b0": {
     msogName:   "MangledSp",
     msplusName: "MangledSpa",
@@ -339,6 +379,16 @@ let patchMapObj = {
     msogName:   "ModReverb",
     msplusName: "ModReverb",
     msplusID:   "09000120",
+  },
+  "06000160": {
+    msogName:   "MojoRolle",
+    msplusName: "SwellVibe",
+    msplusID:   "06000120",
+  },
+  "06000130": {
+    msogName:   "MonoPitch",
+    msplusName: "PolyShift",
+    msplusID:   "06000171",
   },
   "07000030": {
     msogName:   "MonoSynth",
@@ -394,6 +444,11 @@ let patchMapObj = {
     msogName:   "PitchDly",
     msplusName: "PitchDLY",
     msplusID:   "080000c1",
+  },
+  "06000120": {
+    msogName:   "PitchSHFT",
+    msplusName: "PolyShift",
+    msplusID:   "06000171",
   },
   "09000090": {
     msogName:   "Plate",
@@ -454,6 +509,11 @@ let patchMapObj = {
     msogName:   "SilkyCho",
     msplusName: "SilkyCho",
     msplusID:   "06000075",
+  },
+  "090000b0": {
+    msogName:   "SlapBack",
+    msplusName: "SlapBackR",
+    msplusID:   "090000d8",
   },
   "08000110": {
     msogName:   "SlapBackD",
@@ -540,6 +600,11 @@ let patchMapObj = {
     msplusName: "StonePha",
     msplusID:   "060000b0",
   },
+  "060000d0": {
+    msogName:   "SuperCho",
+    msplusName: "ChorusOne",
+    msplusID:   "06000031",
+  },
   "00000000": {
     msogName:   "THRU",
     msplusName: "THRU",
@@ -619,6 +684,11 @@ let patchMapObj = {
     msogName:   "ZNR",
     msplusName: "ZNR",
     msplusID:   "01000070",
+  },
+  "020000d0": {
+    msogName:   "fCycle",
+    msplusName: "LFOFLTR",
+    msplusID:   "02000060",
   },
 }  
 

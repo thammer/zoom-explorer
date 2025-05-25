@@ -146,7 +146,7 @@ export class ZoomPatchEditor
 
   show()
   {
-    this.patchEditorTable.style.display = "block";
+    this.patchEditorTable.style.display = "table";
   }
 
   setTextEditedCallback(textEditedCallback: EditPatchTextEditedListenerType) 
@@ -194,8 +194,8 @@ export class ZoomPatchEditor
   getCell(effectSlot: number, parameterNumber: number): HTMLTableCellElement | undefined 
   {
     let id = this.encodeEffectAndParameterNumber(effectSlot, parameterNumber);
-    let cell = document.getElementById(id) as HTMLTableCellElement;
-    if (cell === undefined)
+    let cell = this.patchEditorTable.querySelector(`[id="${id}"]`) as HTMLTableCellElement;
+    if (cell === null)
       return undefined;
     return cell;
   }
@@ -295,6 +295,39 @@ export class ZoomPatchEditor
     if (this.patchTempoCell.textContent !== newPatchTempo) {
       this.patchTempoCell.textContent = newPatchTempo;
       this.patchTempoCell.blur();
+    }
+  }
+
+  public addCellHighlights(slotParameterEffectList: [slot: number, parameterNumber: number, unmapped: boolean][])
+  {
+    for (let slotParameter of slotParameterEffectList) {
+      let slot = slotParameter[0];
+      let parameterNumber = slotParameter[1];
+      let unmapped = slotParameter[2];
+      let cell = this.getCell(slot, parameterNumber);
+      if (cell !== undefined) {
+        if (unmapped)
+          cell.classList.add("unmapped"); // input value is not mapped to output value
+        else
+          cell.classList.add("changed"); // output value is different from input value
+      }
+    }
+  }
+
+  public clearAllCellHighlights()
+  {
+    for (let effectColumn of this.effectsRow.children) {
+      let cellWithEffectTable = effectColumn as HTMLTableRowElement;
+      let effectTable: HTMLTableElement = cellWithEffectTable.children[0] as HTMLTableElement;
+      if (effectTable.children.length < 3)
+        return;
+      for (let row = 2; row < effectTable.children.length; row +=2) {
+        for (let column = 0; column < effectTable.children[row].children.length; column++) {
+          let cell = effectTable.children[row].children[column] as HTMLTableCellElement;
+          cell.classList.remove("unmapped");
+          cell.classList.remove("changed");
+        }       
+      }
     }
   }
 
