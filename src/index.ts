@@ -261,8 +261,8 @@ async function start()
           let [outputEffectID, outputEffectName] = zoomPatchConverter.getMappedEffect(inputEffectID);
           effectMap.parameters.forEach((parameterMap) => {
             let [mapped, alternatives] = zoomPatchConverter.canMapParameter(inputEffectID, parameterMap.name);
-            if (!mapped) {
-              console.log(`${effectMap.name.padEnd(12, " ")} -> ${outputEffectName.padEnd(12, " ")} - ${parameterMap.name.padEnd(10, " ")}. Alternatives: ${alternatives}.`);
+            if (!mapped || alternatives.length > 0) {
+              console.log(`${mapped ? "?": "-"} ${effectMap.name.padEnd(12, " ")} -> ${outputEffectName.padEnd(12, " ")} - ${parameterMap.name.padEnd(10, " ")}. Alternatives: ${alternatives}.`);
             }
           });
         };
@@ -998,8 +998,8 @@ patchesTable.addEventListener("click", (event) => {
 
   device.setCurrentMemorySlot(patchNumber);
 
-  let patch = device.patchList[patchNumber];
-  updatePatchInfoTable(patch);
+  // let patch = device.patchList[patchNumber];
+  // updatePatchInfoTable(patch);
 
 });
 
@@ -1234,7 +1234,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       await saveBlobToFile(blob, suggestedName, shortFileEnding, fileDescription);
     }
     else if (savePatch.msogDataBuffer !== null && savePatch.msogDataBuffer.length > 0) {
-      let sysex = device.getSysexForCurrentPatch(patch);
+      let sysex = device.getSysexForCurrentPatch(savePatch);
       if (sysex === undefined) {
         shouldLog(LogLevel.Warning) && console.warn(`getSysexForCurrentPatch() failed for patch "${savePatch.name}"`);
         return;
