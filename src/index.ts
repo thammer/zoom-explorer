@@ -1259,14 +1259,12 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let fileDescriptions: string[] = [fileDescription];
     if (device.deviceName === "MS-70CDR+") {
       // just for development to save some time loading MSOG pathes
-      fileEndings = ["50g"].concat(fileEnding);
-      fileDescriptions = ["MS-50G patch file"].concat(fileDescription); 
-      fileEndings = ["70cdr"].concat(fileEnding);
-      fileDescriptions = ["MS-70CDR patch file"].concat(fileDescription); 
-      // fileEndings.push("70cdr");
-      // fileDescriptions.push("MS-70CDR patch file");
-      // fileEndings.push("50g");
-      // fileDescriptions.push("MS-50G patch file");
+      // fileEndings = ["50g"].concat(fileEnding);
+      // fileDescriptions = ["MS-50G patch file"].concat(fileDescription); 
+      // fileEndings = ["70cdr"].concat(fileEnding);
+      // fileDescriptions = ["MS-70CDR patch file"].concat(fileDescription); 
+      fileEndings.push("70cdr");
+      fileDescriptions.push("MS-70CDR patch file");
     }
     [data, filename] = await loadDataFromFile(fileEndings, fileDescriptions);
     if (data === undefined || filename === undefined)
