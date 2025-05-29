@@ -1111,7 +1111,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     let crcBytes: Uint8Array;
     let command: Uint8Array;
 
-    if (patch.ptcfChunk !== null) {
+    if (patch.PTCF !== null) {
       let data = patch.buildPTCFChunk();
       //let data = patch.ptcfChunk;
       if (data === undefined || data.length < 11) {
@@ -2407,26 +2407,26 @@ export class ZoomDevice implements IManagedMIDIDevice
     }
   }
 
-  public getEffectNameAndNumParameters(effectID: number): [effectName: string | undefined, numParameters: number | undefined]
+  public static getEffectNameAndNumParameters(effectIDMap: EffectIDMap | undefined, effectID: number): [effectName: string | undefined, numParameters: number | undefined]
   {
-    if (this.effectIDMap === undefined)
+    if (effectIDMap === undefined)
       return [undefined, undefined];
-    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let effectMapping: EffectParameterMap | undefined = effectIDMap.get(effectID);
     if (effectMapping !== undefined) {
       return [effectMapping.name, effectMapping.parameters.length];
     }
     return [undefined, undefined];
   }
 
-  public getParameterNameAndMaxValue(effectID: number, parameterNumber: number): [parameterName: string | undefined, maxValue: number | undefined, maxNumerical: number | undefined]
+  public static getParameterNameAndMaxValue(effectIDMap: EffectIDMap | undefined, effectID: number, parameterNumber: number): [parameterName: string | undefined, maxValue: number | undefined, maxNumerical: number | undefined]
   {
-    if (this.effectIDMap === undefined)
+    if (effectIDMap === undefined)
       return [undefined, undefined, undefined];
 
     if (parameterNumber === 0)
       return ["ON/OFF", 1, undefined];
 
-    let effectMapping: EffectParameterMap | undefined = this.effectIDMap.get(effectID);
+    let effectMapping: EffectParameterMap | undefined = effectIDMap.get(effectID);
     if (effectMapping === undefined)
       return [undefined, undefined, undefined];
     

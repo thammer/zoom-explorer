@@ -1251,13 +1251,13 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   button.id = "loadPatchFromDiskButton";
   button.className = "loadSaveButtons";
   button.addEventListener("click", async (event) => {
-    let device = zoomDevices[0];
-    let [fileEnding, shortFileEnding, fileDescription] = device.getSuggestedFileEndingForPatch();
+    let zoomDevice = zoomDevices[0];
+    let [fileEnding, shortFileEnding, fileDescription] = zoomDevice.getSuggestedFileEndingForPatch();
     let data: Uint8Array | undefined;
     let filename: string | undefined;
     let fileEndings: string[] = [shortFileEnding];
     let fileDescriptions: string[] = [fileDescription];
-    if (device.deviceName === "MS-70CDR+") {
+    if (zoomDevice.deviceName === "MS-70CDR+") {
       // just for development to save some time loading MSOG pathes
       // fileEndings = ["50g"].concat(fileEnding);
       // fileDescriptions = ["MS-50G patch file"].concat(fileDescription); 
@@ -1286,9 +1286,9 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       shouldLog(LogLevel.Error) && console.error(`Sysex file is not for a Zoom device, filename: ${filename}, device ID: ${bytesToHexString([convertedData[1]])}`);
     }
     else {
-      if (convertedData.length < 5 || convertedData[3] != device.deviceInfo.familyCode[0]) {
+      if (convertedData.length < 5 || convertedData[3] != zoomDevice.deviceInfo.familyCode[0]) {
         shouldLog(LogLevel.Info) && console.log(`Sysex file with filename ${filename} is for Zoom device ID ${bytesToHexString([convertedData[3]])}, ` +
-          `but attached device has device ID: ${bytesToHexString([device.deviceInfo.familyCode[0]])}. Attempting to load patch anyway.`);
+          `but attached device has device ID: ${bytesToHexString([zoomDevice.deviceInfo.familyCode[0]])}. Attempting to load patch anyway.`);
       }
 
       let [patchData, program, bank] = ZoomDevice.sysexToPatchData(convertedData);
@@ -1297,7 +1297,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
         let patch = ZoomPatch.fromPatchData(patchData);
         updatePatchInfoTable(patch);
 
-        if (patch.MSOG !== null && (device.deviceName === "MS-70CDR+" || device.deviceName === "MS-50G+") && mapForMSOG !== undefined) {
+        if (patch.MSOG !== null && (zoomDevice.deviceName === "MS-70CDR+" || zoomDevice.deviceName === "MS-50G+") && mapForMSOG !== undefined) {
           currentZoomPatchToConvert = patch;
           let screens = ZoomScreenCollection.fromPatchAndMappings(patch, mapForMSOG);
           loadedPatchEditor.updateFromMap(mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
