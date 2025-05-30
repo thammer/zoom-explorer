@@ -751,6 +751,9 @@ export class ZoomDevice implements IManagedMIDIDevice
     if (parameterNumber === 0) {
       patch.effectSettings[effectSlot].enabled = value !== 0;
     }
+    else if (parameterNumber === 1) {
+      patch.effectSettings[effectSlot].id = value;
+    }
     else {
       patch.effectSettings[effectSlot].parameters[parameterIndex] = value;
     }
@@ -766,6 +769,9 @@ export class ZoomDevice implements IManagedMIDIDevice
       parameterBuffer[1] = parameterNumber;
       parameterBuffer[2] = value & 0b01111111; // LSB
       parameterBuffer[3] = (value >> 7) & 0b01111111; // MSB
+      parameterBuffer[4] = (value >> 14) & 0b01111111;
+      parameterBuffer[5] = (value >> 21) & 0b01111111;
+      parameterBuffer[6] = (value >> 28) & 0b01111111;
 
       let command = new Uint8Array(ZoomDevice.messageTypes.parameterValueV2.bytes.length + parameterBuffer.length);
       command.set(ZoomDevice.messageTypes.parameterValueV2.bytes);

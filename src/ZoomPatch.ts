@@ -1916,8 +1916,8 @@ export class ZoomPatch
     zoomPatch.edtbEffectSettings = new Array<EffectSettings>();
     let effectSettings = new EffectSettings();
     effectSettings.enabled = true;
-    effectSettings.parameters = new Array<number>(12);
-    effectSettings.parameters.fill(0); 
+    effectSettings.id = 0;
+    effectSettings.parameters = new Array<number>();
     zoomPatch.edtbEffectSettings.push(effectSettings);
     zoomPatch.edtbLength = zoomPatch.edtbReversedBytes.length * PTCF_EDTB_REVERSED_BYTES_SIZE;
 
