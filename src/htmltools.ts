@@ -117,9 +117,11 @@ export async function loadDataFromFile(fileEndings: string[], fileDescriptions: 
 
     let types: FilePickerAcceptType[] = []; 
     for (let i=0; i<fileEndings.length; i++) {
+      let endingsString = fileEndings[i];
+      endingsString.split(",").map(value => "." + value);
       types.push( {
         description: fileDescriptions[i],
-        accept: { "application/octet-stream" : [`.${fileEndings[i]}`]}
+        accept: { "application/octet-stream" : fileEndings[i].split(",").map(value => "." + value) as `.${string}`[]}
       });
     }
 
