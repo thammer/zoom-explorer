@@ -1,7 +1,7 @@
 import { shouldLog, LogLevel } from "./Logger.js";
 import { numberToHexString } from "./tools.js";
 import { EffectParameterMap } from "./ZoomDevice.js";
-import { ZoomPatch } from "./ZoomPatch.js";
+import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 
 
 export class ZoomScreenParameter
@@ -217,23 +217,9 @@ export class ZoomScreenCollection
       if (effectMap.parameters.length < effectSettings.parameters.length) {
         // shouldLog(LogLevel.Info) && console.log(`effectMap.parameters.length ${effectMap.parameters.length} < effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
           // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
-      } 
-      else if (effectMap.parameters.length > effectSettings.parameters.length) {
-        shouldLog(LogLevel.Warning) && console.warn(`effectMap.parameters.length ${effectMap.parameters.length} > effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
       }
 
-      for (let paramIndex = 0; paramIndex < effectMap.parameters.length; paramIndex++) {
-        let value = effectSettings.parameters[paramIndex];
-        let parameter = new ZoomScreenParameter()
-
-        if (value >= effectMap.parameters[paramIndex].values.length) {
-          shouldLog(LogLevel.Error) && console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
-          break;
-        }
-        parameter.name = effectMap.parameters[paramIndex].name;
-        parameter.valueString = effectMap.parameters[paramIndex].values[value];
-        screen.parameters.push(parameter);
-      }
+      this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen);
 
       this.screens.push(screen);
     }
@@ -268,6 +254,11 @@ export class ZoomScreenCollection
       //valueString = value > 0 ? "ON" : "OFF";
       valueString = value > 0 ? "1" : "0";
     }
+    else if (parameterNumber === 1) {
+      parameter.name = effectMap.name;
+      valueString = effectMap.name;
+      this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen);
+    }
     else {
       let parameterIndex = parameterNumber - 2;
       valueString = effectMap.parameters[parameterIndex].values[value];
@@ -277,6 +268,34 @@ export class ZoomScreenCollection
     parameter.valueString = valueString;
 
     return true;
+  }
+
+  private updateScreenWithParametersFromMap(effectMap: EffectParameterMap, effectSettings: EffectSettings, screen: ZoomScreen)
+  {
+    if (effectMap.parameters.length > effectSettings.parameters.length) {
+      shouldLog(LogLevel.Warning) && console.warn(`effectMap.parameters.length ${effectMap.parameters.length} > effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
+    }
+
+    if (screen.parameters.length < 2) {
+      shouldLog(LogLevel.Error) && console.error(`screen.parameters.length ${screen.parameters.length} < 2 for effect ${effectMap.name}`);
+      return;
+    }  
+
+    if (screen.parameters.length > 2)
+      screen.parameters.splice(2);
+
+    for (let paramIndex = 0; paramIndex < effectMap.parameters.length; paramIndex++) {
+      let value = effectSettings.parameters[paramIndex];
+      let parameter = new ZoomScreenParameter();
+
+      if (value >= effectMap.parameters[paramIndex].values.length) {
+        shouldLog(LogLevel.Error) && console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
+        break;
+      }
+      parameter.name = effectMap.parameters[paramIndex].name;
+      parameter.valueString = effectMap.parameters[paramIndex].values[value];
+      screen.parameters.push(parameter);
+    }
   }
 
   deleteScreen(screenNumber: number) : void
