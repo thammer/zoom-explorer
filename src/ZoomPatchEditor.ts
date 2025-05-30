@@ -149,6 +149,11 @@ export class ZoomPatchEditor
     this.patchEditorTable.style.display = "table";
   }
 
+  get visible(): boolean
+  {
+    return this.patchEditorTable.style.display === "table";
+  }
+
   setTextEditedCallback(textEditedCallback: EditPatchTextEditedListenerType) 
   { 
     this.textEditedCallback = textEditedCallback;
@@ -331,15 +336,15 @@ export class ZoomPatchEditor
     }
   }
 
-  public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, memorySlotNumber: number, 
+  public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, patchNumberText: string, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
-    this.updateFromMap(device.effectIDMap, device.numParametersPerPage, screenCollection, patch, `Patch ${(memorySlotNumber + 1).toString().padStart(2, "0")}:`, 
+    this.updateFromMap(device.effectIDMap, device.numParametersPerPage, screenCollection, patch, patchNumberText, 
       previousScreenCollection, previousPatch);
   }
 
-  public updateFromMap(effectIDMap: EffectIDMap | undefined, numParametersPerPage: number, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, patchNumberText: string, 
-    previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
+  public updateFromMap(effectIDMap: EffectIDMap | undefined, numParametersPerPage: number, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, 
+    patchNumberText: string, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
     function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
       return ! ((screen.parameters.length >= 2 && screen.parameters[1].name === "Blank") || 
