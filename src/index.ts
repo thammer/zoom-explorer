@@ -840,7 +840,8 @@ function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
     compare = lastChangedEditScreenCollection;
   else
     lastChangedEditScreenCollection = previousEditScreenCollection;
-  patchEditor.update(zoomDevice, screenCollection, currentZoomPatch, zoomDevice.currentMemorySlotNumber, compare, previousEditPatch);
+  const patchNumbertext = `${zoomDevice.deviceName} Patch ${(zoomDevice.currentMemorySlotNumber + 1).toString().padStart(2, "0")}:`;
+  patchEditor.update(zoomDevice, screenCollection, currentZoomPatch, patchNumbertext, compare, previousEditPatch);
   previousEditScreenCollection = screenCollection;
   previousEditPatch = currentZoomPatch;
 }
