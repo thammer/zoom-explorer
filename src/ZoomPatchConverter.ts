@@ -773,6 +773,13 @@ export class ZoomPatchConverter
               }
             }
 
+            if (outParamVal === undefined && outParamMap.maxNumerical === undefined && inParamMap.maxNumerical !== undefined && inParamMap.max === outParamMap.max)
+            { // The input parameter is numerical, but the output parameter is not. It's the same number of values, so we use the 0-based "index" values
+              // This covers the case for A-Pan DLY where the input Rate is numerical but the output Cycle is not
+              outParamVal = inParamVal;
+              explanation = `Numerical input and non-numerical outout parameter detected. Same value array length. Setting outParamVal to inParamVal.`;
+            }
+
             if (outParamVal === undefined) 
             { // Straight up linear interpolation with an optional breakpoint at (inputEffectMap.default, outputEffectMap.default)
 
@@ -871,7 +878,6 @@ export class ZoomPatchConverter
                     unmappedSlotParameterList.push([slotNumber, parameterNumber, false]); //  input and output values differ
                   }
                 }
-
               }
             }
 
