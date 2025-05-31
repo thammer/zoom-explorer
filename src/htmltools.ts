@@ -88,6 +88,50 @@ export class InfoDialog
   }
 }
 
+export class TextInputDialog
+{
+  private textInputDialog: HTMLDialogElement;
+  private textInputLabel: HTMLLabelElement;
+  private textInput: HTMLTextAreaElement;
+  private confirmButton: HTMLButtonElement;
+  private confirmEvent: (result: boolean) => void;
+
+  constructor(dialogID: string, labelID: string, textInputID: string, buttonID: string)
+  {
+    this.textInputDialog = document.getElementById(dialogID) as HTMLDialogElement;
+    this.textInputLabel = document.getElementById(labelID) as HTMLLabelElement;
+    this.textInput = document.getElementById(textInputID) as HTMLTextAreaElement;
+    this.confirmButton = document.getElementById(buttonID) as HTMLButtonElement;
+
+    this.confirmButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      this.textInputDialog.close("ok");
+      this.confirmEvent(true);
+    });
+
+    this.confirmEvent = (result: boolean) => {
+      shouldLog(LogLevel.Info) && console.log("Confirm event result: " + result);
+    }
+
+    this.textInputDialog.addEventListener("close", (e) => {
+      this.confirmEvent(false);
+    });
+  }
+
+  public async getUserConfirmation(labelText: string, confirmText: string = "OK"): Promise<string>
+  {
+    return new Promise<string>( (resolve, reject) => {
+      this.textInputLabel.textContent = labelText;
+      this.confirmButton.textContent = confirmText;
+      this.confirmEvent = async (result: boolean) => {
+        resolve(result ? this.textInput.value : "");
+      }
+      this.textInputDialog.showModal();
+    });
+  }
+}
+
+
 let cachedSupportsContentEditablePlaintextOnly: boolean | undefined = undefined;
 
 export function supportsContentEditablePlaintextOnly(): boolean

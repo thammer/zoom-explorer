@@ -1321,7 +1321,7 @@ export class ZoomDevice implements IManagedMIDIDevice
    * @param sysexData sysex message
    * @returns [8-bit patch-data, program, bank]
    */
-  public static sysexToPatchData(sysexData: Uint8Array): [Uint8Array | undefined, number | undefined, number | undefined]
+  public static sysexToPatchData(sysexData: Uint8Array): [patchData: Uint8Array | undefined, program: number | undefined, bank: number | undefined]
   {
     let program: number | undefined = undefined;
     let bank: number | undefined = undefined;

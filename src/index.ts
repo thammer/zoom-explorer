@@ -4,7 +4,7 @@ import { getChannelMessage, getMIDIDeviceList, isMIDIIdentityResponse, isSysex }
 import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { EffectIDMap, EffectParameterMap, ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog } from "./htmltools.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog, TextInputDialog } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
@@ -1279,64 +1279,25 @@ function updatePatchInfoTable(patch: ZoomPatch) {
         return;
     }
     let sysexString = bytesWithCharactersToString(data);
-    let convertedData = hexStringToUint8Array(sysexString);
-    if (!isSysex(convertedData)) {
-      shouldLog(LogLevel.Error) && console.error(`Unknown file format in file ${filename}`);
-    }
-    else if (convertedData[1] != 0x52) {
-      shouldLog(LogLevel.Error) && console.error(`Sysex file is not for a Zoom device, filename: ${filename}, device ID: ${bytesToHexString([convertedData[1]])}`);
-    }
-    else {
-      if (convertedData.length < 5 || convertedData[3] != zoomDevice.deviceInfo.familyCode[0]) {
-        shouldLog(LogLevel.Info) && console.log(`Sysex file with filename ${filename} is for Zoom device ID ${bytesToHexString([convertedData[3]])}, ` +
-          `but attached device has device ID: ${bytesToHexString([zoomDevice.deviceInfo.familyCode[0]])}. Attempting to load patch anyway.`);
-      }
-
-      let [patchData, program, bank] = ZoomDevice.sysexToPatchData(convertedData);
-
-      if (patchData !== undefined) {
-        let patch = ZoomPatch.fromPatchData(patchData);
-        updatePatchInfoTable(patch);
-
-        if (patch.MSOG !== null && (zoomDevice.deviceName === "MS-70CDR+" || zoomDevice.deviceName === "MS-50G+") && mapForMSOG !== undefined) {
-          currentZoomPatchToConvert = patch;
-          let screens = ZoomScreenCollection.fromPatchAndMappings(patch, mapForMSOG);
-          loadedPatchEditor.updateFromMap(mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
-          loadedPatchEditor.show();
-
-          loadedPatchEditor.setTextEditedCallback( (event: Event, type: string, initialValueString: string): boolean => {
-            return handlePatchEdited(patch, undefined, mapForMSOG, event, type, initialValueString);
-          });
-        
-          loadedPatchEditor.setMouseMovedCallback( (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
-            handleMouseMoved(patch, undefined, mapForMSOG, cell, initialValueString, x, y);
-          });
-          
-          loadedPatchEditor.setMouseUpCallback( (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
-            handleMouseUp(patch, undefined, mapForMSOG, cell, initialValueString, x, y);
-          });
-        
-          loadedPatchEditor.setEffectSlotOnOffCallback((effectSlot: number, on: boolean) => {
-            handleEffectSlotOnOff(patch, undefined, mapForMSOG, effectSlot, on);
-          });
-        
-          loadedPatchEditor.setEffectSlotMoveCallback((effectSlot: number, direction: "left" | "right") => {
-            handleEffectSlotMove(patch, undefined, mapForMSOG, effectSlot, direction);
-          });
-        
-          loadedPatchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
-            handleEffectSlotDelete(patch, undefined, mapForMSOG, effectSlot);
-          });
-
-          // Update the main patch editor with the converted patch
-          convertPatchAndUpdateEditor(patch);
-        }
-        else
-          loadedPatchEditor.hide();
-      }
-    } 
+    loadFromSysex(sysexString, zoomDevice, filename);
   });
+  headerCell.appendChild(button);
 
+  button = document.createElement("button") as HTMLButtonElement;
+  button.textContent = "Load from text";
+  button.id = "loadPatchFromTextButton";
+  button.className = "loadSaveButtons";
+  button.addEventListener("click", async (event) => {
+    let zoomDevice = zoomDevices[0];
+
+    currentZoomPatchToConvert = undefined;
+
+    let sysexString = await textInputDialog.getUserConfirmation("Sysex text", "Load");
+
+    if (sysexString.length !== 0) {
+      loadFromSysex(sysexString, zoomDevice);
+    }
+  });
   headerCell.appendChild(button);
 
   let patchInfoString: string = "";
@@ -1505,6 +1466,68 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   previousPatchInfoString = patchInfoString;
 
   bodyCell.innerHTML = htmlPatchInfoString;
+}
+
+function loadFromSysex(sysexString: string, zoomDevice: ZoomDevice, filename: string = "")
+{
+  let convertedData = hexStringToUint8Array(sysexString);
+  let sourceString = filename.length > 0 ? `file ${filename}` : "buffer";
+  if (!isSysex(convertedData)) {
+    shouldLog(LogLevel.Error) && console.error(`Unknown file format in ${sourceString}`);
+  }
+  else if (convertedData[1] != 0x52) {
+    shouldLog(LogLevel.Error) && console.error(`Sysex ${sourceString} is not for a Zoom device, device ID: ${bytesToHexString([convertedData[1]])}`);
+  }
+  else {
+    if (convertedData.length < 5 || convertedData[3] != zoomDevice.deviceInfo.familyCode[0]) {
+      shouldLog(LogLevel.Info) && console.log(`Sysex ${sourceString} is for Zoom device ID ${bytesToHexString([convertedData[3]])}, ` +
+        `but attached device has device ID: ${bytesToHexString([zoomDevice.deviceInfo.familyCode[0]])}. Attempting to load patch anyway.`);
+    }
+
+    let [patchData, program, bank] = ZoomDevice.sysexToPatchData(convertedData);
+
+    if (patchData !== undefined) {
+      let patch = ZoomPatch.fromPatchData(patchData);
+      updatePatchInfoTable(patch);
+
+      if (patch.MSOG !== null && (zoomDevice.deviceName === "MS-70CDR+" || zoomDevice.deviceName === "MS-50G+") && mapForMSOG !== undefined) {
+        currentZoomPatchToConvert = patch;
+        let screens = ZoomScreenCollection.fromPatchAndMappings(patch, mapForMSOG);
+        loadedPatchEditor.updateFromMap(mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
+        loadedPatchEditor.show();
+
+        loadedPatchEditor.setTextEditedCallback((event: Event, type: string, initialValueString: string): boolean => {
+          return handlePatchEdited(patch, undefined, mapForMSOG, event, type, initialValueString);
+        });
+
+        loadedPatchEditor.setMouseMovedCallback((cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
+          handleMouseMoved(patch, undefined, mapForMSOG, cell, initialValueString, x, y);
+        });
+
+        loadedPatchEditor.setMouseUpCallback((cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => {
+          handleMouseUp(patch, undefined, mapForMSOG, cell, initialValueString, x, y);
+        });
+
+        loadedPatchEditor.setEffectSlotOnOffCallback((effectSlot: number, on: boolean) => {
+          handleEffectSlotOnOff(patch, undefined, mapForMSOG, effectSlot, on);
+        });
+
+        loadedPatchEditor.setEffectSlotMoveCallback((effectSlot: number, direction: "left" | "right") => {
+          handleEffectSlotMove(patch, undefined, mapForMSOG, effectSlot, direction);
+        });
+
+        loadedPatchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
+          handleEffectSlotDelete(patch, undefined, mapForMSOG, effectSlot);
+        });
+
+        // Update the main patch editor with the converted patch
+        convertPatchAndUpdateEditor(patch);
+      }
+
+      else
+        loadedPatchEditor.hide();
+    }
+  }
 }
 
 function handlePatchEdited(zoomPatch: ZoomPatch | undefined, zoomDevice: ZoomDevice | undefined, effectIDMap: EffectIDMap | undefined, event: Event, type: string, initialValueString: string): boolean
@@ -1862,6 +1885,7 @@ let lastChangedEditScreenCollection: ZoomScreenCollection | undefined = undefine
 let previousEditPatch: ZoomPatch | undefined = new ZoomPatch();
 
 let confirmDialog = new ConfirmDialog("confirmDialog", "confirmLabel", "confirmButton");
+let textInputDialog = new TextInputDialog("textInputDialog", "textInputLabel", "textInput", "textInputConfirmButton");
 let infoDialog = new InfoDialog("infoDialog", "infoLabel", "infoOKButton");
 let messageCounter: number = 0;
 let midi: IMIDIProxy = new MIDIProxyForWebMIDIAPI();
