@@ -106,7 +106,7 @@ export class ZoomPatch
   updateDerivedPropertiesFromPatchProperties()
   {
     if (this.nameName !== null)
-      this.name = this.nameName;
+      this.name = this.nameName.replaceAll("\x00", ""); // The last four characters could be 0x00; 
     else if (this.ptcfShortName !== null)
       this.name = this.ptcfShortName;
     else if (this.msogName !== null)
@@ -127,6 +127,7 @@ export class ZoomPatch
       // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
       if (this.maxNameLength == 28) {
         let enforceLength = this.maxNameLength + 4;
+        // add back the four 0x00 characters at the end
         this.nameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
         this.nameLength = this.nameName.length;
       }
@@ -1079,8 +1080,8 @@ export class ZoomPatch
       if (this.nameLength != null && this.nameLength > 0) {
         this.nameName = this.readString(chunkData, chunkOffset, this.nameLength); chunkOffset += this.nameLength; 
         // FIXME: Perhaps we shouldn't remove the 0x00's here, to keep true to the original data??
-        if (this.nameName != null)
-          this.nameName = this.nameName.replaceAll("\x00", ""); // The last four characters could be 0x00
+        // if (this.nameName != null)
+        //   this.nameName = this.nameName.replaceAll("\x00", ""); // The last four characters could be 0x00
         // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
         this.maxNameLength = this.nameLength == 32 ? this.nameLength - 4 : this.nameLength; // this.maxNameLength was set above, for ptcfShortName, but we update it here since a NAME chunk was found
       }
