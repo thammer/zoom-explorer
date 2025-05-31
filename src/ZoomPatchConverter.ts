@@ -470,8 +470,8 @@ export class ZoomPatchConverter
     let outputPatch: ZoomPatch = ZoomPatch.createEmptyPTCFPatch();
 
     outputPatch.name = inputPatch.name;
+    outputPatch.descriptionEnglish = `Converted from MS-70CDR patch "${inputPatch.name}" using https://sym.bios.is by Waveformer`;
     outputPatch.tempo = inputPatch.tempo;
-    outputPatch.descriptionEnglish = inputPatch.descriptionEnglish;
     outputPatch.currentEffectSlot = inputPatch.currentEffectSlot;
 
     outputPatch.updatePatchPropertiesFromDerivedProperties();
