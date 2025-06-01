@@ -106,7 +106,7 @@ export class MIDIDeviceManager
             let append = i === 0 ? "" : ` #${i + 1}`;
             let suggestedNewName = device.deviceName + append;
             if (!devicesWithSameDeviceName.find((d:MIDIDeviceDescription) => d.deviceNameUnique === suggestedNewName)) {
-              shouldLog(LogLevel.Error) && console.error(`${devicesWithSameDeviceName.length} devices with same device name ${device.deviceName}. New unique device name is "${suggestedNewName}"`);
+              shouldLog(LogLevel.Info) && console.log(`${devicesWithSameDeviceName.length} devices with same device name ${device.deviceName}. New unique device name is "${suggestedNewName}"`);
               device.deviceNameUnique = suggestedNewName;
             } 
           }

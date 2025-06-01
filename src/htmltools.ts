@@ -118,10 +118,11 @@ export class TextInputDialog
     });
   }
 
-  public async getUserConfirmation(labelText: string, confirmText: string = "OK"): Promise<string>
+  public async getUserText(labelText: string, text: string = "", confirmText: string = "OK"): Promise<string>
   {
     return new Promise<string>( (resolve, reject) => {
       this.textInputLabel.textContent = labelText;
+      this.textInput.value = text;
       this.confirmButton.textContent = confirmText;
       this.confirmEvent = async (result: boolean) => {
         resolve(result ? this.textInput.value : "");
