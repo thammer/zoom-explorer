@@ -1170,7 +1170,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       let device = zoomDevices[0];
 
       let convertedPatch: ZoomPatch | undefined = undefined;
-      if (device.deviceName === "MS-70CDR+" && savePatch.MSOG !== null) {
+      if (device.deviceName.includes("MS-70CDR+") && savePatch.MSOG !== null) {
         shouldLog(LogLevel.Info) && console.log(`Converting patch "${savePatch.name}" from MS to MS+`);
         let unmappedSlotParameterList: [slot: number, effectNumber: number, unmapped: boolean][];
         [convertedPatch, unmappedSlotParameterList] = zoomPatchConverter.convert(savePatch);
@@ -1258,7 +1258,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let filename: string | undefined;
     let fileEndings: string[] = [shortFileEnding];
     let fileDescriptions: string[] = [fileDescription];
-    if (zoomDevice.deviceName === "MS-70CDR+") {
+    if (zoomDevice.deviceName.includes("MS-70CDR+")) {
       // just for development to save some time loading MSOG pathes
       // fileEndings = ["50g"].concat(fileEnding);
       // fileDescriptions = ["MS-50G patch file"].concat(fileDescription); 
@@ -1292,7 +1292,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 
     currentZoomPatchToConvert = undefined;
 
-    let sysexString = await textInputDialog.getUserConfirmation("Sysex text", "Load");
+    let sysexString = await textInputDialog.getUserText("Sysex text", "Load");
 
     if (sysexString.length !== 0) {
       loadFromSysex(sysexString, zoomDevice);
@@ -1490,7 +1490,7 @@ function loadFromSysex(sysexString: string, zoomDevice: ZoomDevice, filename: st
       let patch = ZoomPatch.fromPatchData(patchData);
       updatePatchInfoTable(patch);
 
-      if (patch.MSOG !== null && (zoomDevice.deviceName === "MS-70CDR+" || zoomDevice.deviceName === "MS-50G+") && mapForMSOG !== undefined) {
+      if (patch.MSOG !== null && (zoomDevice.deviceName.includes("MS-70CDR+") || zoomDevice.deviceName.includes("MS-50G+")) && mapForMSOG !== undefined) {
         currentZoomPatchToConvert = patch;
         let screens = ZoomScreenCollection.fromPatchAndMappings(patch, mapForMSOG);
         loadedPatchEditor.updateFromMap(mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
