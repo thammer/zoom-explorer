@@ -124,7 +124,7 @@ export class ZoomScreenCollection
     return str;
   }
 
-  parseScreenData(data: Uint8Array, offset: number): number
+  private parseScreenData(data: Uint8Array, offset: number): number
   {
     while (offset < data.length - 1) {
       let screenNumber = data[offset]; offset += 1;
@@ -185,7 +185,7 @@ export class ZoomScreenCollection
     return offset;
   }
   
-  setFromPatchAndMap(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>) : ZoomScreenCollection | undefined
+  private setFromPatchAndMap(patch: ZoomPatch, effectsMap: Map<number, EffectParameterMap>) : ZoomScreenCollection | undefined
   {
     if (patch.effectSettings === null) {
       shouldLog(LogLevel.Error) && console.error(`patch.effectSettings == null for patch ${patch.name}`);
