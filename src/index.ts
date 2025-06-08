@@ -795,6 +795,15 @@ function handleMemorySlotChangedEvent(zoomDevice: ZoomDevice, memorySlot: number
 
   let selected = getCellForMemorySlot(zoomDevice, "patchesTable", memorySlot);
 
+  let lastMemorySlot = -1;
+  if (lastSelected !== null && lastSelected.dataset.memorySlot !== undefined)
+    lastMemorySlot = parseInt(lastSelected.dataset.memorySlot);
+
+  if (memorySlot !== lastMemorySlot) {
+    currentZoomPatchToConvert = undefined;
+    loadedPatchEditor.hide();
+  }
+
   if (selected !==undefined && zoomDevice.patchList.length > 0) {
     togglePatchesTablePatch(selected);
     if (lastSelected != null)
@@ -840,7 +849,7 @@ function getScreenCollectionAndUpdateEditPatchTable(zoomDevice: ZoomDevice)
     compare = lastChangedEditScreenCollection;
   else
     lastChangedEditScreenCollection = previousEditScreenCollection;
-  const patchNumbertext = `${zoomDevice.deviceName} Patch ${(zoomDevice.currentMemorySlotNumber + 1).toString().padStart(2, "0")}:`;
+  const patchNumbertext = `${zoomDevice.deviceName} Patch:`;
   patchEditor.update(zoomDevice, screenCollection, currentZoomPatch, patchNumbertext, compare, previousEditPatch);
   previousEditScreenCollection = screenCollection;
   previousEditPatch = currentZoomPatch;
@@ -990,6 +999,19 @@ patchesTable.addEventListener("click", (event) => {
   if (lastSelected != null)
     togglePatchesTablePatch(lastSelected);
 
+  let lastMemorySlot = -1;
+  if (lastSelected !== null && lastSelected.dataset.memorySlot !== undefined)
+    lastMemorySlot = parseInt(lastSelected.dataset.memorySlot);
+
+  let memorySlot = -1;
+  if (cell !== null && cell.dataset.memorySlot !== undefined)
+    memorySlot = parseInt(cell.dataset.memorySlot);
+
+  if (memorySlot !== lastMemorySlot) {
+    currentZoomPatchToConvert = undefined;
+    loadedPatchEditor.hide();
+  }
+
   lastSelected = cell;
 
   let patchNumber = getPatchNumber(cell) - 1;
@@ -1093,9 +1115,11 @@ function updatePatchesTable(device: ZoomDevice)
     row = patchesTable.rows[1 + i % numPatchesPerRow];
     bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2];
     bodyCell.innerHTML = `${i + 1}`;
+    bodyCell.dataset.memorySlot = `${i}`;
     bodyCell = row.cells[Math.floor(i / numPatchesPerRow) * 2 + 1];
     let name = patch.nameName != null ? patch.nameName : patch.name;
     bodyCell.innerHTML = `${name}`;
+    bodyCell.dataset.memorySlot = `${i}`;
   }
 }
 
@@ -1276,6 +1300,12 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     if (partialArrayStringMatch(data, "PTCF")) {
         let patch = ZoomPatch.fromPatchData(data);
         updatePatchInfoTable(patch);
+
+        if (patch !== undefined) {
+          currentZoomPatchToConvert = undefined;
+          loadedPatchEditor.hide();
+        }
+
         return;
     }
     let sysexString = bytesWithCharactersToString(data);
@@ -1292,7 +1322,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 
     currentZoomPatchToConvert = undefined;
 
-    let sysexString = await textInputDialog.getUserText("Sysex text", "Load");
+    let sysexString = await textInputDialog.getUserText("Sysex text", "", "Load");
 
     if (sysexString.length !== 0) {
       loadFromSysex(sysexString, zoomDevice);
@@ -1830,7 +1860,6 @@ function convertPatchAndUpdateEditor(patch: ZoomPatch)
         loadedPatchEditor.addCellHighlights(unmappedSlotParameterList);
       }
     }
-
 }
 
 async function downloadJSONResource(filename: string): Promise<any>
