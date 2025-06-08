@@ -1840,9 +1840,11 @@ export class ZoomDevice implements IManagedMIDIDevice
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.tempoV2)) {
       // Tempo changed on device (MS Plus series)
+      let oldTempo = this._currentTempo;
       this._currentTempo = data[9] + ((data[10] & 0b01111111) << 7);
       if (log) shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Received tempo ${this._currentTempo}, raw: ${bytesToHexString(data, " ")}`);
-      this.emitTempoChangedEvent();
+      if (oldTempo !== this._currentTempo)
+        this.emitTempoChangedEvent();
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.currentEffectSlotV2)) {
       // Current (edit) effect slot was changed on pedal (MS Plus)
