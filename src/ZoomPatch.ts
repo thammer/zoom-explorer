@@ -378,11 +378,10 @@ export class ZoomPatch
       return;
     }
 
-    let insertEffectInPlace = false;
-
     if (this.effectSettings.length === this.maxNumEffects) {
-      if (this.effectSettings[effectSlot].id === 0) {
-        insertEffectInPlace = true;
+      if (this.msogEffectsReversedBytes !== null) {
+        // For MSOG patches, all 6 effect slots have effect settings (with ID === 0 for empty slots)
+        // We'll accept adding effects beyond the 6 effect settings slots and then trim to length maxNumEffects (typically 6) afterwards, see below
       }
       else {
         shouldLog(LogLevel.Error) && console.error(`Attempted to add effect in slot ${effectSlot} when all ${this.maxNumEffects} slots are full already`);
@@ -395,22 +394,22 @@ export class ZoomPatch
     
     let addEffectToEmptyPatch = effectSlot === 0 && this.effectSettings.length === 1 && this.effectSettings[0].id === 0;
 
-    if (insertEffectInPlace) {
-      this.effectSettings[effectSlot] = effectSettings;
-    }
-    else if (addEffectToEmptyPatch) {
+    if (addEffectToEmptyPatch) {
       // An empty patch has one effect (slot 0) with ID 0 and all params 0
       this.effectSettings[0] = effectSettings;
     }
-    else
+    else {
       this.effectSettings.splice(effectSlot, 0, effectSettings);
+      if (this.effectSettings.length > this.maxNumEffects) {
+        this.effectSettings.splice(this.maxNumEffects, this.effectSettings.length - this.maxNumEffects); // trim to maxNumEffects (typically 6)
+        if (this.msogEffectsReversedBytes === null)
+          shouldLog(LogLevel.Warning) && console.warn(`${this.name}: this.effectSettings.length > this.maxNumEffects but this isn't a MSOG patch. Investigate.`);
+      }
+    }
 
     // Update IDs
     if (this.ids !== null) {
-      if (insertEffectInPlace) {
-        this.ids[effectSlot] = effectSettings.id;
-      }
-      else if (addEffectToEmptyPatch) {
+      if (addEffectToEmptyPatch) {
         this.ids[0] = effectSettings.id;
       }
       else {
@@ -423,10 +422,10 @@ export class ZoomPatch
       }
     }
 
-    if (this.numEffects !== null && !addEffectToEmptyPatch && !insertEffectInPlace)
+    if (this.numEffects !== null && !addEffectToEmptyPatch)
       this.numEffects++;
 
-    if (this.msogNumEffects !== null && !addEffectToEmptyPatch && !insertEffectInPlace)
+    if (this.msogNumEffects !== null && !addEffectToEmptyPatch)
       this.msogNumEffects = this.numEffects;
 
     if (this.edtbReversedBytes !== null) {

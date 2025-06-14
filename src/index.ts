@@ -5,7 +5,7 @@ import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexString
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { EffectIDMap, EffectParameterMap, ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
 import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog, TextInputDialog } from "./htmltools.js";
-import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
+import { ZoomScreen, ZoomScreenCollection, ZoomScreenParameter } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel } from "./Logger.js";
@@ -195,6 +195,10 @@ async function start()
 
   patchEditor.setEffectSlotMoveCallback((effectSlot: number, direction: "left" | "right") => {
     handleEffectSlotMove(currentZoomPatch, zoomDevice, zoomDevice.effectIDMap, effectSlot, direction);
+  });
+
+  patchEditor.setEffectSlotAddCallback((effectSlot: number, direction: "left" | "right") => {
+    handleEffectSlotAdd(currentZoomPatch, zoomDevice, zoomDevice.effectIDMap, effectSlot, direction);
   });
 
   patchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
@@ -1574,6 +1578,10 @@ function loadFromSysex(sysexString: string, zoomDevice: ZoomDevice, filename: st
           handleEffectSlotMove(patch, undefined, mapForMSOG, effectSlot, direction);
         });
 
+        loadedPatchEditor.setEffectSlotAddCallback((effectSlot: number, direction: "left" | "right") => {
+          handleEffectSlotAdd(patch, undefined, mapForMSOG, effectSlot, direction);
+        });
+
         loadedPatchEditor.setEffectSlotDeleteCallback((effectSlot: number) => {
           handleEffectSlotDelete(patch, undefined, mapForMSOG, effectSlot);
         });
@@ -1816,6 +1824,44 @@ function handleEffectSlotMove(zoomPatch: ZoomPatch | undefined, zoomDevice: Zoom
 
     zoomPatch.swapEffectsInSlots(effectSlot, destinationEffectSlot);
     zoomDevice?.swapScreensForEffectSlots(effectSlot, destinationEffectSlot);
+    zoomDevice?.uploadPatchToCurrentPatch(zoomPatch);
+
+    updatePatchInfoTable(zoomPatch);
+  }
+}
+
+function handleEffectSlotAdd(zoomPatch: ZoomPatch | undefined, zoomDevice: ZoomDevice | undefined, effectIDMap: EffectIDMap | undefined, effectSlot: number, direction: "left" | "right") {
+  if (zoomPatch === undefined) {
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when zoomPatch is undefined")
+    return;
+  }
+
+  if (zoomPatch.effectSettings !== null && effectSlot < zoomPatch.effectSettings.length)
+  {
+    shouldLog(LogLevel.Info) && console.log(`Moving effect in slot ${effectSlot} ${direction}`);
+
+    if (effectSlot === zoomPatch.maxNumEffects - 1 && direction === "left") {
+      shouldLog(LogLevel.Error) && console.error(`Cannot add effect to the left of effectSlot ${effectSlot} (the leftmost slot)`);
+      return;
+    }
+    shouldLog(LogLevel.Info) && console.log(`Adding effect ${direction} of slot ${effectSlot}`);
+    effectSlot += direction === "left" ? 1 : 0;
+  
+    let effectSettings = new EffectSettings();
+    effectSettings.id = 0; // THRU
+    effectSettings.enabled = true;
+    zoomPatch.addEffectInSlot(effectSlot, effectSettings);
+
+    let screen = new ZoomScreen();
+    let parameter = new ZoomScreenParameter();
+    parameter.name = "OnOff";
+    parameter.valueString = "1";
+    screen.parameters.push(parameter);
+    parameter = new ZoomScreenParameter();
+    parameter.name = "THRU";
+    parameter.valueString = "THRU";
+    screen.parameters.push(parameter);
+    zoomDevice?.addScreenForEffectInSlot(effectSlot, screen);
     zoomDevice?.uploadPatchToCurrentPatch(zoomPatch);
 
     updatePatchInfoTable(zoomPatch);
