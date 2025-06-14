@@ -10,6 +10,7 @@ export type EditPatchMouseEventListenerType = (cell: HTMLTableCellElement, initi
 export type EditPatchEffectSlotOnOffListenerType = (effectSlot: number, on: boolean) => void;
 export type EditPatchEffectSlotDeleteListenerType = (effectSlot: number) => void;
 export type EditPatchEffectSlotMoveListenerType = (effectSlot: number, direction: "left" | "right") => void;
+export type EditPatchEffectSlotAddListenerType = (effectSlot: number, direction: "left" | "right") => void;
 
 let debugCounter = 0;
 
@@ -21,6 +22,7 @@ export class ZoomPatchEditor
   private effectSlotOnOffCallback: EditPatchEffectSlotOnOffListenerType | undefined = undefined;
   private effectSlotDeleteCallback: EditPatchEffectSlotDeleteListenerType | undefined = undefined;
   private effectSlotMoveCallback: EditPatchEffectSlotMoveListenerType | undefined = undefined;
+  private effectSlotAddCallback: EditPatchEffectSlotAddListenerType | undefined = undefined;
 
   private undoOnEscape = "";
   private muteBlurOnEscape = false;
@@ -182,6 +184,11 @@ export class ZoomPatchEditor
   setEffectSlotMoveCallback(effectSlotMoveCallback: EditPatchEffectSlotMoveListenerType) 
   {
     this.effectSlotMoveCallback = effectSlotMoveCallback;
+  }
+
+  setEffectSlotAddCallback(effectSlotAddCallback: EditPatchEffectSlotAddListenerType) 
+  {
+    this.effectSlotAddCallback = effectSlotAddCallback;
   }
 
   getEffectAndParameterNumber(str: string): [effectSlot: number | undefined, parameterNumber: number | undefined] {
@@ -420,9 +427,12 @@ export class ZoomPatchEditor
       let effectHeader: HTMLTableCellElement;
       let effectSlotName: HTMLSpanElement;
       let effectOnOffButton: HTMLButtonElement;
+      let effectLibraryButton: HTMLButtonElement;
       let effectDeleteButton: HTMLButtonElement;
       let effectMoveLeftButton: HTMLButtonElement;
       let effectMoveRightButton: HTMLButtonElement;
+      let effectAddLeftButton: HTMLButtonElement;
+      let effectAddRightButton: HTMLButtonElement;
 
       if (cellWithEffectTable.children.length < 1) {
         effectTable = document.createElement("table");
@@ -433,45 +443,65 @@ export class ZoomPatchEditor
 
         let html = `
           <th colspan="4">
-              <div>
-                  <button class="material-symbols-outlined effectOnOffButton">circle</button>
-                  <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
-                  <span class="editEffectTableEffectName"></span>
-                  <button class="material-symbols-outlined effectActionButton">play_arrow</button>
-                  <button class="material-symbols-outlined effectActionButton">delete</button>
+              <div class="editEffectTableTopBar">
+                <span class="editEffectTableEffectNameContainer">
+                    <button class="material-symbols-outlined effectOnOffButton">radio_button_unchecked</button>
+                    <span class="editEffectTableEffectName"></span>
+                    <button class="material-symbols-outlined effectActionButton">data_table</button>
+                </span>
+                <span class="editEffectTableButtons">
+                    <button class="material-symbols-outlined effectActionButton">add_circle</button>
+                    <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
+                    <button class="material-symbols-outlined effectActionButton">delete</button>
+                    <button class="material-symbols-outlined effectActionButton">play_arrow</button>
+                    <button class="material-symbols-outlined effectActionButton">add_circle</button>
+                </span>
               </div>
           </th>
         `;
         effectHeader = htmlToElement(html) as HTMLTableCellElement;
         tr.appendChild(effectHeader);
 
-        effectOnOffButton = effectHeader.children[0].children[0] as HTMLButtonElement;
+        effectOnOffButton = effectHeader.children[0].children[0].children[0] as HTMLButtonElement;
         effectOnOffButton.dataset.effectSlot = effectSlot.toString();
         effectOnOffButton.addEventListener("click", (event) => this.onEffectSlotOnOffButtonClick(event));
 
-        effectMoveLeftButton = effectHeader.children[0].children[1] as HTMLButtonElement;
+        effectAddLeftButton = effectHeader.children[0].children[1].children[0] as HTMLButtonElement;
+        effectAddLeftButton.dataset.effectSlot = effectSlot.toString();
+        effectAddLeftButton.addEventListener("click", (event) => this.onEffectSlotAddButtonClick(event, "left"));
+
+        effectMoveLeftButton = effectHeader.children[0].children[1].children[1] as HTMLButtonElement;
         effectMoveLeftButton.dataset.effectSlot = effectSlot.toString();
         effectMoveLeftButton.addEventListener("click", (event) => this.onEffectSlotMoveButtonClick(event, "left"));
 
-        effectMoveRightButton = effectHeader.children[0].children[3] as HTMLButtonElement;
+        effectDeleteButton = effectHeader.children[0].children[1].children[2] as HTMLButtonElement;
+        effectDeleteButton.dataset.effectSlot = effectSlot.toString();
+        effectDeleteButton.addEventListener("click", (event) => this.onEffectSlotDeleteButtonClick(event));
+
+        effectMoveRightButton = effectHeader.children[0].children[1].children[3] as HTMLButtonElement;
         effectMoveRightButton.dataset.effectSlot = effectSlot.toString();
         effectMoveRightButton.addEventListener("click", (event) => this.onEffectSlotMoveButtonClick(event, "right"));
 
-        effectDeleteButton = effectHeader.children[0].children[4] as HTMLButtonElement;
-        effectDeleteButton.dataset.effectSlot = effectSlot.toString();
-        effectDeleteButton.addEventListener("click", (event) => this.onEffectSlotDeleteButtonClick(event));
+        effectAddRightButton = effectHeader.children[0].children[1].children[4] as HTMLButtonElement;
+        effectAddRightButton.dataset.effectSlot = effectSlot.toString();
+        effectAddRightButton.addEventListener("click", (event) => this.onEffectSlotAddButtonClick(event, "right"));
       }
       else {
         effectTable = cellWithEffectTable.children[0] as HTMLTableElement;
         effectHeader = effectTable.children[0].children[0] as HTMLTableCellElement;
-        effectOnOffButton = effectHeader.children[0].children[0] as HTMLButtonElement;
-        effectMoveLeftButton = effectHeader.children[0].children[1] as HTMLButtonElement;
-        effectMoveRightButton = effectHeader.children[0].children[3] as HTMLButtonElement;
+        effectOnOffButton = effectHeader.children[0].children[0].children[0] as HTMLButtonElement;
+        effectAddLeftButton = effectHeader.children[0].children[1].children[0] as HTMLButtonElement;
+        effectMoveLeftButton = effectHeader.children[0].children[1].children[1] as HTMLButtonElement;
+        effectDeleteButton = effectHeader.children[0].children[1].children[2] as HTMLButtonElement;
+        effectMoveRightButton = effectHeader.children[0].children[1].children[3] as HTMLButtonElement;
+        effectAddRightButton = effectHeader.children[0].children[1].children[4] as HTMLButtonElement;
       }
-      effectSlotName = effectHeader.children[0].children[2] as HTMLSpanElement;
+      effectSlotName = effectHeader.children[0].children[0].children[1] as HTMLSpanElement;
 
       effectMoveRightButton.disabled = (effectSlot === 0);
       effectMoveLeftButton.disabled = (effectSlot === numScreens - 1);
+      effectAddRightButton.disabled = (numScreens === patch?.maxNumEffects);
+      effectAddLeftButton.disabled = (numScreens === patch?.maxNumEffects);
 
       let paramNameRow: HTMLTableRowElement | undefined = undefined;
       let paramValueRow: HTMLTableRowElement | undefined = undefined;
@@ -638,6 +668,16 @@ export class ZoomPatchEditor
     let effectSlot = Number.parseInt(button.dataset.effectSlot);
     if (this.effectSlotMoveCallback !== undefined)
       this.effectSlotMoveCallback(effectSlot, direction);
+  }
+
+  onEffectSlotAddButtonClick(event: MouseEvent, direction: "left" | "right"): any
+  {
+    let button = event.target as HTMLButtonElement;
+    if (button.dataset.effectSlot === undefined)
+      return; // this should never happen
+    let effectSlot = Number.parseInt(button.dataset.effectSlot);
+    if (this.effectSlotAddCallback !== undefined)
+      this.effectSlotAddCallback(effectSlot, direction);
   }
 
   onEffectSlotDeleteButtonClick(event: MouseEvent): any

@@ -378,18 +378,27 @@ export class ZoomPatch
       return;
     }
 
+    let insertEffectInPlace = false;
+
     if (this.effectSettings.length === this.maxNumEffects) {
-      shouldLog(LogLevel.Error) && console.error(`Attempted to add effect in slot ${effectSlot} when all ${this.maxNumEffects} slots are full already`);
-      return;
+      if (this.effectSettings[effectSlot].id === 0) {
+        insertEffectInPlace = true;
+      }
+      else {
+        shouldLog(LogLevel.Error) && console.error(`Attempted to add effect in slot ${effectSlot} when all ${this.maxNumEffects} slots are full already`);
+        return;
+      }
     }
 
-    
     if (this.effectSettings.length === 0)
       shouldLog(LogLevel.Warning) && console.warn(`${this.name}: this.effectSettings.length === 0. An empty patch should have one effect (slot 0) with ID 0 and all params 0`);
     
     let addEffectToEmptyPatch = effectSlot === 0 && this.effectSettings.length === 1 && this.effectSettings[0].id === 0;
 
-    if (addEffectToEmptyPatch) {
+    if (insertEffectInPlace) {
+      this.effectSettings[effectSlot] = effectSettings;
+    }
+    else if (addEffectToEmptyPatch) {
       // An empty patch has one effect (slot 0) with ID 0 and all params 0
       this.effectSettings[0] = effectSettings;
     }
@@ -398,7 +407,10 @@ export class ZoomPatch
 
     // Update IDs
     if (this.ids !== null) {
-      if (addEffectToEmptyPatch) {
+      if (insertEffectInPlace) {
+        this.ids[effectSlot] = effectSettings.id;
+      }
+      else if (addEffectToEmptyPatch) {
         this.ids[0] = effectSettings.id;
       }
       else {
@@ -411,10 +423,10 @@ export class ZoomPatch
       }
     }
 
-    if (this.numEffects !== null && !addEffectToEmptyPatch)
+    if (this.numEffects !== null && !addEffectToEmptyPatch && !insertEffectInPlace)
       this.numEffects++;
 
-    if (this.msogNumEffects !== null && !addEffectToEmptyPatch)
+    if (this.msogNumEffects !== null && !addEffectToEmptyPatch && !insertEffectInPlace)
       this.msogNumEffects = this.numEffects;
 
     if (this.edtbReversedBytes !== null) {
@@ -842,6 +854,8 @@ export class ZoomPatch
       shouldLog(LogLevel.Warning) && console.warn(`ZoomPatch.readPTCFChunks() PTCF chunk length (${this.length}) is greater than patch length (${data.length}) - offset (${offset})`)
       return offset;
     }
+
+    this.maxNumEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects. See FIXME below on msogNumEffects.
 
     this.ptcfChunk = data.slice(ptcfChunkStart, ptcfChunkStart + this.length);
 
@@ -1921,6 +1935,8 @@ export class ZoomPatch
     zoomPatch.descriptionEnglish = "";
     zoomPatch.tempo = 120;
     zoomPatch.currentEffectSlot = 0;
+    zoomPatch.maxNumEffects = 6; // FIXME add support for other pedals, like MS-60B with 4 effects. See FIXME on msogNumEffects.
+
     // target is MS-50G+ / MS-70CDR+
     //                  44444444333333332222222211111111 
     zoomPatch.target= 0b00000000000001000000000000000000;
