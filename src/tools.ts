@@ -331,7 +331,8 @@ export function compareBuffers(newBuffer: Uint8Array | undefined | null, oldBuff
     let allEqual = true;
     for (let i=0; i<newBuffer.length; i++) {
       if (newBuffer[i] !== oldBuffer[i]) {
-        doLogging && shouldLog(LogLevel.Warning) && console.warn(`Buffers differs at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])}, oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])}`)
+        doLogging && shouldLog(LogLevel.Warning) && console.warn(`Buffers differ at newBuffer[${i}] = ${bytesToHexString([newBuffer[i]])} ` + 
+          `(${newBuffer[i].toString(2).padStart(8, "0")}), oldBuffer[${i}] ${bytesToHexString([oldBuffer[i]])} (${oldBuffer[i].toString(2).padStart(8, "0")})`)
         allEqual = false;
         if (!doLogging)
           return false;

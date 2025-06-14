@@ -1825,7 +1825,8 @@ export class ZoomDevice implements IManagedMIDIDevice
       let parameterNumber = data[8];
       let parameterValue = data[9] + (data[10] << 7);
       if (log) shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Received parameter update accepted for effect slot ${effectSlot}, ` +
-        `parameter number ${parameterNumber}, value ${parameterValue}, raw: ${bytesToHexString(data, " ")}`);
+        `parameter number ${parameterNumber} (0x${parameterNumber.toString(16).padStart(2, "0")}), ` +
+        `value ${parameterValue} (0x${parameterValue.toString(16).padStart(2, "0")}), raw: ${bytesToHexString(data, " ")}`);
     }
     else if (this.isMessageType(data, ZoomDevice.messageTypes.nameCharacterV2)) {
       if (log) shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Received name character index ${data[8]}, character: ${data[9]}, raw: ${bytesToHexString(data, " ")}`);

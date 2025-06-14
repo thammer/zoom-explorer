@@ -597,6 +597,10 @@ export class ZoomPatch
   prm2LineSelSlot: null | number = null; // based on byte 22 and 23 in prm2Unknown, bitfield for slot with Line Selector
   prm2Byte23Upper3Bits: null | number = null; // byte 23 in prm2Unknown - Line Selector on MS-70CDR+
   prm2Byte24: null | number = null; // byte 24 in prm2Unknown - MS-50G+, 0 or 0x80
+  prm2Byte25: null | number = null; // byte 25 in prm2Unknown
+  prm2Byte26: null | number = null; // byte 26 in prm2Unknown
+  prm2Byte27: null | number = null; // byte 27 in prm2Unknown
+  prm2Byte28: null | number = null; // byte 28 in prm2Unknown
   prm2Tempo: null | number = null; // based on the two last bytes in prm2Unknown
   prm2Buffer: null | Uint8Array = null; // prm2Length bytes
 
@@ -1020,6 +1024,18 @@ export class ZoomPatch
         if (this.prm2Length > 24) {
           this.prm2Byte24 = this.prm2Buffer[24];          
         }
+        if (this.prm2Length > 25) {
+          this.prm2Byte25 = this.prm2Buffer[25];          
+        }
+        if (this.prm2Length > 26) {
+          this.prm2Byte26 = this.prm2Buffer[26];          
+        }
+        if (this.prm2Length > 27) {
+          this.prm2Byte27 = this.prm2Buffer[27];          
+        }
+        if (this.prm2Length > 28) {
+          this.prm2Byte28 = this.prm2Buffer[28];
+        }
 
         let individualChecksFailed = false;
 
@@ -1098,8 +1114,8 @@ export class ZoomPatch
       this.prm2Byte2Lower6Bits === null || this.prm2Byte3Upper4Bits === null ||
       this.prm2Byte9Lower5Bits === null || this.prm2Byte10Bit5 === null || this.edtbEffectSettings === null ||
       this.prm2Byte13 === null || this.prm2Byte14 === null ||
-      this.prm2Byte20Bit1And8 === null || this.prm2Byte21Lower4Bits === null || this.prm2Byte22Bits3To7 === null ||
-      this.prm2Byte23Upper3Bits === null || this.prm2Byte24 === null)
+      this.prm2Byte20Bit1And8 === null || this.prm2Byte21Lower4Bits === null || this.prm2Byte22Bits3To7 === null || this.prm2Byte23Upper3Bits === null || 
+      this.prm2Byte24 === null || this.prm2Byte25 === null || this.prm2Byte26 === null || this.prm2Byte27 === null || this.prm2Byte28 === null)
     {
       return false;
     }
@@ -1111,7 +1127,7 @@ export class ZoomPatch
       this.prm2Byte9Lower5Bits, this.prm2Byte10Bit5,
       this.prm2Byte13, this.prm2Byte14,
       this.prm2Byte20Bit1And8, this.prm2Byte21Lower4Bits, this.prm2Byte22Bits3To7,
-      this.prm2Byte23Upper3Bits, this.prm2Byte24);
+      this.prm2Byte23Upper3Bits, this.prm2Byte24, this.prm2Byte25, this.prm2Byte26, this.prm2Byte27, this.prm2Byte28);
 
     return compareBuffers(compareBuffer, this.prm2Buffer, true);
   }
@@ -1120,7 +1136,8 @@ export class ZoomPatch
     totalNumberOfSlots: number, prm2PreampSlot: number, prm2BPMSlot: number, prm2LineSelSlot: number, prm2Tempo: number,
     prm2Byte2Lower6Bits = 0, prm2Byte3Upper4Bits = 0, prm2Byte9Lower5Bits: number = 0, prm2Byte10Bit5: number = 0,
     prm2Byte13: number = 0, prm2Byte14: number = 0, prm2Byte20Bit1And8: number = 0, prm2Byte21Lower4Bits: number = 0, 
-    prm2Byte22Bits3To7: number = 0, prm2Byte23Upper3Bits: number = 0, prm2Byte24: number = 0)
+    prm2Byte22Bits3To7: number = 0, prm2Byte23Upper3Bits: number = 0, 
+    prm2Byte24: number = 0, prm2Byte25: number = 0, prm2Byte26: number = 0, prm2Byte27: number = 0, prm2Byte28: number = 0)
   {
     let prm2Length = prm2Buffer.length;
     if (clear)
@@ -1182,6 +1199,18 @@ export class ZoomPatch
     }
     if (prm2Length > 24) {
       prm2Buffer[24] = prm2Byte24;
+    }
+    if (prm2Length > 25) {
+      prm2Buffer[25] = prm2Byte25;
+    }
+    if (prm2Length > 26) {
+      prm2Buffer[26] = prm2Byte26;
+    }
+    if (prm2Length > 27) {
+      prm2Buffer[27] = prm2Byte27;
+    }
+    if (prm2Length > 28) {
+      prm2Buffer[28] = prm2Byte28;
     }
   }
 
@@ -1478,8 +1507,8 @@ export class ZoomPatch
         this.prm2Byte2Lower6Bits === null || this.prm2Byte3Upper4Bits === null ||
         this.prm2Byte9Lower5Bits === null || this.prm2Byte10Bit5 === null || this.edtbEffectSettings === null ||
         this.prm2Byte13 === null || this.prm2Byte14 === null ||
-        this.prm2Byte20Bit1And8 === null || this.prm2Byte21Lower4Bits === null || this.prm2Byte22Bits3To7 === null ||
-        this.prm2Byte23Upper3Bits === null || this.prm2Byte24 === null)
+        this.prm2Byte20Bit1And8 === null || this.prm2Byte21Lower4Bits === null || this.prm2Byte22Bits3To7 === null || this.prm2Byte23Upper3Bits === null || 
+        this.prm2Byte24 === null || this.prm2Byte25 === null || this.prm2Byte26 === null || this.prm2Byte27 === null || this.prm2Byte28 === null)
       {
         shouldLog(LogLevel.Warning) && console.error(`Unable to build PRM2 patch buffer. Inconsistent patch data for patch ${this.name}.`);        
       } 
@@ -1490,7 +1519,7 @@ export class ZoomPatch
           this.prm2Byte9Lower5Bits, this.prm2Byte10Bit5,
           this.prm2Byte13, this.prm2Byte14,
           this.prm2Byte20Bit1And8, this.prm2Byte21Lower4Bits, this.prm2Byte22Bits3To7,
-          this.prm2Byte23Upper3Bits, this.prm2Byte24);
+          this.prm2Byte23Upper3Bits, this.prm2Byte24, this.prm2Byte25, this.prm2Byte26, this.prm2Byte27, this.prm2Byte28);
       }
 
       offset = result = this.writeString(ptcfChunk, offset, this.PRM2); success &&= (result !== 0);
@@ -1941,6 +1970,10 @@ export class ZoomPatch
     zoomPatch.prm2LineSelSlot = ZoomPatch.createLineSelSlotBits(zoomPatch.edtbEffectSettings);
     zoomPatch.prm2Byte23Upper3Bits = 0;
     zoomPatch.prm2Byte24 = 0; 
+    zoomPatch.prm2Byte25 = 0; 
+    zoomPatch.prm2Byte26 = 0; 
+    zoomPatch.prm2Byte27 = 0; 
+    zoomPatch.prm2Byte28 = 0;
     zoomPatch.prm2Tempo = zoomPatch.tempo;
     zoomPatch.prm2Buffer = new Uint8Array(32);
     zoomPatch.setPrm2BufferFromDerivedValues(zoomPatch.prm2Buffer, true, zoomPatch.prm2InvalidEffectSlot, zoomPatch.prm2PatchVolume, zoomPatch.prm2EditEffectSlot,
@@ -1949,7 +1982,7 @@ export class ZoomPatch
       zoomPatch.prm2Byte9Lower5Bits, zoomPatch.prm2Byte10Bit5,
       zoomPatch.prm2Byte13, zoomPatch.prm2Byte14,
       zoomPatch.prm2Byte20Bit1And8, zoomPatch.prm2Byte21Lower4Bits, zoomPatch.prm2Byte22Bits3To7,
-      zoomPatch.prm2Byte23Upper3Bits, zoomPatch.prm2Byte24);
+      zoomPatch.prm2Byte23Upper3Bits, zoomPatch.prm2Byte24, zoomPatch.prm2Byte25, zoomPatch.prm2Byte26, zoomPatch.prm2Byte27, zoomPatch.prm2Byte28);
     zoomPatch.prm2Length = zoomPatch.prm2Buffer.length;
     
     zoomPatch.NAME = "NAME";

@@ -137,6 +137,8 @@ function sendZoomCommandLong(device: DeviceID, deviceId: number, data: Uint8Arra
 
 async function start()
 {
+  await downloadEffectMaps();
+
   let success = await midi.enable().catch( (reason) => {
     shouldLog(LogLevel.Info) && console.log(getExceptionErrorString(reason));
     return;
@@ -174,8 +176,6 @@ async function start()
   };  
 
   let zoomDevice = zoomDevices[0];
-
-  await downloadEffectMaps();
 
   patchEditor.setTextEditedCallback( (event: Event, type: string, initialValueString: string): boolean => {
     return handlePatchEdited(currentZoomPatch, zoomDevice, zoomDevice.effectIDMap, event, type, initialValueString);
@@ -234,41 +234,61 @@ async function start()
   //     await sleepForAWhile(50);
   //     sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
   //   }
-
   
-    let effectIDMapOG = ZoomDevice.getEffectIDMapForDevice("MS-70CDR");
-    if (effectIDMapOG === undefined) {
-      shouldLog(LogLevel.Error) && console.error(`No effect ID map found for device MS-70CDR`);
-      return;
-    }
+    // let effectIDMapOG = ZoomDevice.getEffectIDMapForDevice("MS-70CDR");
+    // if (effectIDMapOG === undefined) {
+    //   shouldLog(LogLevel.Error) && console.error(`No effect ID map found for device MS-70CDR`);
+    //   return;
+    // }
     
-    console.log("MS-70CDR to MS-70CDR+ non-mapped effects");
+    // console.log("MS-70CDR to MS-70CDR+ non-mapped effects");
 
-    effectIDMapOG.forEach((effectMap, effectID) => {
-      if (effectMap.pedal !== undefined && effectMap.pedal.has("MS-70CDR")) {
-        let mapped = zoomPatchConverter.canMapEffect(effectID);
-        if (!mapped)
-          console.log(`${mapped ? "o" : "-" } ${effectMap.name.padEnd(12, " ")}`);   
+    // effectIDMapOG.forEach((effectMap, effectID) => {
+    //   if (effectMap.pedal !== undefined && effectMap.pedal.has("MS-70CDR")) {
+    //     let mapped = zoomPatchConverter.canMapEffect(effectID);
+    //     if (!mapped)
+    //       console.log(`${mapped ? "o" : "-" } ${effectMap.name.padEnd(12, " ")}`);   
+    //   }
+    // });
+
+    // console.log("MS-70CDR to MS-70CDR+ non-mapped parameters");
+
+    // effectIDMapOG.forEach((effectMap, inputEffectID) => {
+    //   if (effectMap.pedal !== undefined && effectMap.pedal.has("MS-70CDR")) {
+    //     let mapped = zoomPatchConverter.canMapEffect(inputEffectID);
+    //     if (mapped) {
+    //       let [outputEffectID, outputEffectName] = zoomPatchConverter.getMappedEffect(inputEffectID);
+    //       effectMap.parameters.forEach((parameterMap) => {
+    //         let [mapped, alternatives] = zoomPatchConverter.canMapParameter(inputEffectID, parameterMap.name);
+    //         if (!mapped || alternatives.length > 0) {
+    //           console.log(`${mapped ? "?": "-"} ${effectMap.name.padEnd(12, " ")} -> ${outputEffectName.padEnd(12, " ")} - ${parameterMap.name.padEnd(10, " ")}. Alternatives: ${alternatives}.`);
+    //         }
+    //       });
+    //     };
+    //   };
+    // });
+
+    console.log("Checking effect param commands");
+
+    let device = zoomDevices[0];
+    let value = 0x3F;
+    let valueMax = 0x09;
+    for (let commandNum = 0x03; commandNum < 0x14; commandNum++) {
+      for (value = 0; value <= valueMax; value++) {
+      let commandString = `64 20 00 64 ${commandNum.toString(16).padStart(2, "0")} ${value.toString(16).padStart(2, "0")} 00 00 00 00`;
+      // if ([0, 1, 2, 3, 4, 7, 8, 9, 0x0C, 0x0D, 0x0E, 0x0F, 0x14, 0x1E, 0x1F].includes(commandNum)) {
+      if ([0, 1, 2, 4, 7, 8, 0x0F, 0x14, 0x1E, 0x1F].includes(commandNum)) {
+        console.warn(`  ${commandString} skipped`);
+        continue;
       }
-    });
-
-    console.log("MS-70CDR to MS-70CDR+ non-mapped parameters");
-
-    effectIDMapOG.forEach((effectMap, inputEffectID) => {
-      if (effectMap.pedal !== undefined && effectMap.pedal.has("MS-70CDR")) {
-        let mapped = zoomPatchConverter.canMapEffect(inputEffectID);
-        if (mapped) {
-          let [outputEffectID, outputEffectName] = zoomPatchConverter.getMappedEffect(inputEffectID);
-          effectMap.parameters.forEach((parameterMap) => {
-            let [mapped, alternatives] = zoomPatchConverter.canMapParameter(inputEffectID, parameterMap.name);
-            if (!mapped || alternatives.length > 0) {
-              console.log(`${mapped ? "?": "-"} ${effectMap.name.padEnd(12, " ")} -> ${outputEffectName.padEnd(12, " ")} - ${parameterMap.name.padEnd(10, " ")}. Alternatives: ${alternatives}.`);
-            }
-          });
-        };
-      };
-    });
-
+      console.warn(`  ${commandString} value: 0x${value.toString(16).padStart(2, "0")}               ${value.toString(2).padStart(8, "0")}`);
+      let command = hexStringToUint8Array(commandString);
+      sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
+      await sleepForAWhile(30);
+      await zoomDevice.downloadCurrentPatch();
+      await sleepForAWhile(30);
+      }
+    }
   });  
 
 };
@@ -1383,6 +1403,14 @@ function updatePatchInfoTable(patch: ZoomPatch) {
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte23Upper3Bits: ${patch.prm2Byte23Upper3Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte24 !== 0)
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte24: ${patch.prm2Byte24?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte25 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte25: ${patch.prm2Byte25?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte26 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte26: ${patch.prm2Byte26?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Byte27 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte27: ${patch.prm2Byte27?.toString(2).padStart(8, "0")}`);      
+      if (patch.prm2Byte28 !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte28: ${patch.prm2Byte28?.toString(2).padStart(8, "0")}`);      
     };
     let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Patch volume: ${patch.prm2PatchVolume}  ` +
       `Edit effect slot: ${patch.prm2EditEffectSlot}<br/>` +

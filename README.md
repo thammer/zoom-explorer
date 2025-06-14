@@ -69,15 +69,37 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 20 00 64 00 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 00 \<volume\> 00 00 00 00 F7 | Patch volume |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
+| 64 20 00 64 04 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 04 \<Right position\> 00 00 00 00 F7 | Split effect chain after this position (00-0F), 00=end, 01=before first, 02=after first, 03=after second, etc. |
 | 64 20 00 64 07 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 07 \<effect slot\> 00 00 00 00 F7 | Insert new effect in effect slot |
-| 64 20 00 64 08 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<effect slot\> 00 00 00 00 F7 | Delete (or replace with empty?) effect in effect slot |
-| 64 20 00 64 09 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
-| 64 20 00 64 0C |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
-| 64 20 00 64 0D |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
-| 64 20 00 64 0E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<???\> 00 00 00 00 F7 | Unknown |
+| 64 20 00 64 08 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<effect slot\> 00 00 00 00 F7 | Replace effect in effect slot with empty/trhu effect |
+| 64 20 00 64 09 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 09 \<effect slot\> 00 00 00 00 F7 | Move/swap slots. Sending values > 0x0a freezes the pedal. |
+| 64 20 00 64 0C |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0C \<???\> 00 00 00 00 F7 | Unknown. Sending large values freezes the pedal. |
+| 64 20 00 64 0D |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0D \<???\> 00 00 00 00 F7 | Unknown |
+| 64 20 00 64 0E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0E \<???\> 00 00 00 00 F7 | Unknown |
 | 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<Auto-save\> 00 00 00 00 F7 | Auto-save off/on (00 - 01)|
+| 64 20 00 64 10 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 10 \<???\> 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. Also accepts 0x7F. |
+| 64 20 00 64 11 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 11 \<???\> 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. Also accepts 0x7F.|
+| 64 20 00 64 12 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 12 \<???\> 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. Also accepts 0x7F.|
 | 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<Contrast\> 00 00 00 00 F7 | Screen contrast (00 - 0C) |
 | 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<ECO mode\> 00 00 00 00 F7 | ECO mode off/on (00 - 01) |
+| 64 20 00 64 1F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1F \<Pre-select\> 00 00 00 00 F7 | Pre-select off/on (00 - 01) |
+| 64 20 00 64 28 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 28 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 29 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 29 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 32 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 32 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 33 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 33 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 34 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 34 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 35 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 35 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 36 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 36 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 37 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 37 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 38 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 38 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
+| 64 20 00 64 39 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 39 0F 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. prm2[24] changes.|
+| 64 20 00 64 3A |     15 | *    | *       | F0 52 00 6E 64 20 00 64 3A 0F 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. prm2[24, 25] changes.|
+| 64 20 00 64 3B |     15 | *    | *       | F0 52 00 6E 64 20 00 64 3B 0F 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. prm2[25] changes.|
+| 64 20 00 64 3C |     15 | *    | *       | F0 52 00 6E 64 20 00 64 3C 0F 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. prm2[26] changes.|
+| 64 20 00 64 3D |     15 | *    | *       | F0 52 00 6E 64 20 00 64 3D 0F 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. prm2[27] changes.|
+| 64 20 00 64 46 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 46 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. Effect slot 2 effect ID was set to 0x1FFFFFFF. |
+| 64 20 00 64 6E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 6E \<slot\> 00 00 00 00 F7 | Delete effect in slot. For high values of slot, effect ID was set to 0x1FFFFFFF. |
+| 64 20 00 64 7F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 7F 4F 00 00 00 00 F7 | Unknown. prm2[24-28] changes. |
 | 64 20 01       |     15 |      | *       | F0 52 00 6E 64 20 01 \<effect slot\> \<param number\> \<LSB\> \<MSB\> 00 00 00 F7 | Acknowledge that parameter has been updated. Response to 64 20 00 if the parameter was accepted (in range).|
 | 64 26          |     13 |      | *       | F0 52 00 6E 64 26 00 00 \<bank LSB\> \<bank MSB\> <\program LSB\> \<program MSB\> F7 | Bank and program number |
 | 64 42          |      7 | *    |         | F0 52 00 6E 64 42 F7 | Unknown. See https://github.com/mungewell/zoom-zt2/issues/70 |
