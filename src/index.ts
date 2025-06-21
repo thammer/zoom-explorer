@@ -1627,6 +1627,10 @@ function loadFromSysex(sysexString: string, zoomDevice: ZoomDevice, filename: st
           handleEffectSlotDelete(patch, undefined, mapForMSOG, effectSlot);
         });
 
+        loadedPatchEditor.setEffectSlotSelectEffectCallback((effectSlot: number) => {
+          handleEffectSlotSelectEffect(patch, undefined, mapForMSOG, effectSlot);
+        });
+
         // Update the main patch editor with the converted patch
         convertPatchAndUpdateEditor(patch);
       }
@@ -2097,6 +2101,8 @@ patchEditors.insertBefore(loadedPatchEditor.htmlElement, patchEditors.firstChild
 loadedPatchEditor.hide();
 
 let zoomEffectSelector: ZoomEffectSelector | undefined = undefined;
+let dummyEffectSelector=document.getElementById("effectSelectorID") as HTMLDivElement;
+dummyEffectSelector.style.display = "none";
 
 let zoomPatchConverter = new ZoomPatchConverter();
 let currentZoomPatchToConvert: ZoomPatch | undefined = undefined;
