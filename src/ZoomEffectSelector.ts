@@ -69,7 +69,7 @@ export class ZoomEffectSelector
     while (this.categoryList.children.length > (clearPedalList ? 0 : 2) ) 
       this.categoryList.removeChild(this.categoryList.children[this.categoryList.children.length-1]);
   }
-  public setEffectList(effectLists: Map<string, Map<number, string>>, defaultPedalName: string)
+  public setEffectList(effectLists: Map<string, Map<number, string>>, defaultPedalName: string = "")
   {
     this.effectLists = effectLists;
     this.clearEffectList(true);
@@ -90,7 +90,8 @@ export class ZoomEffectSelector
       list.appendChild(pedal);
     }
 
-    this.setSelectedPedal(defaultPedalName);
+    if (defaultPedalName !== "")
+      this.setSelectedPedal(defaultPedalName);
   }
 
   private selectPedal(pedalName: string)
