@@ -253,7 +253,7 @@
       .editEffectTableTopBar {
           display:flex;
           flex-direction: column;
-          line-height: 1em;
+          line-height: 1.3em;
           padding: 0;
           margin: 0em ;
           white-space:nowrap;
@@ -315,7 +315,7 @@
       }
 
       table.editEffectTable .effectOnOffButton {
-          float: letf;
+          float: left;
           font-size: 1.2em;
           font-variation-settings:
           'FILL' 0,
@@ -386,6 +386,94 @@
         float: right;
         padding: 1px 2px 1px 2px;
       }
+
+      .effectSelectorContainer {
+        width:fit-content;
+        border: 1px solid black;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        padding: 4px 8px 0px 0px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .effectSelectorTitle {
+        margin: 2px 4px 10px 8px;
+        font-size: 1.3em;
+        text-align: center;
+      }
+      .effectSelectorCategoryList {
+        --num-columns: 2;
+        --num-rows: 2;
+        flex-grow: 1;
+        flex-basis: 23%;
+        margin: 5px 0px 5px 5px;
+        display: grid;
+        grid-template-columns: 0.1fr 1fr;
+        grid-template-rows: repeat(3, auto);
+        /* grid-template-rows: repeat(var(--has-header), auto) repeat(var(--num-rows), 1fr); */
+        gap: 1px;
+      }
+      .effectSelectorPedalTitle {
+        margin: 0px 8px 14px 4px;
+        padding: 2px 4px 2px 4px;
+        font-size: 1.3em;
+      }
+      .effectSelectorPedal {
+        background-color: #EEEEEE;
+        padding: 1px 6px 1px 6px;
+        margin-bottom: 9px;
+        align-content: center;
+      }
+      .effectSelectorPedal:hover {
+        outline: 3px solid lightgray;
+      }
+      .effectSelectorPedalSelected {
+        outline: 3px solid orange;
+        background-color: #CCCCCC;
+      }
+      .effectSelectorPedalSelected:hover {
+        outline: 3px solid orange;
+      }
+      .effectSelectorCategoryName {
+        margin: 0px 8px 6px 4px;
+        padding: 2px 4px 2px 4px;
+        font-size: 1.3em;
+      }
+      .effectSelectorList {
+        --num-columns: 10;
+        --num-rows: 2;
+        --has-header: 0;
+        flex-grow: 1;
+        flex-basis: 23%;
+        margin: 0px 0px 6px 0px;
+        padding: 0px 0px 0px 0px;
+        /* outline: 2px solid orange; */
+        display: grid;
+        grid-template-columns: repeat(var(--num-columns), 1fr);
+        /* grid-template-rows: repeat(3, auto); */
+        grid-template-rows: repeat(var(--has-header), auto) repeat(var(--num-rows), 1fr);
+        gap: 3px;
+      }
+      .effectSelectorEffect {
+        background-color: #EEEEEE;
+        padding: 1px 6px 1px 6px;
+        align-content: center;
+      }
+      .effectSelectorEffect:hover {
+        outline: 2px solid lightgray;
+      }
+      .effectSelectorEffectSelected {
+        outline: 2px solid black;        
+      }
+      .effectSelectorEffectSelected:hover {
+        outline: 2px solid black;
+      }
+      .effectSelectorButtons {
+        margin-top: 12px;
+        text-align: center;
+      }
+
     </style>
   </head>
   <body>
@@ -427,11 +515,11 @@
 
         <table id="patchTable">
           <tr>
-              <th>
-              </th>
+            <th>
+            </th>
           </tr>
           <tr>
-              <td>Patch info</td>
+            <td>Patch info</td>
           </tr>
         </table>
 
@@ -444,176 +532,184 @@
               <th class="editPatchTableTempoLabel">BPM</th>
             </tr>
             <tr>
-                <th colspan="4" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
+              <th colspan="4" class="editPatchTableDescription" id="editPatchTableDescriptionID"></th>
             </tr>
             <tr>
               <td colspan="4">
-                  <table>
-                      <tr>
+                <table>
+                  <tr>
 
-                        <td>
-                          <table class="editEffectTable editEffectSlot">
-                            <tr>
-                              <th colspan="4">
-                                  <div class="editEffectTableTopBar">
-                                      <span class="editEffectTableEffectNameContainer">
-                                          <button class="material-symbols-outlined effectOnOffButton">radio_button_unchecked</button>
-                                          <span class="editEffectTableEffectName">LPF</span>
-                                          <button class="material-symbols-outlined effectActionButton">data_table</button>
-                                      </span>
-                                      <span class="editEffectTableButtons">
-                                          <button class="material-symbols-outlined effectActionButton">add_circle</button>
-                                          <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
-                                          <button class="material-symbols-outlined effectActionButton">delete</button>
-                                          <button class="material-symbols-outlined effectActionButton">play_arrow</button>
-                                          <button class="material-symbols-outlined effectActionButton">add_circle</button>
-                                      </span>
-                                  </div>
-                            </th>
-                          </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                              <td>88</td>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                            </tr>
-                          </table>
-                        </td>
-                        <td>
-                          <table class="editEffectTable editEffectOff">
-                            <tr>
-                                <th colspan="4">Low-pass Filter</th>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                              <td>88</td>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                            </tr>
-                          </table>
-                        </td>
+                    <td>
+                      <table class="editEffectTable editEffectSlot">
+                        <tr>
+                          <th colspan="4">
+                              <div class="editEffectTableTopBar">
+                                  <span class="editEffectTableEffectNameContainer">
+                                      <button class="material-symbols-outlined effectOnOffButton">radio_button_unchecked</button>
+                                      <span class="editEffectTableEffectName">LPF</span>
+                                      <button class="material-symbols-outlined effectActionButton">data_table</button>
+                                  </span>
+                                  <span class="editEffectTableButtons">
+                                      <button class="material-symbols-outlined effectActionButton">add_circle</button>
+                                      <button class="material-symbols-outlined effectActionButton">arrow_back_2</button>
+                                      <button class="material-symbols-outlined effectActionButton">delete</button>
+                                      <button class="material-symbols-outlined effectActionButton">play_arrow</button>
+                                      <button class="material-symbols-outlined effectActionButton">add_circle</button>
+                                  </span>
+                              </div>
+                          </th>
+                        </tr>
+                        <tr>
+                          <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                        </tr>
+                        <tr>
+                          <td>74</td>
+                          <td>SLW24</td>
+                          <td>2P-4</td>
+                          <td>88</td>
+                        </tr>
+                        <tr>
+                          <td>FREQ</td><td>Sense</td><td>Reso</td>
+                        </tr>
+                        <tr>
+                          <td>74</td>
+                          <td>SLW24</td>
+                          <td>2P-4</td>
+                        </tr>
+                      </table>
+                    </td>
+                    <td>
+                      <table class="editEffectTable editEffectOff">
+                        <tr>
+                            <th colspan="4">Low-pass Filter</th>
+                        </tr>
+                        <tr>
+                          <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
+                        </tr>
+                        <tr>
+                          <td>74</td>
+                          <td>SLW24</td>
+                          <td>2P-4</td>
+                          <td>88</td>
+                        </tr>
+                        <tr>
+                          <td>FREQ</td><td>Sense</td>
+                        </tr>
+                        <tr>
+                          <td>74</td>
+                          <td>SLW24</td>
+                        </tr>
+                      </table>
+                    </td>
 
-                        <td>
-                          <table class="editEffectTable editEffectOff">
-                            <tr>
-                                <th colspan="4">Low-pass Filter</th>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                              <td>88</td>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                            </tr>
-                          </table>
-                        </td>
-
-                        <td>
-                          <table class="editEffectTable editEffectOff">
-                            <tr>
-                                <th colspan="4">Low-pass Filter</th>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                              <td>88</td>
-                            </tr>
-                          </table>
-                        </td>
-
-                        <td>
-                          <table class="editEffectTable editEffectOff">
-                            <tr>
-                                <th colspan="4">Low-pass Filter</th>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                              <td>88</td>
-                            </tr>
-                          </table>
-                        </td>
-
-                        <td>
-                          <table class="editEffectTable editEffectOff">
-                            <tr>
-                                <th colspan="4">Low-pass Filter</th>
-                            </tr>
-                            <tr>
-                              <td>FREQ</td><td>Sense</td><td>Reso</td><td>Bal</td>
-                            </tr>
-                            <tr>
-                              <td>74</td>
-                              <td>SLW24</td>
-                              <td>2P-4</td>
-                              <td>88</td>
-                            </tr>
-                          </table>
-                        </td>
-
-
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </div>
-            
-            <table id="patchesTable">
-              <tr>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>#</th>
-                  <th>Name</th>
-              </tr>
-            </table>
-  
-            <table id="sysexMonitorTable">
-            </table>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
         </div>
+            
+      <table id="patchesTable">
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>#</th>
+            <th>Name</th>
+            <th>#</th>
+            <th>Name</th>
+            <th>#</th>
+            <th>Name</th>
+            <th>#</th>
+            <th>Name</th>
+        </tr>
+      </table>
+
+      <div id="effectSelectors">
+
+      <div class="effectSelectorContainer">
+        <div class="effectSelectorTitle">Pedal: MS-70CDR+</div>
+        <div class="effectSelectorCategoryList">
+          
+            <div class="effectSelectorCategoryName" style="background-color: aqua;">Delay</div>
+            <div class="effectSelectorList">
+              <div class="effectSelectorEffect" style="background-color: aqua;">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+            </div>
+
+            <div class="effectSelectorCategoryName">Reverb</div>
+            <div class="effectSelectorList">
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+              <div class="effectSelectorEffect">HD Hall</div>
+            </div>
+
+            <div class="effectSelectorCategoryName">Delay</div>
+            <div class="effectSelectorList">
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+              <div class="effectSelectorEffect">DualDelay</div>
+            </div>
+
+        </div>
+      </div>
+
+      </div>
+
+      <table id="sysexMonitorTable">
+      </table>
+    </div>
   </div>
   <dialog id="confirmDialog">
     <form>

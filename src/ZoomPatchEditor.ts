@@ -1,9 +1,8 @@
-import { getColorFromEffectID, htmlToElement, supportsContentEditablePlaintextOnly } from "./htmltools.js";
+import { htmlToElement, supportsContentEditablePlaintextOnly } from "./htmltools.js";
 import { LogLevel, shouldLog } from "./Logger.js";
 import { EffectIDMap, ZoomDevice } from "./ZoomDevice.js";
 import { ZoomPatch } from "./ZoomPatch.js";
 import { ZoomScreen, ZoomScreenCollection } from "./ZoomScreenInfo.js";
-
 
 export type EditPatchTextEditedListenerType = (event: Event, type: string, initialValueString: string) => boolean;
 export type EditPatchMouseEventListenerType = (cell: HTMLTableCellElement, initialValueString: string, x: number, y: number) => void;
@@ -11,6 +10,7 @@ export type EditPatchEffectSlotOnOffListenerType = (effectSlot: number, on: bool
 export type EditPatchEffectSlotDeleteListenerType = (effectSlot: number) => void;
 export type EditPatchEffectSlotMoveListenerType = (effectSlot: number, direction: "left" | "right") => void;
 export type EditPatchEffectSlotAddListenerType = (effectSlot: number, direction: "left" | "right") => void;
+export type EditPatchEffectSlotSelectEffectListenerType = (effectSlot: number) => void;
 
 let debugCounter = 0;
 
@@ -23,6 +23,7 @@ export class ZoomPatchEditor
   private effectSlotDeleteCallback: EditPatchEffectSlotDeleteListenerType | undefined = undefined;
   private effectSlotMoveCallback: EditPatchEffectSlotMoveListenerType | undefined = undefined;
   private effectSlotAddCallback: EditPatchEffectSlotAddListenerType | undefined = undefined;
+  private effectSlotSelectEffectCallback: EditPatchEffectSlotSelectEffectListenerType | undefined = undefined;
 
   private undoOnEscape = "";
   private muteBlurOnEscape = false;
@@ -191,6 +192,11 @@ export class ZoomPatchEditor
     this.effectSlotAddCallback = effectSlotAddCallback;
   }
 
+  setEffectSlotSelectEffectCallback(effectSlotSelectEffectCallback: EditPatchEffectSlotSelectEffectListenerType) 
+  {
+    this.effectSlotSelectEffectCallback = effectSlotSelectEffectCallback;
+  }
+
   getEffectAndParameterNumber(str: string): [effectSlot: number | undefined, parameterNumber: number | undefined] {
     let values = str.match(/effectSlot: (\d+), parameterNumber: (\d+)/);
     if (values === null || values.length !== 3) // [complete match, effectSlot, parameterNumber]
@@ -346,11 +352,11 @@ export class ZoomPatchEditor
   public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, patchNumberText: string, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
-    this.updateFromMap(device.effectIDMap, device.numParametersPerPage, screenCollection, patch, patchNumberText, 
+    this.updateFromMap(device.deviceName, device.effectIDMap, device.numParametersPerPage, screenCollection, patch, patchNumberText, 
       previousScreenCollection, previousPatch);
   }
 
-  public updateFromMap(effectIDMap: EffectIDMap | undefined, numParametersPerPage: number, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, 
+  public updateFromMap(pedalName: string, effectIDMap: EffectIDMap | undefined, numParametersPerPage: number, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, 
     patchNumberText: string, previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
     function screenIsVisible(screen: ZoomScreen, screenNumber: number, patch: ZoomPatch | undefined) {
@@ -433,6 +439,7 @@ export class ZoomPatchEditor
       let effectMoveRightButton: HTMLButtonElement;
       let effectAddLeftButton: HTMLButtonElement;
       let effectAddRightButton: HTMLButtonElement;
+      let effectSelectEffectButton: HTMLButtonElement;
 
       if (cellWithEffectTable.children.length < 1) {
         effectTable = document.createElement("table");
@@ -485,6 +492,10 @@ export class ZoomPatchEditor
         effectAddRightButton = effectHeader.children[0].children[1].children[4] as HTMLButtonElement;
         effectAddRightButton.dataset.effectSlot = effectSlot.toString();
         effectAddRightButton.addEventListener("click", (event) => this.onEffectSlotAddButtonClick(event, "right"));
+
+        effectSelectEffectButton = effectHeader.children[0].children[0].children[2] as HTMLButtonElement;
+        effectSelectEffectButton.dataset.effectSlot = effectSlot.toString();
+        effectSelectEffectButton.addEventListener("click", (event) => this.onEffectSlotSelectEffectButtonClick(event));
       }
       else {
         effectTable = cellWithEffectTable.children[0] as HTMLTableElement;
@@ -526,7 +537,7 @@ export class ZoomPatchEditor
 
       if (patch !== undefined && patch.effectSettings !== null && effectSlot< patch.effectSettings.length) {
         effectID = patch.effectSettings[effectSlot].id;
-        effectColor = getColorFromEffectID(effectID);
+        effectColor = ZoomDevice.getColorFromEffectID(effectID, pedalName);
 
         let r = parseInt(effectColor.substring(1,3), 16);
         let g = parseInt(effectColor.substring(3,5), 16);
@@ -689,6 +700,16 @@ export class ZoomPatchEditor
     if (this.effectSlotDeleteCallback !== undefined)
       this.effectSlotDeleteCallback(effectSlot);
   }
+
+  onEffectSlotSelectEffectButtonClick(event: MouseEvent): any
+  {
+    let button = event.target as HTMLButtonElement;
+    if (button.dataset.effectSlot === undefined)
+      return; // this should never happen
+    let effectSlot = Number.parseInt(button.dataset.effectSlot);
+    if (this.effectSlotSelectEffectCallback !== undefined)
+      this.effectSlotSelectEffectCallback(effectSlot);
+  } 
 
 
   updateValueBar(cell: HTMLTableCellElement, rawValue: number, maxValue: number)

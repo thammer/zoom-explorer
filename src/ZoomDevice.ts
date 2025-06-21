@@ -840,6 +840,14 @@ export class ZoomDevice implements IManagedMIDIDevice
     this.emitScreenChangedEvent();
   }
 
+  public updateScreenForEffectInSlot(effectSlot: number, effectMap: EffectParameterMap, effectSettings: EffectSettings)
+  {
+    // Update screens
+    if (this.currentScreenCollection !== undefined)
+      this.currentScreenCollection.updateScreen(effectSlot, effectMap, effectSettings);
+    this.emitScreenChangedEvent();
+  }
+
   public async downloadCurrentPatch() : Promise<ZoomPatch | undefined>
   {
     let reply: Uint8Array | undefined;
@@ -2445,6 +2453,106 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     let parameterMapping: ParameterValueMap = effectMapping.parameters[parameterIndex];
     return [parameterMapping.name, parameterMapping.max, parameterMapping.maxNumerical];
+  }
+
+  public static getCategoryNameFromID(effectID: number, pedalName: string): string
+  {
+    let category = (effectID & 0xFF000000) >> 24;
+    if (pedalName === "MS-50G+" || pedalName === "MS-70CDR+" || pedalName === "MS-50G" || pedalName === "MS-60B" || pedalName === "MS-70CDR") {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x01: return "Dynamics";
+        case 0x02: return "Filter";
+        case 0x03: return "Drive";
+        case 0x04: return "Preamp";
+        case 0x05: return "Amp";
+        case 0x06: return "Modulation";
+        case 0x07: return "SFX";
+        case 0x08: return "Delay";
+        case 0x09: return "Reverb";
+        case 0x0C: return "Drive";  // the category name for the corresponding MS-60B effect in the MS-60B+ effect list doc
+        case 0x0D: return "Preamp"; // the category name for the corresponding MS-60B effect in the MS-60B+ effect list doc
+      }
+    }
+    else if (pedalName === "MS-60B+") {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x01: return "Dynamics";
+        case 0x02: return "Filter";
+        case 0x03: return "Drive";
+        case 0x04: return "Preamp";
+        case 0x05: return "Bass amp";
+        case 0x06: return "Modulation";
+        case 0x07: return "Pitch shift";
+        case 0x08: return "Synth";
+        case 0x09: return "SFX";
+        case 0x0A: return "Delay";
+        case 0x0B: return "Reverb";
+      }
+    }
+    else if (pedalName === "MS-200D+") {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x01: return "Booster";
+        case 0x02: return "Overdrive";
+        case 0x03: return "Distortion";
+        case 0x04: return "Fuzz";
+        case 0x05: return "Preamp";
+        case 0x06: return "Tool";
+        case 0x07: return "BPM";
+      }
+    }
+    return category.toString(16);
+  }
+
+  public static getColorFromEffectID(effectID: number, pedalName: string): string
+  {
+    let effectGroup = (effectID >> 24) & 0xFF;
+
+    if (pedalName === "MS-50G+" || pedalName === "MS-70CDR+" || pedalName === "MS-50G" || pedalName === "MS-60B" || pedalName === "MS-70CDR") { 
+      switch(effectGroup) {
+        case 0x01: return "#C8B4D7"; // purple
+        case 0x02: return "#FFE2BF"; // orange
+        case 0x03: return "#F7BFB9"; // red
+        case 0x04: return "#F7BFB9"; // red
+        case 0x05: return "#F7BFB9"; // red
+        case 0x06: return "#ADF2F4"; // turquoise
+        case 0x07: return "#E8E69E"; // yellow
+        case 0x08: return "#A5BBE1"; // blue
+        case 0x09: return "#ABD3A3"; // green
+        case 0x08: return "#E8E69E"; // yellow
+        case 0x09: return "#E8E69E"; // yellow
+        case 0x0C: return "#F7BFB9"; // red
+        case 0x0D: return "#F7BFB9"; // red
+      }
+    }
+    else if (pedalName === "MS-60B+") {
+      switch(effectGroup) {
+        case 0x01: return "#C8B4D7"; // purple
+        case 0x02: return "#FFE2BF"; // orange
+        case 0x03: return "#F7BFB9"; // red
+        case 0x04: return "#F7BFB9"; // red
+        case 0x05: return "#F7BFB9"; // red
+        case 0x06: return "#ADF2F4"; // turquoise
+        case 0x07: return "#ADF2F4"; // turquoise
+        case 0x08: return "#A5BBE1"; // blue
+        case 0x09: return "#E8E69E"; // yellow
+        case 0x0A: return "#A5BBE1"; // blue
+        case 0x0B: return "#ABD3A3"; // green
+      }
+    }
+    else if (pedalName === "MS-200D+") {
+      switch (effectGroup) {
+        case 0x01: return "#A5BBE1"; // blue
+        case 0x02: return "#E8E69E"; // yellow
+        case 0x03: return "#FFE2BF"; // orange
+        case 0x04: return "#F7BFB9"; // red
+        case 0x05: return "#ADF2F4"; // turquoise
+        case 0x06: return "#C8B4D7"; // purple
+        case 0x07: return "#ABD3A3"; // green
+      }
+    }
+    return "#FFFFFF"; // white (for unknown and THRU/Empty/Blank);
   }
 
   public cancelMapping()

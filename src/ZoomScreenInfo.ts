@@ -335,6 +335,30 @@ export class ZoomScreenCollection
     this.screens[screenNumber1] = tempScreen;
   }
 
+  updateScreen(screenNumber: number, effectMap: EffectParameterMap, effectSettings: EffectSettings) : void
+  {
+    if (screenNumber < 0 || screenNumber >= this.screens.length) {
+      shouldLog(LogLevel.Error) && console.error(`screenNumber ${screenNumber} out of range`);
+      return;  
+    }
+
+    let screen: ZoomScreen = new ZoomScreen();
+
+    let parameter = new ZoomScreenParameter()
+    parameter.name = "OnOff";
+    parameter.valueString = effectSettings.enabled ? "1" : "0";
+    screen.parameters.push(parameter);
+
+    parameter = new ZoomScreenParameter()
+    parameter.name = effectMap.name;
+    parameter.valueString = effectMap.name;
+    screen.parameters.push(parameter);
+
+    this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen);
+
+    this.screens[screenNumber] = screen;
+  }
+
   static fromScreenData(data: Uint8Array, offset: number = 0) : ZoomScreenCollection 
   {
     let zoomScreenCollection = new ZoomScreenCollection();

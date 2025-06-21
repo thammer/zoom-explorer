@@ -305,22 +305,6 @@ export function htmlToElement(html: string): HTMLElement
   return template.content.firstElementChild as HTMLElement;
 }
 
-export function getColorFromEffectID(effectID: number): string
-{
-  let effectGroup = (effectID >> 24) & 0xFF;
-  let color:string = effectGroup === 0x00 ? "#FFFFFF" : // white (for THRU/Empty/Blank)
-    effectGroup === 0x01 ? "#C8B4D7" : // purple
-    effectGroup === 0x02 ? "#FFE2BF" : // orange
-    effectGroup === 0x03 ? "#F7BFB9" : // red
-    effectGroup === 0x04 ? "#F7BFB9" : // red
-    effectGroup === 0x06 ? "#ADF2F4" : // turquoise
-    effectGroup === 0x07 ? "#E8E69E" : // yellow
-    effectGroup === 0x08 ? "#A5BBE1" : // blue
-    effectGroup === 0x09 ? "#ABD3A3" : // green
-    "#FFFFFF";
-  return color;
-}
-
 export function getCellForMemorySlot(device: ZoomDevice, tableName: string, currentMemorySlot: number): HTMLTableCellElement | undefined
 {
   let patchesTable = document.getElementById(tableName) as HTMLTableElement;

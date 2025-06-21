@@ -1,10 +1,10 @@
 import { MIDIProxyForWebMIDIAPI } from "./MIDIProxyForWebMIDIAPI.js";
 import { DeviceID, IMIDIProxy, MessageType } from "./midiproxy.js";
 import { getChannelMessage, getMIDIDeviceList, isMIDIIdentityResponse, isSysex } from "./miditools.js";
-import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber } from "./tools.js";
+import { getExceptionErrorString, partialArrayMatch, bytesToHexString, hexStringToUint8Array, getNumberFromBits, crc32, partialArrayStringMatch, eight2seven, seven2eight, bytesWithCharactersToString, compareBuffers, setBitsFromNumber, numberToHexString } from "./tools.js";
 import { EffectSettings, ZoomPatch } from "./ZoomPatch.js";
 import { EffectIDMap, EffectParameterMap, ParameterValueMap, ZoomDevice } from "./ZoomDevice.js";
-import { ConfirmDialog, getChildWithIDThatStartsWith, getColorFromEffectID, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog, TextInputDialog } from "./htmltools.js";
+import { ConfirmDialog, getChildWithIDThatStartsWith, loadDataFromFile, saveBlobToFile, supportsContentEditablePlaintextOnly, getPatchNumber, togglePatchesTablePatch, getCellForMemorySlot, InfoDialog, TextInputDialog } from "./htmltools.js";
 import { ZoomScreen, ZoomScreenCollection, ZoomScreenParameter } from "./ZoomScreenInfo.js";
 import { ZoomPatchEditor } from "./ZoomPatchEditor.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
@@ -17,6 +17,7 @@ import zoomEffectIDsAllZDL7 from "./zoom-effect-ids-allzdl7.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
+import { ZoomEffectSelector } from "./ZoomEffectSelector.js";
 
 function getZoomCommandName(data: Uint8Array) : string
 {
@@ -205,6 +206,31 @@ async function start()
     handleEffectSlotDelete(currentZoomPatch, zoomDevice, zoomDevice.effectIDMap, effectSlot);
   });
 
+  patchEditor.setEffectSlotSelectEffectCallback((effectSlot: number) => {
+    handleEffectSlotSelectEffect(currentZoomPatch, zoomDevice, zoomDevice.effectIDMap, effectSlot);
+  });
+
+  zoomEffectSelector = new ZoomEffectSelector();
+  let effectSelectors = document.getElementById("effectSelectors") as HTMLDivElement;
+  effectSelectors.append(zoomEffectSelector.htmlElement);
+
+  let effectLists: Map<string, Map<number, string>> = new Map<string, Map<number, string>>();
+  effectLists.set("MS-50G+", zoomEffectIDsMS50GPlus);
+  effectLists.set("MS-60B+", zoomEffectIDsMS60BPlus);
+  effectLists.set("MS-70CDR+", zoomEffectIDsMS70CDRPlus);
+
+  let zoomEffectIDsFullNamesMS200DPlusWithout1D: Map<number, string> = new Map<number, string>();
+  for (let [key, value] of zoomEffectIDsFullNamesMS200DPlus.entries())
+    if (key < 0x1D000000) zoomEffectIDsFullNamesMS200DPlusWithout1D.set(key, value.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, letter => letter.toUpperCase()));
+  effectLists.set("MS-200D+", zoomEffectIDsFullNamesMS200DPlusWithout1D);
+
+  effectLists.set("MS-50G", buildEffectIDList("MS-50G"));
+  effectLists.set("MS-60B", buildEffectIDList("MS-60B"));
+  effectLists.set("MS-70CDR", buildEffectIDList("MS-70CDR"));
+
+  zoomEffectSelector.setHeading("Select effect");
+  zoomEffectSelector.setEffectList(effectLists, zoomDevice.deviceName);
+
   // shouldLog(LogLevel.Info) && console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
   // let commandIndex = 0x51;
@@ -297,13 +323,28 @@ async function start()
 
 };
 
+function buildEffectIDList(pedalName: string): Map<number, string>
+{
+  let zoomEffectIDList: Map<number, string> = new Map<number, string>();
+  let effectMap = ZoomDevice.getEffectIDMapForDevice(pedalName);
+  if (effectMap === undefined) {
+    shouldLog(LogLevel.Error) && console.error("No effect ID map found for device ${pedalName}");
+  }
+  else {
+    for (let [effectID, parameterMap] of effectMap) {
+      if (parameterMap.pedal !== undefined && parameterMap.pedal.has(pedalName) && pedalName !== "THRU")
+        zoomEffectIDList.set(effectID, parameterMap.name);
+    }
+  }
+  return zoomEffectIDList;
+}
+
 type EffectParameterMapInput = {
   name: string,
   pedal?: { [key: string]: number }, // object with pedal name as key and version as value 
   screenName: null | string,
   parameters: Array<ParameterValueMap>
 };
-
 
 async function downloadEffectMaps() {
 
@@ -1555,7 +1596,7 @@ function loadFromSysex(sysexString: string, zoomDevice: ZoomDevice, filename: st
       if (patch.MSOG !== null && (zoomDevice.deviceName.includes("MS-70CDR+") || zoomDevice.deviceName.includes("MS-50G+")) && mapForMSOG !== undefined) {
         currentZoomPatchToConvert = patch;
         let screens = ZoomScreenCollection.fromPatchAndMappings(patch, mapForMSOG);
-        loadedPatchEditor.updateFromMap(mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
+        loadedPatchEditor.updateFromMap("MS-70CDR", mapForMSOG, 3, screens, patch, "MS-OG patch:", undefined, undefined);
         loadedPatchEditor.show();
 
         loadedPatchEditor.setTextEditedCallback((event: Event, type: string, initialValueString: string): boolean => {
@@ -1868,6 +1909,54 @@ function handleEffectSlotAdd(zoomPatch: ZoomPatch | undefined, zoomDevice: ZoomD
   }
 }
 
+function handleEffectSlotSelectEffect(zoomPatch: ZoomPatch | undefined, zoomDevice: ZoomDevice | undefined, effectIDMap: EffectIDMap | undefined, effectSlot: number)
+{
+  if (zoomPatch === undefined) {
+    shouldLog(LogLevel.Error) && console.error("Attempting to edit patch when zoomPatch is undefined")
+    return;
+  }
+
+  if (zoomPatch.effectSettings !== null && effectSlot < zoomPatch.effectSettings.length)
+  {
+    shouldLog(LogLevel.Info) && console.log(`Selecting effect in slot ${effectSlot}`);
+
+    zoomEffectSelector!.getEffect(zoomPatch.effectSettings[effectSlot].id, zoomDevice ? zoomDevice.deviceName : "MS-70CDR").then(([effectID, effectName, pedalName]) => {
+      console.log(`User selected effectID: ${effectID}, effectName: ${effectName}, pedalName: ${pedalName}`);
+
+      if (effectID !== -1) {
+
+        if (zoomPatch.effectSettings === null) {
+          shouldLog(LogLevel.Error) && console.error("zoomPatch.effectSettings is null");
+          return;
+        }
+
+        if (effectIDMap === undefined) {
+          shouldLog(LogLevel.Error) && console.error("effectIDMap is undefined");
+          return;
+        }
+
+        let effectSettings = zoomPatch.effectSettings[effectSlot];
+
+        effectSettings.id = effectID;
+        ZoomDevice.setDefaultsForEffect(effectSettings, effectIDMap);
+        zoomPatch.changeEffectInSlot(effectSlot, effectSettings);
+
+        let effectMap = effectIDMap.get(effectSettings.id);
+        if (effectMap === undefined) {
+          shouldLog(LogLevel.Error) && console.error(`Unable to find mapping for effect id ${numberToHexString(effectSettings.id)} in effectSlot ${effectSlot} in patch ${zoomPatch.name}`);
+          return;
+        }
+
+        zoomDevice?.updateScreenForEffectInSlot(effectSlot, effectMap, effectSettings);
+        zoomDevice?.uploadPatchToCurrentPatch(zoomPatch);
+
+        updatePatchInfoTable(zoomPatch);
+
+      }
+    });
+  }
+}
+
 function setPatchParameter<T, K extends keyof ZoomPatch, L extends keyof EffectSettings>(zoomDevice: ZoomDevice | undefined, zoomPatch: ZoomPatch, key: K, value: T, keyFriendlyName: string = "", 
   syncToCurrentPatchOnPedalImmediately = true)
 {
@@ -1929,7 +2018,7 @@ function convertPatchAndUpdateEditor(patch: ZoomPatch)
       shouldLog(LogLevel.Info) && console.log(`Conversion succeeded for patch "${patch.name}"`);
       if (mapForMS50GPlusAndMS70CDRPlus !== undefined) {
         let convertedPatchScreens = ZoomScreenCollection.fromPatchAndMappings(convertedPatch, mapForMS50GPlusAndMS70CDRPlus);
-        patchEditor.updateFromMap(mapForMS50GPlusAndMS70CDRPlus, 4, convertedPatchScreens, convertedPatch, "MS-70CDR+ patch:", undefined, undefined);
+        patchEditor.updateFromMap("MS-70CDR+", mapForMS50GPlusAndMS70CDRPlus, 4, convertedPatchScreens, convertedPatch, "MS-70CDR+ patch:", undefined, undefined);
         loadedPatchEditor.clearAllCellHighlights();
         loadedPatchEditor.addCellHighlights(unmappedSlotParameterList);
       }
@@ -2006,6 +2095,8 @@ let patchEditors = document.getElementById("patchEditors") as HTMLDivElement;
 let loadedPatchEditor = new ZoomPatchEditor();
 patchEditors.insertBefore(loadedPatchEditor.htmlElement, patchEditors.firstChild);
 loadedPatchEditor.hide();
+
+let zoomEffectSelector: ZoomEffectSelector | undefined = undefined;
 
 let zoomPatchConverter = new ZoomPatchConverter();
 let currentZoomPatchToConvert: ZoomPatch | undefined = undefined;

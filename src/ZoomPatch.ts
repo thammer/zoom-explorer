@@ -475,6 +475,52 @@ export class ZoomPatch
       this.prm2LineSelSlot = ZoomPatch.createLineSelSlotBits(this.effectSettings);
   }
 
+    /**
+   * Change the effect in the given slot.
+   * @param effectSlot 
+   * @param effectSettings new effect settings with updated ID
+   * @returns 
+   */
+  public changeEffectInSlot(effectSlot: number, effectSettings: EffectSettings)
+  {
+    if (this.effectSettings === null) {
+      shouldLog(LogLevel.Error) && console.error(`Attempted to change effect in slot ${effectSlot} when effectSettings is null`);
+      return;
+    }
+    
+    if (effectSlot < 0 || effectSlot >= this.effectSettings.length) {
+      shouldLog(LogLevel.Error) && console.error(`effectSlot ${effectSlot} out of range: [0, ${this.effectSettings.length}]`);
+      return;
+    }
+
+    this.effectSettings[effectSlot] = effectSettings;
+
+    // Update ID
+    if (this.ids !== null) {
+      this.ids[effectSlot] = effectSettings.id;
+    }
+
+    if (this.edtbReversedBytes !== null) {
+      let reversedBytes = new Uint8Array(PTCF_EDTB_REVERSED_BYTES_SIZE);
+      reversedBytes.fill(0); // See readPTCFChunks(), edtbReversedBytes part, assuming all excess bytes are 0
+      this.edtbReversedBytes[effectSlot] = reversedBytes;
+    }
+    else if (this.msogEffectsReversedBytes !== null) {
+      let reversedBytes = new Uint8Array(MSOG_REVERSED_BYTES_SIZE);
+      reversedBytes.fill(0); 
+      this.msogEffectsReversedBytes[effectSlot] = reversedBytes;
+    }
+
+    if (this.prm2PreampSlot !== null)
+      this.prm2PreampSlot = ZoomPatch.createPreampSlotBits(this.effectSettings);
+
+    if (this.prm2BPMSlot !== null)
+      this.prm2BPMSlot = ZoomPatch.createBPMSlotBits(this.effectSettings);
+
+    if (this.prm2LineSelSlot !== null)
+      this.prm2LineSelSlot = ZoomPatch.createLineSelSlotBits(this.effectSettings);
+  }
+
   static createPreampSlotBits(effectSettings: Array<EffectSettings>): number
   {
     let preampBits: number = 0;
