@@ -123,45 +123,66 @@ export class ZoomPatch
 
   updatePatchPropertiesFromDerivedProperties()
   {
+    // Note: We only update the patch properties if they have changed, which is more polite if the patch is readonly
     if (this.NAME !== null) {
       // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
       if (this.maxNameLength == 28) {
         let enforceLength = this.maxNameLength + 4;
         // add back the four 0x00 characters at the end
-        this.nameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
-        this.nameLength = this.nameName.length;
+        const newNameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
+        if (this.nameName !== newNameName) 
+          this.nameName = newNameName;
       }
       else {
         // this.name.length is enforced in this.name setter
-        this.nameName = this.name;
-        this.nameLength = this.nameName.length;
+        if (this.nameName !== this.name) { 
+          this.nameName = this.name;
+          this.nameLength = this.nameName.length;
+        }
       }
     }
-    if (this.PTCF !== null)
-      this.ptcfShortName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end;
-    if (this.MSOG !== null)
-      this.msogName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
+
+    let newName = this.name.slice(0, Math.min(this.name.length, 10)).padEnd(10, " "); // length should be 10, padded with spaces at the end
+    if (this.PTCF !== null) {
+      if (this.ptcfShortName !== newName) 
+        this.ptcfShortName = newName;
+    }
+    if (this.MSOG !== null) {
+      if (this.msogName !== newName) 
+        this.msogName = newName;
+    }
 
     if (this.TXE1 !== null) {
-      if (this.descriptionEnglish.length === 0) {
+      if (this.descriptionEnglish.length === 0 && this.txe1DescriptionEnglish !== null && this.txe1Length !== null && this.txe1Length > 0) {
         this.txe1DescriptionEnglish = null;
         this.txe1Length = 0;
       }
       else {
-        this.txe1DescriptionEnglish = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
-        this.txe1Length = this.txe1DescriptionEnglish.length;
+        let newDescription = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
+        if (this.txe1DescriptionEnglish !== newDescription) {
+          this.txe1DescriptionEnglish = newDescription;
+          this.txe1Length = this.txe1DescriptionEnglish.length;
+        }
       }
     }
 
-    if (this.PRM2 !== null)
-      this.prm2Tempo = this.tempo;
-    else if (this.msogTempo !== null)
-      this.msogTempo = this.tempo;
+    if (this.PRM2 !== null) {
+      if (this.prm2Tempo !== this.tempo) 
+        this.prm2Tempo = this.tempo;
+    }
+    else if (this.msogTempo !== null) {
+      if (this.msogTempo !== this.tempo) 
+        this.msogTempo = this.tempo;
+    }
 
-    if (this.prm2EditEffectSlot !== null)
-      this.prm2EditEffectSlot = this.currentEffectSlot;
-    else if (this.msogEditEffectSlot !== null)
-      this.msogEditEffectSlot = this.currentEffectSlot;
+    if (this.prm2EditEffectSlot !== null) {
+      if (this.prm2EditEffectSlot !== this.currentEffectSlot) 
+        this.prm2EditEffectSlot = this.currentEffectSlot;
+    }
+    else if (this.msogEditEffectSlot !== null) {
+      if (this.msogEditEffectSlot !== this.currentEffectSlot) 
+        this.msogEditEffectSlot = this.currentEffectSlot;
+    }
   }
 
   get name(): string
