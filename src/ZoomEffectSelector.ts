@@ -97,10 +97,7 @@ export class ZoomEffectSelector
   private selectPedal(pedalName: string)
   {
     for (let pedal of this.categoryList.querySelectorAll(".effectSelectorPedal"))
-      if (pedal.textContent === pedalName)
-        pedal.classList.add("effectSelectorPedalSelected");
-      else
-        pedal.classList.remove("effectSelectorPedalSelected");
+      pedal.classList.toggle("effectSelectorPedalSelected", pedal.textContent === pedalName);
   }
 
   public setSelectedPedal(pedalName: string)
@@ -161,10 +158,7 @@ export class ZoomEffectSelector
     return new Promise<[effectID: number, effectName: string, pedalName: string]>( (resolve, reject) => {
       this.setSelectedPedal(currentPedalName);
       for (let otherEffect of this.categoryList.querySelectorAll(".effectSelectorEffect") as NodeListOf<HTMLDivElement>)
-        if (otherEffect.dataset.id === currentEffectID.toString(16).padStart(8, "0"))
-          otherEffect.classList.add("effectSelectorEffectSelected");
-        else
-          otherEffect.classList.remove("effectSelectorEffectSelected");
+        otherEffect.classList.toggle("effectSelectorEffectSelected", otherEffect.dataset.id === currentEffectID.toString(16).padStart(8, "0"));
 
       // Todo: select currentEffectID if its !== -1
       this.confirmEvent = async (result: boolean) => {
