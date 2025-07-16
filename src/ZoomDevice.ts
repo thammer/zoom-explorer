@@ -1278,11 +1278,21 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     let data: Uint8Array | undefined;
     if (patch.PTCF !== null) {
-      data = patch.buildPTCFChunk();
+      if (Object.isFrozen(patch) && patch.ptcfChunk !== null) {
+        data = patch.ptcfChunk;
+      }
+      else {
+        data = patch.buildPTCFChunk();
+      }
       // FIXME: Untested code
     }
     else {
-      data = patch.buildMSDataBuffer();
+      if (Object.isFrozen(patch) && patch.msogDataBuffer !== null) {
+        data = patch.msogDataBuffer;
+      }
+      else {
+        data = patch.buildMSDataBuffer();
+      }
       // if (patch.msogDataBuffer !== null && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
       //   let sevenBitData = eight2seven(patch.msogDataBuffer);
       //   return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
@@ -2553,6 +2563,20 @@ export class ZoomDevice implements IManagedMIDIDevice
       }
     }
     return "#FFFFFF"; // white (for unknown and THRU/Empty/Blank);
+  }
+
+  public static getColorFromPedalName(pedalName: string): string
+  {
+    switch (pedalName) {
+      case "MS-50G+":   return "#EAEAEC"; 
+      case "MS-60B+":   return "#C91F3E";
+      case "MS-70CDR+": return "#00ABE8";
+      case "MS-200D+":  return "#E7CA00";
+      case "MS-50G":    return "#BCC0C9";
+      case "MS-60B":    return "#752832";
+      case "MS-70CDR":  return "#8FA9C0";
+      default:          return "#FFFFFF";
+    }
   }
 
   public cancelMapping()
