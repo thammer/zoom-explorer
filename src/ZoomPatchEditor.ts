@@ -433,7 +433,6 @@ export class ZoomPatchEditor
       let effectHeader: HTMLTableCellElement;
       let effectSlotName: HTMLSpanElement;
       let effectOnOffButton: HTMLButtonElement;
-      let effectLibraryButton: HTMLButtonElement;
       let effectDeleteButton: HTMLButtonElement;
       let effectMoveLeftButton: HTMLButtonElement;
       let effectMoveRightButton: HTMLButtonElement;
