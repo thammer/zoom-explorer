@@ -355,3 +355,30 @@ export function sleepForAWhile(timeoutMilliseconds: number)
     }, timeoutMilliseconds);
   });
 }
+
+/**
+ * Converts a color from RGB to HSV
+ * @param r Red in [0, 1]
+ * @param g Green in [0, 1]
+ * @param b Blue in [0, 1]
+ * @returns [h, s, v], where h in [0, 360), s in [0, 1], v in [0, 1]
+ */
+export function rgb2hsv(r: number, g: number, b: number): [h: number, s: number, v: number]
+{
+  let v=Math.max(r,g,b), c=v-Math.min(r,g,b);
+  let h= c && ((v==r) ? (g-b)/c : ((v==g) ? 2+(b-r)/c : 4+(r-g)/c)); 
+  return [60*(h<0?h+6:h), v&&c/v, v];
+}
+
+/**
+ * Converts a color from HSV to RGB
+ * @param h Hue in [0, 360)
+ * @param s Saturation in [0, 1]
+ * @param v Value in [0, 1]
+ * @returns [r, g, b], where r, g and b in [0, 1]
+ */
+export function hsv2rgb(h: number, s: number, v: number): [r: number, g: number, b: number]
+{                              
+  let f= (n: number,k=(n+h/60)%6) => v - v*s*Math.max( Math.min(k,4-k,1), 0);     
+  return [f(5),f(3),f(1)];       
+}   
