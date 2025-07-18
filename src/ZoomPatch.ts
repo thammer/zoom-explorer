@@ -159,7 +159,7 @@ export class ZoomPatch
       }
       else {
         let newDescription = this.descriptionEnglish.padEnd(Math.ceil(this.descriptionEnglish.length / 4)*4, String.fromCharCode(0x00)); // length should be multiple of 4, padded with zeros
-        if (this.txe1DescriptionEnglish !== newDescription) {
+        if (this.txe1DescriptionEnglish !== newDescription && !(this.txe1DescriptionEnglish ===null && newDescription.length === 0)) {
           this.txe1DescriptionEnglish = newDescription;
           this.txe1Length = this.txe1DescriptionEnglish.length;
         }
