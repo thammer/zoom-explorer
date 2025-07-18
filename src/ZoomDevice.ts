@@ -513,17 +513,10 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._midi.sendPC(this._midiDevice.outputID, 0, program & 0x7F); // program
 
     let changed = this.syncStateWithNewBankAndProgram(bank, program, forceUpdate);
-    
-    // this._previousBank = this._currentBank;
-    // this._previousProgram = this._currentProgram;
-    // this._currentBank = bank;
-    // this._currentProgram = program;
-    
-    // FIXME: Do we really need this line?
-//    if (this._autoRequestProgramChangeTimerStarted)
+
     if (changed)
       this.emitMemorySlotChangedEvent();
-}
+  }
 
   public setCurrentMemorySlot(memorySlot: number, forceUpdate: boolean = false)
   {
