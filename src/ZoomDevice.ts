@@ -1077,11 +1077,11 @@ export class ZoomDevice implements IManagedMIDIDevice
     let paddedData = data;
     if (this._patchLength != -1) {
       if (data.length > paddedData.length) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
+        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
         return;
       }
       if (patch.MSOG !== null && this._patchLength !== data.length) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length} doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
+        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
         return;
       }
       paddedData = new Uint8Array(this._patchLength);
@@ -1111,8 +1111,9 @@ export class ZoomDevice implements IManagedMIDIDevice
    * @param patch
    * @param memorySlot Zero-based memory location. Typically between 0-49 or 0-99 depending on pedal. 
    * @param [waitForAcknowledge=true] 
+   * @returns true if the patch was uploaded successfully, false otherwise
    */
-  public async uploadPatchToMemorySlot(patch: ZoomPatch, memorySlot: number, waitForAcknowledge: boolean = true) 
+  public async uploadPatchToMemorySlot(patch: ZoomPatch, memorySlot: number, waitForAcknowledge: boolean = true): Promise<boolean>
   {
     let sevenBitData: Uint8Array;
     let crcBytes: Uint8Array;
@@ -1123,13 +1124,14 @@ export class ZoomDevice implements IManagedMIDIDevice
       //let data = patch.ptcfChunk;
       if (data === undefined || data.length < 11) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
-        return;
+        return false;
       }
 
       let paddedData = data;
       if (this._patchLength != -1) {
         if (data.length > this._patchLength) {
-          shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
+          shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
+          return false;
         }
         paddedData = new Uint8Array(this._patchLength);
         paddedData.set(data);
@@ -1148,11 +1150,12 @@ export class ZoomDevice implements IManagedMIDIDevice
       // let data = patch.msogDataBuffer;
       if (data === undefined || data.length < 11) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildMSDataBuffer()`);
-        return;
+        return false;
       }
 
       if (this._patchLength != -1 && data.length > this._patchLength) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length} is greater than the patch length reported by the pedal (${this._patchLength}).`);
+        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
+        return false;
       }
       sevenBitData = eight2seven(data); 
       crcBytes = this.getSevenBitCRC(data);
@@ -1165,7 +1168,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     else
     {
       shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received Invalid patch parameter (no ptcf chunk and no MSOG data)`);
-      return;
+      return false;
     }
 
     if (waitForAcknowledge) {
@@ -1183,6 +1186,8 @@ export class ZoomDevice implements IManagedMIDIDevice
       this._patchList[memorySlot] = clonedPatch;
       this._rawPatchList[memorySlot] = undefined;
     }
+
+    return true;
   }
 
   public async updatePatchListFromPedal()

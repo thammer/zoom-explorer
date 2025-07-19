@@ -1574,7 +1574,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
 function loadFromSysex(sysexString: string, zoomDevice: ZoomDevice, filename: string = "")
 {
   let convertedData = hexStringToUint8Array(sysexString);
-  let sourceString = filename.length > 0 ? `file ${filename}` : "buffer";
+  let sourceString = filename.length > 0 ? `file "${filename}"` : "buffer";
   if (!isSysex(convertedData)) {
     shouldLog(LogLevel.Error) && console.error(`Unknown file format in ${sourceString}`);
   }
