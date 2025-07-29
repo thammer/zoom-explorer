@@ -381,4 +381,9 @@ export function hsv2rgb(h: number, s: number, v: number): [r: number, g: number,
 {                              
   let f= (n: number,k=(n+h/60)%6) => v - v*s*Math.max( Math.min(k,4-k,1), 0);     
   return [f(5),f(3),f(1)];       
-}   
+}
+
+export function getSafeFilename(filename: string): string
+{
+  return filename.replace(/\\|\/|\:|\*|\?|\"|\<|\>|\|/g, " ");
+}

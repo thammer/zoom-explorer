@@ -1534,7 +1534,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       msogString += `  DSP Full: ${patch.msogDSPFullBits.toString(2).padStart(6, "0")}.`;
     if (patch.msogUnknown1 !== null) {
       let msogUnknown1_0_str = "EEDDDDDD";
-      let msogUnknown1_1_str = "TTTMMM" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
+      let msogUnknown1_1_str = "TTTNNN" + patch.msogUnknown1[1].toString(2).padStart(8, "0").substring(6, 7) + "E";
       let msogUnknown1_2_str = patch.msogUnknown1[2].toString(2).padStart(8, "0").substring(0, 3) + "TTTTT";
       // let msogUnknown1_0_str = patch.msogUnknown1[0].toString(2).padStart(8, "0");
       // let msogUnknown1_1_str = patch.msogUnknown1[1].toString(2).padStart(8, "0");

@@ -698,11 +698,6 @@ export class ZoomPatch
   msogDSPFullBits: null | number = null; // 6 bits based on the first byte in mspgUnknown1
   msogNumEffects: null | number = null; // 3 bits based on the second byte in mspgUnknown1
   // length: null | number = null;
-  // version: null | number = null;
-  // numEffects: null | number = null; 
-  // target: null | number = null;
-  // ptcfUnknown: null | Uint8Array = null; // 6 bytes
-  // shortName: null | string = null;
   // ids: null | Uint32Array = null;
   msogDataBuffer: null | Uint8Array = null; // Complete 8-bit data buffer for the patch
 
@@ -2094,6 +2089,53 @@ export class ZoomPatch
 
     return zoomPatch;
   }
+
+  public static createEmptyMSOGPatch(): ZoomPatch
+  {
+    let zoomPatch = new ZoomPatch();
+
+    zoomPatch.MSOG = "MSOG";
+    let effectSectionLength = MSOG_REVERSED_BYTES_SIZE;
+    zoomPatch.numEffects = 1; 
+    zoomPatch.maxNumEffects = 6;
+    zoomPatch.maxNameLength = 10;
+
+    zoomPatch.msogEffectSettings = new Array<EffectSettings>(zoomPatch.maxNumEffects);
+    zoomPatch.msogEffectsReversedBytes = new Array<Uint8Array>(zoomPatch.maxNumEffects);
+    for (let i=0; i<zoomPatch.maxNumEffects; i++) {
+      let effectSettings = new EffectSettings(MSOG_NUM_PARAMS_PER_EFFECT);
+      effectSettings.enabled = true;
+      effectSettings.id = 0;
+      effectSettings.parameters = new Array<number>(MSOG_NUM_PARAMS_PER_EFFECT);
+      effectSettings.parameters.fill(0);
+      zoomPatch.msogEffectSettings[i] = effectSettings;
+
+      let reversedBytes = new Uint8Array(effectSectionLength);
+      reversedBytes.fill(0);      
+      zoomPatch.msogEffectsReversedBytes[i] = reversedBytes;
+    }
+
+    zoomPatch.msogUnknown1 = new Uint8Array([0, 0, 0]);
+    zoomPatch.msogUnknown2 = new Uint8Array([0]);
+    zoomPatch.msogName = "Empty     ";
+    zoomPatch.msogTempo = 120;
+    zoomPatch.msogEditEffectSlot = 0;
+    zoomPatch.msogDSPFullBits = 0;
+    zoomPatch.msogNumEffects = 1;
+
+    zoomPatch.updateDerivedPropertiesFromPatchProperties();
+
+    let msogTotalLength = zoomPatch.maxNumEffects * effectSectionLength + zoomPatch.msogUnknown1.length + 
+      zoomPatch.msogName.length + zoomPatch.msogUnknown2.length;    
+    zoomPatch.msogDataBuffer = new Uint8Array(msogTotalLength);
+    zoomPatch.msogDataBuffer.fill(0);
+    zoomPatch.length = msogTotalLength;
+
+    zoomPatch.buildMSDataBuffer();
+    return zoomPatch;
+
+  }
+
 
   public static noteByteCodeToHtmlSlow(valueString: string): string
   {
