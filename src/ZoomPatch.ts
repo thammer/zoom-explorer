@@ -660,12 +660,14 @@ export class ZoomPatch
   prm2InvalidEffectSlot: null | number = null; // based on byte 2 and 3 in prm2Unknown, bitfield for slot(s) with unknown effect
   prm2Byte2Lower6Bits: null | number = null; // only seen 0 for these bits
   prm2Byte3Upper4Bits: null | number = null; // only seen 0 for these bits
+  // prm2Buffer[6] Looper position, see https://github.com/mungewell/zoom-zt2/issues/101
+  // prm2Buffer[8] Rhythm position, see https://github.com/mungewell/zoom-zt2/issues/101
   prm2Byte9Lower5Bits: null | number = null; // only seen 0 for these bits
   prm2Byte10Bit5: null | number = null; // only seen 0 for this bit
   prm2PatchVolume: null | number = null; // based on byte 9 and 10 in prm2Unknown
   prm2EditEffectSlot: null | number = null; // based on byte 10 in prm2Unknown
   prm2EditEffectSlotBits: null | number = null; // based on byte 11 and 12 in prm2Unknown
-  prm2Byte13: null | number = null; // byte 13 in prm2Unknown - MS-50G+, 0 or 0x8C ?
+  prm2Byte13: null | number = null; // byte 13 in prm2Unknown - MS-50G+, 0 or 0x8C ?. Right-position?. See https://github.com/mungewell/zoom-zt2/issues/101
   prm2Byte14: null | number = null; // byte 14 in prm2Unknown - MS-50G+, 0 or 0x08 ?
   prm2PreampSlot: null | number = null; // based on byte 20 in prm2Unknown
   prm2Byte20Bit1And8: null | number = null; // only seen 0 for these bits

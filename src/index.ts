@@ -1430,6 +1430,16 @@ function updatePatchInfoTable(patch: ZoomPatch) {
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte2Lower6Bits: ${patch.prm2Byte2Lower6Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte3Upper4Bits !== 0)
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte3Upper4Bits: ${patch.prm2Byte3Upper4Bits?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 4 && patch.prm2Buffer[4] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[4]: ${patch.prm2Buffer[4].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 5 && patch.prm2Buffer[5] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[5]: ${patch.prm2Buffer[5].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 6 && patch.prm2Buffer[6] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[6]: ${patch.prm2Buffer[6].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 7 && patch.prm2Buffer[7] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[7]: ${patch.prm2Buffer[7].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 8 && patch.prm2Buffer[8] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[8]: ${patch.prm2Buffer[8].toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte9Lower5Bits !== 0)
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte9Lower5Bits: ${patch.prm2Byte9Lower5Bits?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte10Bit5 !== 0)
@@ -1438,6 +1448,16 @@ function updatePatchInfoTable(patch: ZoomPatch) {
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte13: ${patch.prm2Byte13?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte14 !== 0)
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte14: ${patch.prm2Byte14?.toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 15 && patch.prm2Buffer[15] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[15]: ${patch.prm2Buffer[15].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 16 && patch.prm2Buffer[16] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[16]: ${patch.prm2Buffer[16].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 17 && patch.prm2Buffer[17] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[17]: ${patch.prm2Buffer[17].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 18 && patch.prm2Buffer[18] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[18]: ${patch.prm2Buffer[18].toString(2).padStart(8, "0")}`);
+      if (patch.prm2Buffer.length > 19 && patch.prm2Buffer[19] !== 0)
+        shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Buffer[19]: ${patch.prm2Buffer[19].toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte20Bit1And8 !== 0)
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte20Bit1And8: ${patch.prm2Byte20Bit1And8?.toString(2).padStart(8, "0")}`);
       if (patch.prm2Byte21Lower4Bits !== 0)
