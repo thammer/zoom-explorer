@@ -725,6 +725,12 @@ export class ZoomDevice implements IManagedMIDIDevice
       return;
     }
 
+    let intValue = Math.round(value); // value should always be an integer. Screen functionality will fail if it's not an integer.
+    if (intValue !== value) {
+      shouldLog(LogLevel.Warning) && console.warn(`setEffectParameterForCurrentPatch() - value ${value} is not an integer, rounding to ${intValue}`);
+      value = intValue;
+    }
+
     let parameterIndex = parameterNumber - 2;
 
     if (!force && this.currentPatch !== null && this.currentPatch.effectSettings !== null && effectSlot < this.currentPatch.effectSettings.length &&
