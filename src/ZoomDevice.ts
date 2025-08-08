@@ -2662,9 +2662,9 @@ export class ZoomDevice implements IManagedMIDIDevice
 
       //this.uploadPatchToCurrentPatch(patch, false);
 
-      let effectSettings: EffectSettings = patch.effectSettings[0];
+      // let effectSettings: EffectSettings = patch.effectSettings[0];
 
-      shouldLog(LogLevel.Info) && console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")}) with ${effectSettings.parameters.length} parameters`);
+      shouldLog(LogLevel.Info) && console.log(`Starting mapping for effect ${counter.toString().padStart(3, "0")} / ${numEffects} "${effectList.get(id)}" (0x${id.toString(16).toUpperCase().padStart(8, "0")})`);
 
       let id7 = `${(id & 0x7f).toString(16).padStart(2, "0")}${((id >> 7) & 0x7f).toString(16).padStart(2, "0")}` +
         `${((id >> 14) & 0x7f).toString(16).padStart(2, "0")}${((id >> 21) & 0x7f).toString(16).padStart(2, "0")}${((id >> 28) & 0x0f).toString(16).padStart(2, "0")}`
@@ -2673,9 +2673,17 @@ export class ZoomDevice implements IManagedMIDIDevice
       id7c.set(hexStringToUint8Array("0001" + id7), ZoomDevice.messageTypes.parameterValueV2.bytes.length);
       let reply = await this.sendCommandAndGetReply(id7c, received => true);
       if (reply === undefined)
-        shouldLog(LogLevel.Warning) && console.warn(`Unable to change effect for patch "${patch.name}" effect ID ${id}`);
+        shouldLog(LogLevel.Warning) && console.warn(`Unable to change effect for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")})`);
 
       let downloadedPatch = await this.downloadCurrentPatch();
+
+      if (downloadedPatch === undefined || downloadedPatch.effectSettings === null || downloadedPatch.effectSettings.length < 1) {
+        shouldLog(LogLevel.Warning) && console.warn(`Unable to get parameters for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")})`);
+        counter++;
+        continue;
+      }
+
+      let effectSettings: EffectSettings = downloadedPatch.effectSettings[0];
 
       // let verifyPatch = await this.downloadCurrentPatch();
 
@@ -2754,13 +2762,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         
         let paramIndex = paramNumber - 2;
 
-        if (downloadedPatch === undefined || downloadedPatch.effectSettings === null || downloadedPatch.effectSettings.length < 1)
-        {
-          shouldLog(LogLevel.Warning) && console.warn(`Unable to get default parameters for patch "${patch.name}" parameter ${paramIndex}`);
-        }
-        else {
-          mappingsForParameterValue.default = downloadedPatch.effectSettings[0].parameters[paramIndex]; 
-        }
+        mappingsForParameterValue.default = effectSettings.parameters[paramIndex]; 
 
         mappingsForEffect.parameters.push(mappingsForParameterValue);
 
