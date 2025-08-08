@@ -747,11 +747,20 @@ export class ZoomDevice implements IManagedMIDIDevice
       return;
     }
 
+    let effectSettings = patch.effectSettings[effectSlot];
+
     if (parameterNumber === 0) {
-      patch.effectSettings[effectSlot].enabled = value !== 0;
+      effectSettings.enabled = value !== 0;
     }
     else if (parameterNumber === 1) {
-      patch.effectSettings[effectSlot].id = value;
+      effectSettings.id = value;
+      // The pedal will automatically update the parameters to default values, so we do it here as well
+      if (this.effectIDMap !== undefined)
+        ZoomDevice.setDefaultsForEffect(effectSettings, this.effectIDMap);
+      else
+        shouldLog(LogLevel.Warning) && console.warn(`Unable to set effect parameter for current patch because effectIDMap is undefined`);
+
+      patch.changeEffectInSlot(effectSlot, effectSettings);
     }
     else {
       patch.effectSettings[effectSlot].parameters[parameterIndex] = value;
@@ -2421,6 +2430,9 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     let parameterStart = parameterIndex ?? 0;
     let parameterEnd = parameterIndex === undefined ? effectMapping.parameters.length : parameterIndex + 1;
+
+    effectSettings.parameters.fill(0);
+    // parameters.length is typically max available for that pedal, e.g. 9 for MSOG and 12 for MS+, default to 0 for all parameters, including if we don't have defaults for that effect
 
     for (let parameter = parameterStart; parameter < parameterEnd; parameter++) {
       let parameterMapping: ParameterValueMap = effectMapping.parameters[parameter];
