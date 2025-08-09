@@ -299,8 +299,9 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       throw `No output found with ID "${deviceHandle}"`;
     }
 
-    // FIXME: This shouldn't be necessary with the browser based Web MIDI API
-    let dataArray = Array.from(data);
+    // Note: This conversion might be needed for node.js, but is not needed for the browser based Web MIDI API
+    //let dataArray = Array.from(data);
+    let dataArray = data;
     shouldLog(LogLevel.Midi) && console.log(`${performance.now().toFixed(1)} Sent: ${bytesToHexString(dataArray, " ")}`)
 
     perfmon.enter(MIDI_SEND);
