@@ -1086,7 +1086,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     let data: Uint8Array | undefined;
     if (patch.PTCF !== null)
-      data = patch.buildPTCFChunk();
+      data = patch.buildPTCFChunk(this._ptcfNameLength);
     else
       data = patch.buildMSDataBuffer();
 
@@ -1141,7 +1141,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     let command: Uint8Array;
 
     if (patch.PTCF !== null) {
-      let data = patch.buildPTCFChunk();
+      let data = patch.buildPTCFChunk(this._ptcfNameLength);
       //let data = patch.ptcfChunk;
       if (data === undefined || data.length < 11) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
@@ -1301,7 +1301,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         data = patch.ptcfChunk;
       }
       else {
-        data = patch.buildPTCFChunk();
+        data = patch.buildPTCFChunk(this._ptcfNameLength);
       }
       // FIXME: Untested code
     }

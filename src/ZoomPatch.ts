@@ -1184,9 +1184,7 @@ export class ZoomPatch
         // if (this.nameName != null)
         //   this.nameName = this.nameName.replaceAll("\x00", ""); // The last four characters could be 0x00
         // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
-        this.maxNameLength = this.nameLength == 32 ? this.nameLength - 4 : // MS+ pedals have name length 32
-          this.nameLength == 16 ? this.nameLength - 2 : // G2/G2X FOUR has name length 16
-          this.nameLength; // this.maxNameLength was set above, for ptcfShortName, but we update it here since a NAME chunk was found
+        this.maxNameLength = ZoomPatch.getMaxNameLength(this.nameLength);
       }
     }
 
@@ -1336,7 +1334,7 @@ export class ZoomPatch
   /**
    * Creates one PTCF chunk from the different chunks in the patch. This PTCF chunk can then be sent to the pedal as a patch.
    */
-  buildPTCFChunk(): Uint8Array | undefined
+  buildPTCFChunk(nameLength: number = 0): Uint8Array | undefined
   {
     this.updatePatchPropertiesFromDerivedProperties();
 
@@ -1632,7 +1630,7 @@ export class ZoomPatch
       }
        
       // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
-      let enforceLength = 32;
+      let enforceLength = nameLength > 0 ? nameLength : 32;
 
       if (this.nameName.length !== this.nameLength) {
         shouldLog(LogLevel.Error) && console.error(`Unable to build patch buffer. Inconsistent patch data for patch ${this.name}. nameLength = ${this.nameLength}, nameName.length = ${this.nameName.length}, nameName = "${this.nameName}"`);
@@ -1995,7 +1993,22 @@ export class ZoomPatch
     return zoomPatch;
   }
 
-  public static createEmptyPTCFPatch(nameLength?: number) : ZoomPatch
+  private static getMaxNameLength(nameLength: number)
+  {
+    if (nameLength !== 32 && nameLength !== 16) {
+      shouldLog(LogLevel.Warning) && console.warn(`nameLength is ${nameLength}, which is not 32 or 16. Investigate.`);
+    }
+    
+    if (nameLength === 32 || nameLength === 0)
+      return 28; // MS+ pedals have name length 32
+    else if (nameLength === 16)
+      return 14; // G2/G2X FOUR has name length 16
+    else {
+      return nameLength;
+    }
+  }
+
+  public static createEmptyPTCFPatch(nameLength: number = 0) : ZoomPatch
   {
     let zoomPatch = new ZoomPatch();
 
@@ -2003,7 +2016,7 @@ export class ZoomPatch
     zoomPatch.version = 2;
     zoomPatch.numEffects = 1; 
     zoomPatch.maxNumEffects = 6;
-    zoomPatch.maxNameLength = nameLength ?? 28;
+    zoomPatch.maxNameLength = ZoomPatch.getMaxNameLength(nameLength);
     zoomPatch.name = "Empty";
     zoomPatch.descriptionEnglish = "";
     zoomPatch.tempo = 120;

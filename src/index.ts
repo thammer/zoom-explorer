@@ -1026,7 +1026,7 @@ async function handleMIDIDataFromZoom(zoomDevice: ZoomDevice, data: Uint8Array):
       patch = originalPatch.clone();        
 
       let originalPatchBuffer = patch.PTCF !== null ? patch.ptcfChunk : patch.msogDataBuffer;
-      let patchBuffer = patch.PTCF !== null ? patch.buildPTCFChunk() : patch.buildMSDataBuffer();
+      let patchBuffer = patch.PTCF !== null ? patch.buildPTCFChunk(zoomDevice.ptcfNameLength) : patch.buildMSDataBuffer();
       compareBuffers(patchBuffer, originalPatchBuffer);
 
       // let screenCollection = await zoomDevice.downloadScreens();
