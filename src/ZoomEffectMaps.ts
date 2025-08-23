@@ -112,9 +112,9 @@ export function extendMapWithMaxNumericalValueIndex(map: EffectIDMap): void
         }
         lastValueAsNumber = valueAsNumber;
       }
-      if (parameter.maxNumerical !== undefined && parameter.maxNumerical !== parameter.max) {
-        shouldLog(LogLevel.Info) && console.log(`${effectName.padEnd(12)} ${parameterName.padEnd(10)} ${parameter.maxNumerical.toString().padEnd(5)}: ${parameter.values[parameter.maxNumerical].padEnd(5)} -> ${parameter.values[parameter.maxNumerical + 1]}`);
-      }
+      // if (parameter.maxNumerical !== undefined && parameter.maxNumerical !== parameter.max) {
+      //   shouldLog(LogLevel.Info) && console.log(`${effectName.padEnd(12)} ${parameterName.padEnd(10)} ${parameter.maxNumerical.toString().padEnd(5)}: ${parameter.values[parameter.maxNumerical].padEnd(5)} -> ${parameter.values[parameter.maxNumerical + 1]}`);
+      // }
     }
   }
 }

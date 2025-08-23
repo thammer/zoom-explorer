@@ -125,11 +125,19 @@ export class ZoomPatch
   {
     // Note: We only update the patch properties if they have changed, which is more polite if the patch is readonly
     if (this.NAME !== null) {
-      // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
       if (this.maxNameLength == 28) {
+        // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
         let enforceLength = this.maxNameLength + 4;
         // add back the four 0x00 characters at the end
         const newNameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
+        if (this.nameName !== newNameName) 
+          this.nameName = newNameName;
+      }
+      else if (this.maxNameLength == 14) {
+        // For G2/G2X FOUR, name is always 16 bytes, 14 bytes of ascii and two bytes of zero
+        let enforceLength = this.maxNameLength + 2;
+        // add back the two 0x00 characters at the end
+        const newNameName = this.name.slice(0, Math.min(this.name.length, enforceLength)).padEnd(enforceLength - 2, " ").padEnd(enforceLength, String.fromCharCode(0x00));
         if (this.nameName !== newNameName) 
           this.nameName = newNameName;
       }
@@ -1176,7 +1184,9 @@ export class ZoomPatch
         // if (this.nameName != null)
         //   this.nameName = this.nameName.replaceAll("\x00", ""); // The last four characters could be 0x00
         // For MS Plus pedals, name is always 32 bytes, 28 bytes of ascii and four bytes of zero
-        this.maxNameLength = this.nameLength == 32 ? this.nameLength - 4 : this.nameLength; // this.maxNameLength was set above, for ptcfShortName, but we update it here since a NAME chunk was found
+        this.maxNameLength = this.nameLength == 32 ? this.nameLength - 4 : // MS+ pedals have name length 32
+          this.nameLength == 16 ? this.nameLength - 2 : // G2/G2X FOUR has name length 16
+          this.nameLength; // this.maxNameLength was set above, for ptcfShortName, but we update it here since a NAME chunk was found
       }
     }
 
@@ -1985,7 +1995,7 @@ export class ZoomPatch
     return zoomPatch;
   }
 
-  public static createEmptyPTCFPatch() : ZoomPatch
+  public static createEmptyPTCFPatch(nameLength?: number) : ZoomPatch
   {
     let zoomPatch = new ZoomPatch();
 
@@ -1993,7 +2003,7 @@ export class ZoomPatch
     zoomPatch.version = 2;
     zoomPatch.numEffects = 1; 
     zoomPatch.maxNumEffects = 6;
-    zoomPatch.maxNameLength = 28;
+    zoomPatch.maxNameLength = nameLength ?? 28;
     zoomPatch.name = "Empty";
     zoomPatch.descriptionEnglish = "";
     zoomPatch.tempo = 120;
@@ -2065,8 +2075,23 @@ export class ZoomPatch
     zoomPatch.prm2Length = zoomPatch.prm2Buffer.length;
     
     zoomPatch.NAME = "NAME";
-    let enforceLength = zoomPatch.maxNameLength + 4;
-    zoomPatch.nameName = zoomPatch.name.slice(0, Math.min(zoomPatch.name.length, enforceLength)).padEnd(enforceLength - 4, " ").padEnd(enforceLength, String.fromCharCode(0x00));
+    let enforceLength: number;
+    let zeroBytes: number;
+    if (zoomPatch.maxNameLength == 28) {
+      zeroBytes = 4;
+      enforceLength = 28 + zeroBytes;
+    }
+    else if (zoomPatch.maxNameLength == 14) {
+      zeroBytes = 2;
+      enforceLength = 14 + zeroBytes;
+    }
+    else {
+      shouldLog(LogLevel.Warning) && console.warn(`maxNameLength is ${zoomPatch.maxNameLength}, which is not 28 or 14. Investigate.`);
+      enforceLength = zoomPatch.maxNameLength;
+      zeroBytes = 0;
+    }
+
+    zoomPatch.nameName = zoomPatch.name.slice(0, Math.min(zoomPatch.name.length, enforceLength)).padEnd(enforceLength - zeroBytes, " ").padEnd(enforceLength, String.fromCharCode(0x00));
     zoomPatch.nameLength = zoomPatch.nameName.length;
 
     let ptcfToplevelDataLength = 

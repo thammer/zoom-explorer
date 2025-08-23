@@ -158,6 +158,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _patchesPerBank: number = -1;
   private _patchDumpForMemoryLocationV1CRCBytes: number = 0;
   private _ptcfPatchFormatSupported: boolean = false;
+  private _ptcfNameLength: number = 0;
   private _usesBankBeforeProgramChange: boolean = false;  
   private _bankAndProgramSentOnUpdate: boolean = false
   private _bankMessagesReceived = false; // true after having received bank messages, reset when program change message received
@@ -663,6 +664,11 @@ export class ZoomDevice implements IManagedMIDIDevice
   public get maxNumEffects(): number
   {
     return this._maxNumEffects;
+  }
+
+  public get ptcfNameLength(): number
+  {
+    return this._ptcfNameLength;
   }
 
   public setCurrentEffectSlot(effectSlot: number)
@@ -2200,8 +2206,17 @@ export class ZoomDevice implements IManagedMIDIDevice
       let [numberOf8BitBytes, remainder] = getNumberOfEightBitBytes(reply.length - offset - zeroPaddingAtEndOfPatch - numberOfCRCBytes)
       if (numberOf8BitBytes == this._patchLength) // lengths match if we account for CRC bytes
         this._patchDumpForMemoryLocationV1CRCBytes = 5;
-      if (partialArrayStringMatch(reply, "PTCF", offset))
+      if (partialArrayStringMatch(reply, "PTCF", offset)) {
         this._ptcfPatchFormatSupported = true;
+
+        let eightBitData = seven2eight(reply, offset, reply.length - 2 - this._patchDumpForMemoryLocationV1CRCBytes);
+
+        if (eightBitData != undefined) {
+          let patch = ZoomPatch.fromPatchData(eightBitData);  
+          if (patch.nameLength !== null)
+            this._ptcfNameLength = patch.nameLength;
+        }
+      }
     }
 
     command = ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV2.str; 
@@ -2211,8 +2226,18 @@ export class ZoomDevice implements IManagedMIDIDevice
       let offset = 13 + 1; 
       // the 8-bit data starts at offset 13, but reply is 7-bit data and we haven't bothered to convert to 8 bit
       // so the byte at data[13] is the high-bit-byte in the 7-bit data, and the ascii identifier starts at data[13+1] = data[14]
-      if (partialArrayStringMatch(reply, "PTCF", offset))
+      if (partialArrayStringMatch(reply, "PTCF", offset)) {
         this._ptcfPatchFormatSupported = true;
+
+        let offset = 13;
+        let eightBitData = seven2eight(reply, offset, reply.length-2);
+
+        if (eightBitData != undefined) {
+          let patch = ZoomPatch.fromPatchData(eightBitData);  
+          if (patch.nameLength !== null)
+            this._ptcfNameLength = patch.nameLength;
+        }
+      }
     }
 
     command = ZoomDevice.messageTypes.requestCurrentBankAndProgramV1.str; 
@@ -2305,6 +2330,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       console.log(`  Patches per bank:        ${this._patchesPerBank == -1 ? "Unknown" : this._patchesPerBank}`);
       console.log(`  CRC bytes v1 mem patch:  ${this._patchDumpForMemoryLocationV1CRCBytes}`);
       console.log(`  PTCF format support:     ${this._ptcfPatchFormatSupported}`);
+      console.log(`  PTCF name length:        ${this._ptcfNameLength}`);
       console.log(`  Bank + prog change sent on update: ${this._bankAndProgramSentOnUpdate}`);
       console.log(`  Num parameters per page: ${this._numParametersPerPage}`);
       console.log(`  Is MSOG device:          ${this._isMSOG}`);
@@ -2535,7 +2561,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     let effectGroup = (effectID >> 24) & 0xFF;
 
-    if (pedalName === "MS-50G+" || pedalName === "MS-70CDR+" || pedalName === "MS-50G" || pedalName === "MS-60B" || pedalName === "MS-70CDR") { 
+    if (pedalName === "MS-50G+" || pedalName === "MS-70CDR+" || pedalName === "MS-50G" || pedalName === "MS-60B" || pedalName === "MS-70CDR" || pedalName === "G2/G2X FOUR") { 
       switch(effectGroup) {
         case 0x01: return "#C8B4D7"; // purple
         case 0x02: return "#FFE2BF"; // orange
@@ -2615,7 +2641,7 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     // let patch = this.currentPatch.clone();
 
-    let patch = ZoomPatch.createEmptyPTCFPatch();
+    let patch = ZoomPatch.createEmptyPTCFPatch(this._ptcfNameLength);
     this.uploadPatchToCurrentPatch(patch, false);
 
     if (patch.effectSettings === null) {

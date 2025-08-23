@@ -17,6 +17,7 @@ import zoomEffectIDsAllZDL7 from "./zoom-effect-ids-allzdl7.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
+import zoomEffectIDsG2FOUR from "./zoom-effect-ids-g2four.js";
 import { ZoomEffectSelector } from "./ZoomEffectSelector.js";
 
 function getZoomCommandName(data: Uint8Array) : string
@@ -218,6 +219,7 @@ async function start()
   effectLists.set("MS-50G+", zoomEffectIDsMS50GPlus);
   effectLists.set("MS-60B+", zoomEffectIDsMS60BPlus);
   effectLists.set("MS-70CDR+", zoomEffectIDsMS70CDRPlus);
+  effectLists.set("G2/G2X FOUR", zoomEffectIDsG2FOUR);
 
   let zoomEffectIDsFullNamesMS200DPlusWithout1D: Map<number, string> = new Map<number, string>();
   for (let [key, value] of zoomEffectIDsFullNamesMS200DPlus.entries())
@@ -376,6 +378,14 @@ async function downloadEffectMaps() {
   
   replaceEffectNamesInMap(mapForMS200DPlus, zoomEffectIDsFullNamesMS200DPlus);
 
+  // startTime = performance.now();
+  // obj = await downloadJSONResource("zoom-effect-mappings-g2four.json");
+  // shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  // let mapForG2FOUR: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+  
+  // shouldLog(LogLevel.Info) && console.log(`mapForG2FOUR.size = ${mapForG2FOUR.size}`);
+
+
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
 
@@ -408,41 +418,44 @@ async function downloadEffectMaps() {
   addThruEffectToMap(mapForMS50GPlusAndMS70CDRPlus);
   addThruEffectToMap(mapForMS60BPlus);
   addThruEffectToMap(mapForMS200DPlus);
+  // addThruEffectToMap(mapForG2FOUR);
   
   extendMapWithMaxNumericalValueIndex(mapForMSOG);
   extendMapWithMaxNumericalValueIndex(mapForMS50GPlusAndMS70CDRPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS60BPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS200DPlus);
+  // extendMapWithMaxNumericalValueIndex(mapForG2FOUR);
 
   // print some stats
-  console.log("MS-50G+ and MS-70CDR+ VOL defaults");
-  mapForMS50GPlusAndMS70CDRPlus.forEach((effectMap, key) => {
-    effectMap.parameters.forEach((parameterMap) => {
-      // if (parameterMap.maxNumerical !== undefined && parameterMap.maxNumerical > 151) {
-      //   console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} has max numerical value ${parameterMap.maxNumerical.toString().padStart(4, " ")}`);
-      // }
-      if (parameterMap.name.toLowerCase() === "vol") {
-        console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} default value ${parameterMap.default?.toString().padStart(4, " ")}`);
-      }
-    })
-  });
+  // console.log("MS-50G+ and MS-70CDR+ VOL defaults");
+  // mapForMS50GPlusAndMS70CDRPlus.forEach((effectMap, key) => {
+  //   effectMap.parameters.forEach((parameterMap) => {
+  //     // if (parameterMap.maxNumerical !== undefined && parameterMap.maxNumerical > 151) {
+  //     //   console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} has max numerical value ${parameterMap.maxNumerical.toString().padStart(4, " ")}`);
+  //     // }
+  //     if (parameterMap.name.toLowerCase() === "vol") {
+  //       console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} default value ${parameterMap.default?.toString().padStart(4, " ")}`);
+  //     }
+  //   })
+  // });
 
-  console.log("MS-OG Level defaults");
-  mapForMSOG.forEach((effectMap, key) => {
-    effectMap.parameters.forEach((parameterMap) => {
-      // if (parameterMap.maxNumerical !== undefined && parameterMap.maxNumerical > 151) {
-      //   console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} has max numerical value ${parameterMap.maxNumerical.toString().padStart(4, " ")}`);
-      // }
-      if (parameterMap.name.toLowerCase() === "level") {
-        console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} default value ${parameterMap.default?.toString().padStart(4, " ")}`);
-      }
-    })
-  });
+  // console.log("MS-OG Level defaults");
+  // mapForMSOG.forEach((effectMap, key) => {
+  //   effectMap.parameters.forEach((parameterMap) => {
+  //     // if (parameterMap.maxNumerical !== undefined && parameterMap.maxNumerical > 151) {
+  //     //   console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} has max numerical value ${parameterMap.maxNumerical.toString().padStart(4, " ")}`);
+  //     // }
+  //     if (parameterMap.name.toLowerCase() === "level") {
+  //       console.log(`Effect ${effectMap.name.padEnd(12, " ")} parameter ${parameterMap.name.padEnd(10, " ")} default value ${parameterMap.default?.toString().padStart(4, " ")}`);
+  //     }
+  //   })
+  // });
 
   ZoomDevice.setEffectIDMap(["MS-50G", "MS-60B", "MS-70CDR"], mapForMSOG);
   ZoomDevice.setEffectIDMap(["MS-50G+", "MS-70CDR+"], mapForMS50GPlusAndMS70CDRPlus);
   ZoomDevice.setEffectIDMap(["MS-60B+"], mapForMS60BPlus);
   ZoomDevice.setEffectIDMap(["MS-200D+"], mapForMS200DPlus);
+  // ZoomDevice.setEffectIDMap(["G2/G2X FOUR"], mapForG2FOUR);
 
   shouldLog(LogLevel.Info) && console.log(`parameterMap.size = ${mapForMS50GPlusAndMS70CDRPlus.size}`);
 }
@@ -532,12 +545,17 @@ mapEffectsButton.addEventListener("click", async (event) => {
     let effectList: Map<number, string> = zoomDevice.deviceName === "MS-50G+" ? zoomEffectIDsMS50GPlus : 
       zoomDevice.deviceName === "MS-60B+" ? zoomEffectIDsMS60BPlus :
       zoomDevice.deviceName === "MS-70CDR+" ? zoomEffectIDsMS70CDRPlus :
-      zoomDevice.deviceName === "MS-200D+" ? zoomEffectIDsMS200DPlus : zoomEffectIDsAllZDL7;
+      zoomDevice.deviceName === "MS-200D+" ? zoomEffectIDsMS200DPlus : 
+      zoomDevice.deviceName === "G2/G2X FOUR" ? zoomEffectIDsG2FOUR :
+      zoomEffectIDsAllZDL7;
+
 
       let effectListName: string = zoomDevice.deviceName === "MS-50G+" ? "zoomEffectIDsMS50GPlus" : 
       zoomDevice.deviceName === "MS-60B+" ? "zoomEffectIDsMS60BPlus" :
       zoomDevice.deviceName === "MS-70CDR+" ? "zoomEffectIDsMS70CDRPlus" :
-      zoomDevice.deviceName === "MS-200D+" ? "zoomEffectIDsMS200DPlus" : "zoomEffectIDsAllZDL7";
+      zoomDevice.deviceName === "MS-200D+" ? "zoomEffectIDsMS200DPlus" :
+      zoomDevice.deviceName === "G2/G2X FOUR" ? "zoomEffectIDsG2FOUR" : 
+      "zoomEffectIDsAllZDL7";
 
     mappings = await zoomDevice.mapParameters(effectList, effectListName, (effectName: string, effectID: number, totalNumEffects: number) => {
       mapEffectsButton.innerText = `Mapping ${effectName} ${effectID}/${totalNumEffects}. Click to Cancel.`;
@@ -2135,8 +2153,7 @@ let value = 511;
 let data = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 64, 1, 128, 0, 12, 130, 0, 0, 65]);
 //let data: Uint8Array = new Uint8Array(20);
 let bitpos = data.length * 8 - 1;
-testBitMangling(data, bitpos, bitpos, 1);
-
-testEffectSlotPattern();
+// testBitMangling(data, bitpos, bitpos, 1);
+// testEffectSlotPattern();
 
 start();
