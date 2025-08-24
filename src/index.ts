@@ -378,13 +378,12 @@ async function downloadEffectMaps() {
   
   replaceEffectNamesInMap(mapForMS200DPlus, zoomEffectIDsFullNamesMS200DPlus);
 
-  // startTime = performance.now();
-  // obj = await downloadJSONResource("zoom-effect-mappings-g2four.json");
-  // shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
-  // let mapForG2FOUR: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+  startTime = performance.now();
+  obj = await downloadJSONResource("zoom-effect-mappings-g2four.json");
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  let mapForG2FOUR: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
   
-  // shouldLog(LogLevel.Info) && console.log(`mapForG2FOUR.size = ${mapForG2FOUR.size}`);
-
+  shouldLog(LogLevel.Info) && console.log(`mapForG2FOUR.size = ${mapForG2FOUR.size}`);
 
   startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
@@ -418,13 +417,13 @@ async function downloadEffectMaps() {
   addThruEffectToMap(mapForMS50GPlusAndMS70CDRPlus);
   addThruEffectToMap(mapForMS60BPlus);
   addThruEffectToMap(mapForMS200DPlus);
-  // addThruEffectToMap(mapForG2FOUR);
+  addThruEffectToMap(mapForG2FOUR);
   
   extendMapWithMaxNumericalValueIndex(mapForMSOG);
   extendMapWithMaxNumericalValueIndex(mapForMS50GPlusAndMS70CDRPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS60BPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS200DPlus);
-  // extendMapWithMaxNumericalValueIndex(mapForG2FOUR);
+  extendMapWithMaxNumericalValueIndex(mapForG2FOUR);
 
   // print some stats
   // console.log("MS-50G+ and MS-70CDR+ VOL defaults");
@@ -455,7 +454,7 @@ async function downloadEffectMaps() {
   ZoomDevice.setEffectIDMap(["MS-50G+", "MS-70CDR+"], mapForMS50GPlusAndMS70CDRPlus);
   ZoomDevice.setEffectIDMap(["MS-60B+"], mapForMS60BPlus);
   ZoomDevice.setEffectIDMap(["MS-200D+"], mapForMS200DPlus);
-  // ZoomDevice.setEffectIDMap(["G2/G2X FOUR"], mapForG2FOUR);
+  ZoomDevice.setEffectIDMap(["G2/G2X FOUR"], mapForG2FOUR);
 
   shouldLog(LogLevel.Info) && console.log(`parameterMap.size = ${mapForMS50GPlusAndMS70CDRPlus.size}`);
 }
