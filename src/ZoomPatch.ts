@@ -102,7 +102,10 @@ export class ZoomPatch
   descriptionEnglish: string = "";
   tempo: number = 0;
   currentEffectSlot: number = 0;
-  
+
+  public static readonly NAME_LENGTH_MS_PLUS = 32;
+  public static readonly NAME_LENGTH_G2_G2X_FOUR = 16;
+
   updateDerivedPropertiesFromPatchProperties()
   {
     if (this.nameName !== null)

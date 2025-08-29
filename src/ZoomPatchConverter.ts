@@ -467,7 +467,7 @@ export class ZoomPatchConverter
       return [undefined, unmappedSlotParameterList];
     }
 
-    let outputPatch: ZoomPatch = ZoomPatch.createEmptyPTCFPatch();
+    let outputPatch: ZoomPatch = ZoomPatch.createEmptyPTCFPatch(ZoomPatch.NAME_LENGTH_MS_PLUS);
 
     outputPatch.name = inputPatch.name;
     outputPatch.descriptionEnglish = `Converted from MS-70CDR patch "${inputPatch.name}" using https://sym.bios.is by Waveformer`;
