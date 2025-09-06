@@ -1318,9 +1318,17 @@ export class ZoomDevice implements IManagedMIDIDevice
       // }
     }
 
-    if (data !== undefined && this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+    if (data !== undefined) {
+      let prependCommand: Uint8Array | null = null;
+      if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+        prependCommand = ZoomDevice.messageTypes.requestCurrentPatchV1.bytes;
+      }
+      else if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV2)) {
+        prependCommand = ZoomDevice.messageTypes.requestCurrentPatchV2.bytes;
+      }
       let sevenBitData = eight2seven(data);
-      return this.getCommandBufferFromData(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes, null, false);
+      // Note: crcBytes is null. Investigate if this causes problems.
+      return this.getCommandBufferFromData(sevenBitData, prependCommand, null, false);
     }
       
     return undefined;
