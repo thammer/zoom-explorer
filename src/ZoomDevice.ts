@@ -1318,20 +1318,44 @@ export class ZoomDevice implements IManagedMIDIDevice
       // }
     }
 
-    if (data !== undefined) {
-      let prependCommand: Uint8Array | null = null;
-      if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
-        prependCommand = ZoomDevice.messageTypes.requestCurrentPatchV1.bytes;
-      }
-      else if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV2)) {
-        prependCommand = ZoomDevice.messageTypes.requestCurrentPatchV2.bytes;
-      }
-      let sevenBitData = eight2seven(data);
-      // Note: crcBytes is null. Investigate if this causes problems.
-      return this.getCommandBufferFromData(sevenBitData, prependCommand, null, false);
+    if (data === undefined) {
+      shouldLog(LogLevel.Error) && console.error(`No data to get sysex for patch ${patch.name}`);
+      return undefined;
     }
-      
-    return undefined;
+    
+    let sevenBitData: Uint8Array;
+    let prependCommand: Uint8Array | null = null;
+    let crcBytes: Uint8Array | null = null;
+    if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV1)) {
+      prependCommand = ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes;
+      sevenBitData = eight2seven(data);
+    }
+    else if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV2)) {
+      prependCommand = ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes;
+
+      if (data === undefined || data.length < 11) {
+        shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
+        return undefined;
+      }
+
+      let paddedData = data;
+      if (this._patchLength != -1) {
+        if (data.length > this._patchLength) {
+          shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
+          return undefined;
+        }
+        paddedData = new Uint8Array(this._patchLength);
+        paddedData.set(data);
+      }
+      sevenBitData = eight2seven(paddedData); 
+      crcBytes = this.getSevenBitCRC(paddedData);
+    }
+    else {
+      shouldLog(LogLevel.Error) && console.error(`No available command to get sysex for patch ${patch.name}`);
+      return undefined;
+    }
+
+    return this.getCommandBufferFromData(sevenBitData, prependCommand, crcBytes, false);
   }
 
   /**
