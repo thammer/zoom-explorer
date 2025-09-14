@@ -54,7 +54,7 @@ class ZoomMessageTypes
   pcModeDisable = new StringAndBytes("53");
   screensForCurrentPatch = new StringAndBytes("64 01");
   requestScreensForCurrentPatch = new StringAndBytes("64 02");
-  patchDumpForCurrentPatchV2 = new StringAndBytes("64 12");
+  patchDumpForCurrentPatchV2 = new StringAndBytes("64 12"); // Seems like there's always a 01 byte after the 64 12, 64 12 01 <patch length LSB> <patch length MSB> <patch data> <5 byte CRC>
   requestCurrentPatchV2 = new StringAndBytes("64 13");
   nameCharacterV2 = new StringAndBytes("64 20 00 5F");
   currentEffectSlotV2 = new StringAndBytes("64 20 00 64 01");
@@ -1331,7 +1331,6 @@ export class ZoomDevice implements IManagedMIDIDevice
       sevenBitData = eight2seven(data);
     }
     else if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV2)) {
-      prependCommand = ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes;
 
       if (data === undefined || data.length < 11) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
@@ -1349,6 +1348,27 @@ export class ZoomDevice implements IManagedMIDIDevice
       }
       sevenBitData = eight2seven(paddedData); 
       crcBytes = this.getSevenBitCRC(paddedData);
+
+      let patchLengthLSB = this._patchLength & 0x7F;
+      let patchLengthMSB = (this._patchLength >> 7) & 0x7F;
+
+      prependCommand = new Uint8Array(ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes.length + 3);
+      prependCommand.set(ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes);
+      prependCommand[ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes.length] = 0x01;
+      prependCommand[ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes.length + 1] = patchLengthLSB;
+      prependCommand[ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.bytes.length + 2] = patchLengthMSB;
+      
+      // F0 52 00 6E 64 12 01 50 06 00 50 54 43 46
+      //             ^^^^^--------------------------- patchDumpForCurrentPatchV2
+      //                   ^^------------------------ Always 01
+      //                      ^^--------------------- Patch length LSB
+      //                         ^^------------------ Patch length MSB
+      //                            ^^--------------- Always 00, this is the high 8th bit of the next 7 data values, this is also the start of patch data
+      //                               ^^------------ P
+      //                                  ^^--------- T
+      //                                     ^^------ C
+      //                                        ^^--- F
+
     }
     else {
       shouldLog(LogLevel.Error) && console.error(`No available command to get sysex for patch ${patch.name}`);
@@ -1419,11 +1439,6 @@ export class ZoomDevice implements IManagedMIDIDevice
       // FIXME: This code is untested. In particular, I'm uncertain about the crc / length calculations.
       patchLengthFromSysex = sysexData[8] + (sysexData[9] << 7);
       offset = 10; 
-      let possibleNumberOfCRCBytes = 5;
-      let zeroPaddingAtEndOfPatch = 1;
-      let [numberOf8BitBytes, remainder] = getNumberOfEightBitBytes(sysexData.length - offset - zeroPaddingAtEndOfPatch - possibleNumberOfCRCBytes)
-      if (numberOf8BitBytes == patchLengthFromSysex) // lengths match if we account for CRC bytes
-        numberOfCRCBytes = 5;
     }
     else if (currentPatchV2) {
       patchLengthFromSysex = sysexData[7] + (sysexData[8] << 7);
@@ -1434,10 +1449,16 @@ export class ZoomDevice implements IManagedMIDIDevice
       offset = 13;
     }
 
-    patchData = seven2eight(sysexData, offset, sysexData.length - 2 - numberOfCRCBytes);
+    let possibleNumberOfCRCBytes = 5;
+    let zeroPaddingAtEndOfPatch = 1;
+    let [numberOf8BitBytes, remainder] = getNumberOfEightBitBytes(sysexData.length - offset - zeroPaddingAtEndOfPatch - possibleNumberOfCRCBytes)
+    if (numberOf8BitBytes == patchLengthFromSysex) // lengths match if we account for CRC bytes
+      numberOfCRCBytes = possibleNumberOfCRCBytes;
+
+    patchData = seven2eight(sysexData, offset, sysexData.length - 1 - zeroPaddingAtEndOfPatch - numberOfCRCBytes);
 
     if (patchLengthFromSysex !== 0 && patchData.length != patchLengthFromSysex) {
-      shouldLog(LogLevel.Warning) && console.warn(`Patch data length (${patchData.length}) does not match the patch length specified in the sysex message (${patchLengthFromSysex})`);
+      shouldLog(LogLevel.Warning) && console.warn(`Patch data length (${patchData.length}) does not match the patch length specified in the sysex message (${patchLengthFromSysex}). numberOfCRCBytes: ${numberOfCRCBytes}.`);
     }
 
     return [patchData, program, bank];
