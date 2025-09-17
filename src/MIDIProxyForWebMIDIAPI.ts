@@ -403,7 +403,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     }
   }
 
-  onMIDIMessage(deviceHandle: DeviceID, input: MIDIInput, message:MIDIMessageEvent)
+  onMIDIMessage(deviceHandle: DeviceID, input: MIDIInput, message: MIDIMessageEvent)
   {
     if (message.data === null) {
       shouldLog(LogLevel.Warning) && console.warn("message.data == null");
@@ -431,7 +431,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
       for (let listener of listeners)
         {
           if (message.data !== null)
-            listener(deviceHandle, message.data);    
+            listener(deviceHandle, message.data, message.timeStamp);    
           else
             shouldLog(LogLevel.Warning) && console.warn("message.data == null");  
         }    
@@ -445,7 +445,7 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     for (let listener of listeners)
     {
       if (message.data !== null)
-        listener(deviceHandle, message.data);    
+        listener(deviceHandle, message.data, message.timeStamp);    
       else
         shouldLog(LogLevel.Warning) && console.warn("message.data == null");  
     }

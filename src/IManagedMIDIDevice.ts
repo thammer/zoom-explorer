@@ -1,7 +1,7 @@
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription";
 import { MessageType } from "./midiproxy";
 
-export type MIDIDataListenerType = (device: IManagedMIDIDevice, data: Uint8Array) => void;
+export type MIDIDataListenerType = (device: IManagedMIDIDevice, data: Uint8Array, timeStamp: number) => void;
 export type MIDIDeviceOpenCloseListenerType = (device: IManagedMIDIDevice, open: boolean) => void;
 
 export interface IManagedMIDIDevice

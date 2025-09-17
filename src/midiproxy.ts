@@ -20,7 +20,7 @@ export type DeviceInfo =
   connection: "open" | "closed" | "pending" | "unknown";
 }
 
-export type ListenerType = (deviceHandle: DeviceID, data: Uint8Array) => void;
+export type ListenerType = (deviceHandle: DeviceID, data: Uint8Array, timeStamp: number) => void;
 export type PortType = "input" | "output";
 
 export type ConnectionListenerType = (deviceHandle: DeviceID, portType: PortType, state: DeviceState) => void;

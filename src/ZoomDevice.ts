@@ -10,7 +10,7 @@ import { IManagedMIDIDevice, MIDIDeviceOpenCloseListenerType } from "./IManagedM
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel, getLogLevel, setLogLevel } from "./Logger.js";
 
-export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array) => void;
+export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array, timeStamp: number) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
 export type EffectParameterChangedListenerType = (zoomDevice: ZoomDevice, effectSlot: number, paramNumber: number, paramVaule: number) => void;
 export type EffectSlotChangedListenerType = (zoomDevice: ZoomDevice, effectSlot: number) => void;
@@ -201,8 +201,8 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._midiDevice = midiDevice;
     this._timeoutMilliseconds = timeoutMilliseconds;
     this._midi = midi;
-    this._midiMessageHandler = (deviceHandle, data) => {
-      this.handleMIDIDataFromZoom(data);
+    this._midiMessageHandler = (deviceHandle, data, timeStamp) => {
+      this.handleMIDIDataFromZoom(data, timeStamp);
     };
     this._zoomDeviceID = this._midiDevice.familyCode[0];
     this._zoomDeviceIdString = this._zoomDeviceID.toString(16).padStart(2, "0");
@@ -1846,7 +1846,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._midi.removeListener(this._midiDevice.inputID, this._midiMessageHandler);
   }
 
-  private handleMIDIDataFromZoom(data: Uint8Array): void
+  private handleMIDIDataFromZoom(data: Uint8Array, timeStamp: number): void
   {
     if (this._disableMidiHandlers) {
       shouldLog(LogLevel.Midi) && console.log(`${performance.now().toFixed(1)} Rcvd: ${bytesToHexString(data, " ")}`);
@@ -1856,7 +1856,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     this.internalMIDIDataHandler(data);
     
     for (let listener of this._listeners)
-      listener(this, data);  
+      listener(this, data, timeStamp);  
     
     let [messageType, channel, data1, data2] = getChannelMessage(data); 
     if (this._autoRequestProgramChangeMuteLog && messageType === MessageType.PC)
