@@ -2306,6 +2306,9 @@ export class ZoomDevice implements IManagedMIDIDevice
       this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
       this._midi.sendCC(this._midiDevice.outputID, 0, 0x20, bank & 0x7F); // bank LSB = 0
       let pcMessage = new Uint8Array(2); pcMessage[0] = 0xC0; pcMessage[1] = program & 0b01111111;
+      // Note: This will change what is displayed on the pedal to the specified bank, however the pedal's internal currentPatch won't change.
+      // This is possibly a bug in the pedal (noticed this on MS-70CDR+, 2025-10-01).
+      // To fix this, we write back the current patch at the end of the probing
       reply = await this._midi.sendAndGetReply(this._midiDevice.outputID, pcMessage, this._midiDevice.inputID, (data: Uint8Array) => {
         // expected reply is 2 optional bank messages (B0 00 00, B0 20 NN) and then one program change message (C0 NN)
         let [messageType, channel, data1, data2] = getChannelMessage(data);
@@ -2338,6 +2341,14 @@ export class ZoomDevice implements IManagedMIDIDevice
       else {
         this._bankAndProgramSentOnUpdate = false;
       }
+
+      // Restore currentPatch, since that was messed up when we sent the program change above.
+      // See comment above, after the program change message.
+      if (this.currentPatch !== undefined)
+        this.uploadPatchToCurrentPatch(this.currentPatch);
+      else
+        shouldLog(LogLevel.Warning) && console.warn(`Current patch is undefined after probing for bank and program`);
+
     }
 
     // reply = await this.sendCommandAndGetReply(hexStringToUint8Array(command), (received) => 
