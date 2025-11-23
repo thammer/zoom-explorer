@@ -1337,7 +1337,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
     let [fileEnding, shortFileEnding, fileDescription] = device.getSuggestedFileEndingForPatch();
     let suggestedName = savePatch.name.trim().replace(/[ ]{2,}/gi," ") + "." + fileEnding;
     if (savePatch.ptcfChunk !== null && savePatch.ptcfChunk.length > 0) {
-      const blob = new Blob([savePatch.ptcfChunk]);
+      const blob = new Blob([savePatch.ptcfChunk as BlobPart]);
       await saveBlobToFile(blob, suggestedName, shortFileEnding, fileDescription);
     }
     else if (savePatch.msogDataBuffer !== null && savePatch.msogDataBuffer.length > 0) {
