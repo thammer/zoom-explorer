@@ -1118,6 +1118,8 @@ export class ZoomDevice implements IManagedMIDIDevice
         this._currentEffectSlot = this._currentPatch.currentEffectSlot;
         if (this.freezeCurrentPatch)
           Object.freeze(this._currentPatch);
+        if (!this._isMappingParameters)
+          this.emitCurrentPatchChangedEvent(); // Note 2025-11-23: Not sure if this is safe. Added for manual loading of current patch, for currentPatch (index.ts) to be updated before updateScreens() is called.
       }
     }
 
