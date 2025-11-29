@@ -1240,9 +1240,6 @@ export class ZoomPatch
       if ((prm2Buffer[prm2Length - 2] & 0b00001111) != 0) {
         shouldLog(LogLevel.Warning) && console.warn(`Lower 4 bits of prm2Buffer[prm2Length - 2] should be 0 but was ${prm2Buffer[prm2Length - 2] & 0b00001111}`);
       }
-      if ((prm2Buffer[prm2Length - 1] & 0b11110000) != 0) {
-        shouldLog(LogLevel.Warning) && console.warn(`Upper 4 bits of prm2Buffer[prm2Length - 1] should be 0 but was ${prm2Buffer[prm2Length - 1] & 0b11110000}`);
-      }
 
       // FIXME: Investigate if I should be more careful with setting the tempo bits
       // let tempo1 = this.prm2Buffer[this.prm2Buffer.length -2];
