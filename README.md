@@ -69,6 +69,7 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 20 00 64 00 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 00 \<volume\> 00 00 00 00 F7 | Patch volume |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
+| 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 03 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get routing (0 = series, 1 = parallel, 2 = alternate) |
 | 64 20 00 64 04 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 04 \<Right position\> 00 00 00 00 F7 | Split effect chain after this position (00-0F), 00=end, 01=before first, 02=after first, 03=after second, etc. |
 | 64 20 00 64 07 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 07 \<effect slot\> 00 00 00 00 F7 | Insert new effect in effect slot |
 | 64 20 00 64 08 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<effect slot\> 00 00 00 00 F7 | Replace effect in effect slot with empty/trhu effect |
