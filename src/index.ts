@@ -600,6 +600,123 @@ mapEffectsButton.addEventListener("click", async (event) => {
   // sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], endFileListingCommand);
 });
 
+
+let installedMap: Map<number, string> = new Map<number, string>();
+
+let scanInstalledButton: HTMLButtonElement = document.getElementById("scanInstalledButton") as HTMLButtonElement;
+let originalScanInstalledLabel = scanInstalledButton.innerText;
+let isScanningInstalled = false;
+
+scanInstalledButton.addEventListener("click", async (event) => {
+
+  let zoomDevice = zoomDevices[0];
+
+  let text = `
+    <p>You're about to start scanning for what effects are installed.</p>
+
+    <p>This can't be cancelled and takes a few minutes.</p>
+
+    <p>Do you want to continue?</p>
+  `;
+
+
+  /*for now, let's forget about the possibility of cancelling
+  if (scanInstalledButton.innerText.includes("Cancel")) {
+    zoomDevice.cancelMapping();
+    scanInstalledButton.innerText = "...";
+    return;
+  }*/
+
+  let result = await confirmDialog.getUserConfirmation(text);
+
+  if (!result)
+    return;
+
+  zoomDevice.setAutoSave(false);
+  zoomDevice.setCurrentEffectSlot(0); // set current effect slot to 0, to give the user a chance to monitor the mapping
+
+  await sleepForAWhile(600);
+
+  scanInstalledButton.innerText = "Cancel";
+  isScanningInstalled = true;
+
+
+  let gen1EffectMap: Map<number, string> = new Map([
+  ...buildEffectIDList("MS-50G"),
+  ...buildEffectIDList("MS-60B"),
+  ...buildEffectIDList("MS-70CDR"),
+  ]);
+
+  let gen2EffectMap: Map<number, string> = new Map([
+  ...zoomEffectIDsMS60BPlus,
+  ...zoomEffectIDsMS70CDRPlus,
+  ...zoomEffectIDsMS200DPlus,
+  ...zoomEffectIDsG2FOUR,
+  ]);
+
+
+  let possiblyInstalled: Map<number, string>;
+
+  if (["MS-50G", "MS-60B", "MS-70CDR"].includes(zoomDevice.deviceName))
+  {
+    possiblyInstalled = gen1EffectMap;
+  }
+  else if (["MS-50B+", "MS-60B+", "MS-70CDR+", "MS-200D+", "G2/G2X FOUR"].includes(zoomDevice.deviceName))
+  {
+    possiblyInstalled = gen2EffectMap;
+  }
+  else
+  {
+      infoDialog.show(`Your pedal, ${zoomDevice.deviceName}, isn't supported`);
+      return;
+  }
+
+
+  installedMap = await zoomDevice.scanInstalled(possiblyInstalled, (effectName: string, effectID: number, totalNumEffects: number) => {
+    scanInstalledButton.innerText = `Mapping ${effectName} ${effectID}/${totalNumEffects}.`;
+  });
+
+  isMappingEffects = false;
+
+  if (installedMap === undefined) {
+    scanInstalledButton.innerText = originalScanInstalledLabel;
+    infoDialog.show(`Mapping failed. See log for details.`);
+    return;
+  }
+
+  //scanInstalledButton.innerText = "Save mappings";
+  scanInstalledButton.innerText = originalScanInstalledLabel;
+
+
+  infoDialog.show(`Done scanning.`);
+
+  zoomEffectSelector = new ZoomEffectSelector();
+  let effectSelectors = document.getElementById("effectSelectors") as HTMLDivElement;
+  effectSelectors.append(zoomEffectSelector.htmlElement);
+
+  let effectLists: Map<string, Map<number, string>> = new Map<string, Map<number, string>>();
+  effectLists.set("MS-50G+", zoomEffectIDsMS50GPlus);
+  effectLists.set("MS-60B+", zoomEffectIDsMS60BPlus);
+  effectLists.set("MS-70CDR+", zoomEffectIDsMS70CDRPlus);
+  effectLists.set("G2/G2X FOUR", zoomEffectIDsG2FOUR);
+
+  let zoomEffectIDsFullNamesMS200DPlusWithout1D: Map<number, string> = new Map<number, string>();
+  for (let [key, value] of zoomEffectIDsFullNamesMS200DPlus.entries())
+    if (key < 0x1D000000) zoomEffectIDsFullNamesMS200DPlusWithout1D.set(key, value.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, letter => letter.toUpperCase()));
+  effectLists.set("MS-200D+", zoomEffectIDsFullNamesMS200DPlusWithout1D);
+
+  effectLists.set("MS-50G", buildEffectIDList("MS-50G"));
+  effectLists.set("MS-60B", buildEffectIDList("MS-60B"));
+  effectLists.set("MS-70CDR", buildEffectIDList("MS-70CDR"));
+  effectLists.set("Installed", installedMap);
+
+  zoomEffectSelector.setHeading("Select effect");
+  zoomEffectSelector.setEffectList(effectLists, zoomDevice.deviceName);
+
+
+
+});
+
 type MidiMuteFunction = (data: Uint8Array) => boolean;
 
 function updateMidiMonitorTable(device: MIDIDeviceDescription, data: Uint8Array, messageType: MessageType, mute: MidiMuteFunction | undefined = undefined) {
