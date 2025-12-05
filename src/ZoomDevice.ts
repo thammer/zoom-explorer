@@ -2620,6 +2620,23 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x07: return "BPM";
       }
     }
+    else if (pedalName === "Installed - Gen 1") //making assumptions about what can be installed in what
+    {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x01: return "Dynamics/Bass Drive";
+        case 0x02: return "Filter";
+        case 0x03: return "Guitar Drive";
+        case 0x04: return "Guitar Amp";
+        case 0x05: return "Bass Amp";
+        case 0x06: return "Modulation";
+        case 0x07: return "SFX";
+        case 0x08: return "Delay";
+        case 0x09: return "Reverb";
+      }
+    }
+
+
     return category.toString(16);
   }
 
@@ -2668,6 +2685,20 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x05: return "#ADF2F4"; // turquoise
         case 0x06: return "#C8B4D7"; // purple
         case 0x07: return "#ABD3A3"; // green
+      }
+    }
+    else if (pedalName === "Installed - Gen 1") //making assumptions about what can be installed in what
+    {
+      switch (effectGroup) {
+        case 0x01: return "#C8B4D7"; // purple
+        case 0x02: return "#FFE2BF"; // orange
+        case 0x03: return "#F7BFB9"; // red
+        case 0x04: return "#F7BFB9"; // red
+        case 0x05: return "#F7BFB9"; // red
+        case 0x06: return "#ADF2F4"; // turquoise
+        case 0x07: return "#E8E69E"; // yellow
+        case 0x08: return "#A5BBE1"; // blue
+        case 0x09: return "#ABD3A3"; // green
       }
     }
     return "#FFFFFF"; // white (for unknown and THRU/Empty/Blank);
@@ -3057,6 +3088,8 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     let counter = 0;
     let numEffects = effectList.size;
+
+    this.setCurrentEffectSlot(0);
 
 
     for (const [key, value] of effectList) {

@@ -230,8 +230,27 @@ async function start()
   effectLists.set("MS-60B", buildEffectIDList("MS-60B"));
   effectLists.set("MS-70CDR", buildEffectIDList("MS-70CDR"));
 
+  const stored = localStorage.getItem("installedMap");
+  let installedMap: Map<number, string>;
+  if (stored) {
+    installedMap = new Map(JSON.parse(stored));
+      if (["MS-50G", "MS-60B", "MS-70CDR"].includes(zoomDevice.deviceName))
+      {
+        effectLists.set("Installed - Gen 1", installedMap);
+        zoomEffectSelector.setEffectList(effectLists, "Installed - Gen 1");
+      }
+      else
+      {
+        effectLists.set("Installed - Gen 2", installedMap);
+        zoomEffectSelector.setEffectList(effectLists, "Installed - Gen 2");
+      }
+  }
+  else
+  {
+    zoomEffectSelector.setEffectList(effectLists, zoomDevice.deviceName);
+  }
+
   zoomEffectSelector.setHeading("Select effect");
-  zoomEffectSelector.setEffectList(effectLists, zoomDevice.deviceName);
 
   // shouldLog(LogLevel.Info) && console.log("Call and response start");
   // let callAndResponse = new Map<string, string>();
@@ -708,10 +727,20 @@ scanInstalledButton.addEventListener("click", async (event) => {
   effectLists.set("MS-50G", buildEffectIDList("MS-50G"));
   effectLists.set("MS-60B", buildEffectIDList("MS-60B"));
   effectLists.set("MS-70CDR", buildEffectIDList("MS-70CDR"));
-  effectLists.set("Installed", installedMap);
+  if (["MS-50G", "MS-60B", "MS-70CDR"].includes(zoomDevice.deviceName))
+  {
+    effectLists.set("Installed - Gen 1", installedMap);
+    zoomEffectSelector.setEffectList(effectLists, "Installed - Gen 1");
+  }
+  else
+  {
+    effectLists.set("Installed - Gen 2", installedMap);
+    zoomEffectSelector.setEffectList(effectLists, "Installed - Gen 2");
+  }
 
   zoomEffectSelector.setHeading("Select effect");
-  zoomEffectSelector.setEffectList(effectLists, zoomDevice.deviceName);
+
+  localStorage.setItem("installedMap", JSON.stringify([...installedMap]));
 
 
 
