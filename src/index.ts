@@ -1964,7 +1964,7 @@ function handleEffectSlotSelectEffect(zoomPatch: ZoomPatch | undefined, zoomDevi
   {
     shouldLog(LogLevel.Info) && console.log(`Selecting effect in slot ${effectSlot}`);
 
-    zoomEffectSelector!.getEffect(zoomPatch.effectSettings[effectSlot].id, zoomDevice ? zoomDevice.deviceName : "MS-70CDR").then(([effectID, effectName, pedalName]) => {
+    zoomEffectSelector!.getEffect(zoomPatch.effectSettings[effectSlot].id).then(([effectID, effectName, pedalName]) => {
       console.log(`User selected effectID: ${effectID}, effectName: ${effectName}, pedalName: ${pedalName}`);
 
       if (effectID !== -1) {
