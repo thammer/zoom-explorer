@@ -976,7 +976,7 @@ export class ZoomPatchConverter
 
     // FIXME: This should be kept in sync internally in ZoomPatch instead of here
     if (outputPatch.prm2Buffer === null || outputPatch.prm2InvalidEffectSlot === null || outputPatch.prm2PatchVolume === null ||
-      outputPatch.prm2EditEffectSlot === null || outputPatch.prm2Tempo === null ||
+      outputPatch.prm2EditEffectSlot === null || outputPatch.prm2Tempo === null || outputPatch.prm2Routing === null ||
       outputPatch.prm2Byte2Lower6Bits === null || outputPatch.prm2Byte3Upper4Bits === null ||
       outputPatch.prm2Byte9Lower5Bits === null || outputPatch.prm2Byte10Bit5 === null || outputPatch.edtbEffectSettings === null ||
       outputPatch.prm2Byte13 === null || outputPatch.prm2Byte14 === null ||
@@ -992,7 +992,7 @@ export class ZoomPatchConverter
       outputPatch.prm2BPMSlot = ZoomPatch.createBPMSlotBits(outputPatch.edtbEffectSettings);
       outputPatch.prm2LineSelSlot = ZoomPatch.createLineSelSlotBits(outputPatch.edtbEffectSettings);
       outputPatch.setPrm2BufferFromDerivedValues(outputPatch.prm2Buffer, true, outputPatch.prm2InvalidEffectSlot, outputPatch.prm2PatchVolume, outputPatch.prm2EditEffectSlot,
-        outputPatch.edtbEffectSettings.length, outputPatch.prm2PreampSlot, outputPatch.prm2BPMSlot, outputPatch.prm2LineSelSlot, outputPatch.prm2Tempo,
+        outputPatch.edtbEffectSettings.length, outputPatch.prm2PreampSlot, outputPatch.prm2BPMSlot, outputPatch.prm2LineSelSlot, outputPatch.prm2Tempo, outputPatch.prm2Routing,
         outputPatch.prm2Byte2Lower6Bits, outputPatch.prm2Byte3Upper4Bits,
         outputPatch.prm2Byte9Lower5Bits, outputPatch.prm2Byte10Bit5,
         outputPatch.prm2Byte13, outputPatch.prm2Byte14,

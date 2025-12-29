@@ -1431,6 +1431,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
   if (patch.PRM2 != null) {
     unknownString = "";
     let tempoString = "";
+    let routingString = "";
     let editEffectSlotString = "";
     let preampString = "";
     if (patch.prm2Buffer !== null) {
@@ -1439,8 +1440,10 @@ function updatePatchInfoTable(patch: ZoomPatch) {
           unknownString += "<br/>                           ";
         unknownString += `${patch.prm2Buffer[i].toString(16).toUpperCase().padStart(2, "0")} `;
       }
-      if (patch.prm2Buffer.length > 2)
+      if (patch.prm2Buffer.length > 2) {
         tempoString = `${patch.prm2Tempo?.toString().padStart(3)}`;
+        routingString = patch.prm2Routing === 0 ? "Series   " : patch.prm2Routing === 1 ? "Parallel " : patch.prm2Routing === 2 ? "Alternate" : "Unknown  ";
+      }
       if (patch.prm2Buffer.length > 20)
         preampString = `${patch.prm2Buffer[20].toString(2).padStart(8, "0")}`;
       if (patch.prm2Byte2Lower6Bits !== 0)
@@ -1494,7 +1497,7 @@ function updatePatchInfoTable(patch: ZoomPatch) {
       if (patch.prm2Byte28 !== 0)
         shouldLog(LogLevel.Warning) && console.warn(`${patch.name}: Unknown bits in prm2Byte28: ${patch.prm2Byte28?.toString(2).padStart(8, "0")}`);      
     };
-    let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Patch volume: ${patch.prm2PatchVolume}  ` +
+    let prm2String = `${patch.PRM2} Length: ${patch.prm2Length?.toString().padStart(3, " ")}  Tempo: ${tempoString}  Routing: ${routingString}  Patch volume: ${patch.prm2PatchVolume}  ` +
       `Edit effect slot: ${patch.prm2EditEffectSlot}<br/>` +
       `                  Invalid effect slot: ${patch.prm2InvalidEffectSlot?.toString(2).padStart(6, "0")}  ` +
       `Preamp slot: ${patch.prm2PreampSlot?.toString(2).padStart(6, "0")}  BPM slot: ${patch.prm2BPMSlot?.toString(2).padStart(6, "0")}  LineSel slot: ${patch.prm2LineSelSlot?.toString(2).padStart(6, "0")}<br/>` +

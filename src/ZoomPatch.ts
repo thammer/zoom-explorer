@@ -692,6 +692,7 @@ export class ZoomPatch
   prm2Byte26: null | number = null; // byte 26 in prm2Unknown
   prm2Byte27: null | number = null; // byte 27 in prm2Unknown
   prm2Byte28: null | number = null; // byte 28 in prm2Unknown
+  prm2Routing: null | number = null; // based the first 4 bits of the last byte in prm2Unknown
   prm2Tempo: null | number = null; // based on the two last bytes in prm2Unknown
   prm2Buffer: null | Uint8Array = null; // prm2Length bytes
 
@@ -1066,9 +1067,13 @@ export class ZoomPatch
       this.prm2Length = chunkData.length;
       if (this.prm2Length != null && this.prm2Length > 2) {
         this.prm2Buffer = chunkData.slice(chunkOffset, chunkOffset + this.prm2Length); chunkOffset += this.prm2Length;
+
         let tempo1 = this.prm2Buffer[this.prm2Buffer.length -2];
         let tempo2 = this.prm2Buffer[this.prm2Buffer.length -1];
         this.prm2Tempo = ((tempo1 & 0b11110000) >> 4) + ((tempo2 & 0b00001111) << 4);
+
+        this.prm2Routing = (this.prm2Buffer[this.prm2Buffer.length -1] & 0b11110000) >> 4; // first 4 bits of the last byte
+
         if (this.prm2Length > 2) {
           this.prm2Byte2Lower6Bits = this.prm2Buffer[2] & 0b00111111;
         }
@@ -1198,7 +1203,7 @@ export class ZoomPatch
   {
     if (this.prm2Buffer === null || this.prm2InvalidEffectSlot === null || this.prm2PatchVolume === null ||
       this.prm2EditEffectSlot === null || this.prm2BPMSlot === null || this.prm2PreampSlot === null ||
-      this.prm2LineSelSlot === null || this.prm2Tempo === null ||
+      this.prm2LineSelSlot === null || this.prm2Tempo === null || this.prm2Routing === null ||
       this.prm2Byte2Lower6Bits === null || this.prm2Byte3Upper4Bits === null ||
       this.prm2Byte9Lower5Bits === null || this.prm2Byte10Bit5 === null || this.edtbEffectSettings === null ||
       this.prm2Byte13 === null || this.prm2Byte14 === null ||
@@ -1210,7 +1215,7 @@ export class ZoomPatch
 
     let compareBuffer =  this.prm2Buffer.slice();
     this.setPrm2BufferFromDerivedValues(compareBuffer, true, this.prm2InvalidEffectSlot, this.prm2PatchVolume, this.prm2EditEffectSlot,
-      this.edtbEffectSettings.length, this.prm2PreampSlot, this.prm2BPMSlot, this.prm2LineSelSlot, this.prm2Tempo,
+      this.edtbEffectSettings.length, this.prm2PreampSlot, this.prm2BPMSlot, this.prm2LineSelSlot, this.prm2Tempo, this.prm2Routing,
       this.prm2Byte2Lower6Bits, this.prm2Byte3Upper4Bits,
       this.prm2Byte9Lower5Bits, this.prm2Byte10Bit5,
       this.prm2Byte13, this.prm2Byte14,
@@ -1221,7 +1226,7 @@ export class ZoomPatch
   }
 
   setPrm2BufferFromDerivedValues(prm2Buffer: Uint8Array, clear: boolean, prm2InvalidEffectSlot: number, prm2PatchVolume: number, prm2EditEffectSlot: number,
-    totalNumberOfSlots: number, prm2PreampSlot: number, prm2BPMSlot: number, prm2LineSelSlot: number, prm2Tempo: number,
+    totalNumberOfSlots: number, prm2PreampSlot: number, prm2BPMSlot: number, prm2LineSelSlot: number, prm2Tempo: number, prm2Routing: number,
     prm2Byte2Lower6Bits = 0, prm2Byte3Upper4Bits = 0, prm2Byte9Lower5Bits: number = 0, prm2Byte10Bit5: number = 0,
     prm2Byte13: number = 0, prm2Byte14: number = 0, prm2Byte20Bit1And8: number = 0, prm2Byte21Lower4Bits: number = 0, 
     prm2Byte22Bits3To7: number = 0, prm2Byte23Upper3Bits: number = 0, 
@@ -1234,9 +1239,6 @@ export class ZoomPatch
     if (prm2Length > 2) {
       if ((prm2Buffer[prm2Length - 2] & 0b00001111) != 0) {
         shouldLog(LogLevel.Warning) && console.warn(`Lower 4 bits of prm2Buffer[prm2Length - 2] should be 0 but was ${prm2Buffer[prm2Length - 2] & 0b00001111}`);
-      }
-      if ((prm2Buffer[prm2Length - 1] & 0b11110000) != 0) {
-        shouldLog(LogLevel.Warning) && console.warn(`Upper 4 bits of prm2Buffer[prm2Length - 1] should be 0 but was ${prm2Buffer[prm2Length - 1] & 0b11110000}`);
       }
 
       // FIXME: Investigate if I should be more careful with setting the tempo bits
@@ -1253,7 +1255,7 @@ export class ZoomPatch
       let tempo1 = (prm2Tempo & 0b00001111) << 4;
       let tempo2 = (prm2Tempo & 0b11110000) >> 4;
       prm2Buffer[prm2Length - 2] = tempo1;
-      prm2Buffer[prm2Length - 1] = tempo2;      
+      prm2Buffer[prm2Length - 1] = tempo2 + ((prm2Routing << 4) & 0b11110000);      
     }
     if (prm2Length > 3) {
       prm2Buffer[2] = ((prm2InvalidEffectSlot & 0b00000011) << 6) + (prm2Byte2Lower6Bits & 0b00111111);
@@ -1591,7 +1593,7 @@ export class ZoomPatch
 
       if (this.prm2Buffer === null || this.prm2InvalidEffectSlot === null || this.prm2PatchVolume === null ||
         this.prm2EditEffectSlot === null || this.prm2BPMSlot === null || this.prm2PreampSlot === null ||
-        this.prm2LineSelSlot === null || this.prm2Tempo === null ||
+        this.prm2LineSelSlot === null || this.prm2Tempo === null || this.prm2Routing === null ||
         this.prm2Byte2Lower6Bits === null || this.prm2Byte3Upper4Bits === null ||
         this.prm2Byte9Lower5Bits === null || this.prm2Byte10Bit5 === null || this.edtbEffectSettings === null ||
         this.prm2Byte13 === null || this.prm2Byte14 === null ||
@@ -1602,7 +1604,7 @@ export class ZoomPatch
       } 
       else {
         this.setPrm2BufferFromDerivedValues(this.prm2Buffer, false, this.prm2InvalidEffectSlot, this.prm2PatchVolume, this.prm2EditEffectSlot,
-          this.edtbEffectSettings.length, this.prm2PreampSlot, this.prm2BPMSlot, this.prm2LineSelSlot, this.prm2Tempo,
+          this.edtbEffectSettings.length, this.prm2PreampSlot, this.prm2BPMSlot, this.prm2LineSelSlot, this.prm2Tempo, this.prm2Routing,
           this.prm2Byte2Lower6Bits, this.prm2Byte3Upper4Bits,
           this.prm2Byte9Lower5Bits, this.prm2Byte10Bit5,
           this.prm2Byte13, this.prm2Byte14,
@@ -2080,9 +2082,10 @@ export class ZoomPatch
     zoomPatch.prm2Byte27 = 0; 
     zoomPatch.prm2Byte28 = 0;
     zoomPatch.prm2Tempo = zoomPatch.tempo;
+    zoomPatch.prm2Routing = 0;
     zoomPatch.prm2Buffer = new Uint8Array(32);
     zoomPatch.setPrm2BufferFromDerivedValues(zoomPatch.prm2Buffer, true, zoomPatch.prm2InvalidEffectSlot, zoomPatch.prm2PatchVolume, zoomPatch.prm2EditEffectSlot,
-      zoomPatch.edtbEffectSettings.length, zoomPatch.prm2PreampSlot, zoomPatch.prm2BPMSlot, zoomPatch.prm2LineSelSlot, zoomPatch.prm2Tempo,
+      zoomPatch.edtbEffectSettings.length, zoomPatch.prm2PreampSlot, zoomPatch.prm2BPMSlot, zoomPatch.prm2LineSelSlot, zoomPatch.prm2Tempo, zoomPatch.prm2Routing,
       zoomPatch.prm2Byte2Lower6Bits, zoomPatch.prm2Byte3Upper4Bits,
       zoomPatch.prm2Byte9Lower5Bits, zoomPatch.prm2Byte10Bit5,
       zoomPatch.prm2Byte13, zoomPatch.prm2Byte14,
