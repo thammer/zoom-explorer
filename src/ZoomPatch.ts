@@ -2225,6 +2225,28 @@ export class ZoomPatch
       valueString;
   }
 
+  public static noteHtmlToUTF16(valueString: string): string
+  {
+    if (valueString.length < 9 || !valueString.startsWith("&#11913"))
+      return "ERROR-INVALID-NOTE-STRING";
+    
+    let rest = valueString.slice(8);
+
+    let char = valueString[7];
+    if (char === "8")
+      return "\uD834\uDD62" + rest;
+    else if (char === "7")
+      return "\uD834\uDD61" + rest;
+    else if (char === "6")
+      return "\uD834\uDD60" + rest;
+    else if (char === "5")
+      return "\uD834\uDD5F" + rest;
+    else if (char === "4")
+      return "\uD834\uDD5E" + rest;
+    else
+      return "ERROR-INVALID-NOTE-STRING";
+  }
+
   // Note: Untested function
   public static noteUTF16ToByteCode(valueString: string): string
   {
@@ -2239,6 +2261,6 @@ export class ZoomPatch
 
   public static isNoteHtml(valueString: string): boolean
   { // See htmltools startsWithHtmlCharacter()
-    return valueString.length >= 9 && valueString[0] === "&";
+    return valueString.length >= 9 && valueString.startsWith('&');
   }
 }

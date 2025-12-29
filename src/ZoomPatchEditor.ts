@@ -29,6 +29,7 @@ export class ZoomPatchEditor
   private muteBlurOnEscape = false;
 
   private patchEditorTable: HTMLTableElement;
+  
   private effectsTable: HTMLTableElement;
   private effectsRow: HTMLTableRowElement;
 
@@ -310,10 +311,7 @@ export class ZoomPatchEditor
   public updateTempo(tempo: number): void
   {
     let newPatchTempo = tempo.toString().padStart(3, "0");
-    if (this.patchTempoCell.textContent !== newPatchTempo) {
-      this.patchTempoCell.textContent = newPatchTempo;
-      this.patchTempoCell.blur();
-    }
+    this.updateTextContentIfChanged(this.patchTempoCell, newPatchTempo, true);
   }
 
   public addCellHighlights(slotParameterEffectList: [slot: number, parameterNumber: number, unmapped: boolean][])
@@ -349,6 +347,39 @@ export class ZoomPatchEditor
     }
   }
 
+  private updateTextContentIfChanged(cell: HTMLElement, textContent: string, blur: boolean = false) {
+    if (cell.textContent !== textContent) {
+      cell.textContent = textContent;
+      if (blur)
+        cell.blur();
+    }
+  }
+
+  private updateFontWeightIfChanged(cell: HTMLElement, fontWeight: string) {
+    if (cell.style.fontWeight !== fontWeight) {
+      cell.style.fontWeight = fontWeight;
+    }
+  }
+
+  private updateBackgroundSizeIfChanged(cell: HTMLElement, backgroundSize: string) {
+    if (cell.style.backgroundSize !== backgroundSize) {
+      cell.style.backgroundSize = backgroundSize;
+    }
+  }
+
+  private updateBackgroundColorIfChanged(cell: HTMLElement, backgroundColor: string) {
+    if (cell.style.backgroundColor !== backgroundColor) {
+      cell.style.backgroundColor = backgroundColor;
+    }
+  }
+
+  private updateBackgroundImageIfChanged(cell: HTMLElement, backgroundImage: string) {
+    if (cell.style.backgroundImage !== backgroundImage) {
+      cell.style.backgroundImage = backgroundImage;
+    }
+  }
+
+
   public update(device: ZoomDevice, screenCollection: ZoomScreenCollection | undefined, patch: ZoomPatch | undefined, patchNumberText: string, 
     previousScreenCollection: ZoomScreenCollection | undefined, previousPatch: ZoomPatch | undefined): void
   {
@@ -364,25 +395,20 @@ export class ZoomPatchEditor
                 (patch !== undefined && patch.effectSettings !== null && screenNumber >= patch.effectSettings.length));
     }
 
+    function clamp(value: number) {
+      return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
     shouldLog(LogLevel.Info) && console.log(`ZoomPatchEditor.update() - ${debugCounter++}`);	
 
     if (patch !== undefined) {
-      this.patchNumberCell.textContent = patchNumberText;
+      this.updateTextContentIfChanged(this.patchNumberCell, patchNumberText);
       let newPatchName = patch.nameTrimmed;
-      if (this.patchNameCell.textContent !== newPatchName) {
-        this.patchNameCell.textContent = newPatchName;
-        this.patchNameCell.blur();
-      }
+      this.updateTextContentIfChanged(this.patchNameCell, newPatchName, true);
       let newPatchTempo = patch.tempo.toString().padStart(3, "0");
-      if (this.patchTempoCell.textContent !== newPatchTempo) {
-        this.patchTempoCell.textContent = newPatchTempo;
-        this.patchTempoCell.blur();
-      }
-      let newPatchDescription = patch.descriptionEnglishTrimmed;
-      if (this.patchDescriptionCell.textContent !== newPatchDescription) {
-        this.patchDescriptionCell.textContent = newPatchDescription;
-        this.patchDescriptionCell.blur();
-      }
+      this.updateTextContentIfChanged(this.patchTempoCell, newPatchTempo, true);
+      let newPatchDescription = patch.descriptionEnglishTrimmed ? patch.descriptionEnglishTrimmed : "";
+      this.updateTextContentIfChanged(this.patchDescriptionCell, newPatchDescription, true);
     }
 
     if (screenCollection === undefined)
@@ -532,6 +558,7 @@ export class ZoomPatchEditor
 
       let effectID: number = -1;
       let effectColor: string = "";
+      let effectColorRGB: string = "";
       let backgroundImageString = ""
 
       if (patch !== undefined && patch.effectSettings !== null && effectSlot< patch.effectSettings.length) {
@@ -541,6 +568,7 @@ export class ZoomPatchEditor
         let r = parseInt(effectColor.substring(1,3), 16);
         let g = parseInt(effectColor.substring(3,5), 16);
         let b = parseInt(effectColor.substring(5,7), 16);
+        effectColorRGB = `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
         let rmin = r * 0.9;
         let gmin = g * 0.9;
         let bmin = b * 0.9;
@@ -550,7 +578,7 @@ export class ZoomPatchEditor
         let rmaxline = rmax * 1.15;
         let gmaxline = gmax * 1.15;
         let bmaxline = bmax * 1.15;
-        backgroundImageString = `linear-gradient(to right, rgba(${rmin}, ${gmin}, ${bmin}, 1) 0%, rgba(${rmax}, ${gmax}, ${bmax}, 1) 90%, rgba(${rmaxline}, ${gmaxline}, ${bmaxline}, 1) 100%)`;
+        backgroundImageString = `linear-gradient(to right, rgb(${clamp(rmin)}, ${clamp(gmin)}, ${clamp(bmin)}) 0%, rgb(${clamp(rmax)}, ${clamp(gmax)}, ${clamp(bmax)}) 90%, rgb(${clamp(rmaxline)}, ${clamp(gmaxline)}, ${clamp(bmaxline)}) 100%)`;
       } 
 
       for (let rowNumber = 1; rowNumber < effectTable.children.length; rowNumber++) {
@@ -563,6 +591,8 @@ export class ZoomPatchEditor
         // add missing cells (columns)
         while(row.children.length < numColumns) {
           let td = document.createElement("td") as HTMLTableCellElement;
+          td.style.backgroundImage = backgroundImageString;
+          td.style.backgroundSize = "0%";
           row.appendChild(td);
           let cellShouldBeEditable = (rowNumber % 2 === 0);
           if (cellShouldBeEditable) {
@@ -573,15 +603,15 @@ export class ZoomPatchEditor
         // Set correct value bar color
         for (let columnNumber = 0; columnNumber < row.children.length; columnNumber++) {
           let td = row.children[columnNumber] as HTMLTableCellElement;
-          td.style.backgroundImage = backgroundImageString;
-          td.style.backgroundSize = "0%";
+          if (effectColorRGB !== effectTable.style.backgroundColor)
+            this.updateBackgroundImageIfChanged(td, backgroundImageString);
         }
       }
 
       effectHeader.colSpan = numColumns;
 
-      if (effectID !== -1 && effectColor !== "") {
-        effectTable.style.backgroundColor = effectColor;
+      if (effectID !== -1 && effectColorRGB !== "") {
+        this.updateBackgroundColorIfChanged(effectTable, effectColorRGB);
       } 
 
       let numCellsPairsToFill = numColumns * numRowPairs;
@@ -595,15 +625,15 @@ export class ZoomPatchEditor
       {
         effectTableClass += " editEffectOff";
         effectOnOffButton.classList.remove("on");
-        effectOnOffButton.textContent = "radio_button_unchecked";
+        this.updateTextContentIfChanged(effectOnOffButton, "radio_button_unchecked");
       }
       else {
         effectOnOffButton.classList.add("on");
-        effectOnOffButton.textContent = "radio_button_checked";
+        this.updateTextContentIfChanged(effectOnOffButton, "radio_button_checked");
       }
 
       effectTable.className = effectTableClass;
-      effectSlotName.textContent = screen.parameters.length > 1 ? screen.parameters[1].name : "BPM";
+      this.updateTextContentIfChanged(effectSlotName, screen.parameters.length > 1 ? screen.parameters[1].name : "BPM");
 
       for (let cellPairNumber=0; cellPairNumber<numCellsPairsToFill; cellPairNumber++) {
         let parameterNumber = cellPairNumber + 2;
@@ -614,9 +644,9 @@ export class ZoomPatchEditor
 
         let td = paramNameRow.children[columnNumber] as HTMLTableCellElement;
         if (parameterNumber < screen.parameters.length) 
-          td.textContent = screen.parameters[parameterNumber].name;
+          this.updateTextContentIfChanged(td, screen.parameters[parameterNumber].name);
         else
-          td.textContent = " ";
+          this.updateTextContentIfChanged(td, " ");
 
         td = paramValueRow.children[columnNumber] as HTMLTableCellElement;
         if (parameterNumber < screen.parameters.length) {
@@ -626,22 +656,23 @@ export class ZoomPatchEditor
             previousScreenCollection.screens[effectSlot].parameters.length >= 2 && 
             previousScreenCollection.screens[effectSlot].parameters[1].name === screen.parameters[1].name &&
             previousScreenCollection.screens[effectSlot].parameters[parameterNumber].valueString !== screen.parameters[parameterNumber].valueString;
-          let boldStart = valueChanged ? "<b>" : "";
-          let boldEnd = valueChanged ? "</b>" : "";
           // Map Zoom's byte codes to HTML/unicode characters. This is also done in ZoomDevice.ts
           // let valueString = screen.parameters[parameterNumber].valueString.replace(/\x16/g, "&#119138;").replace(/\x17/g, "&#119137;").replace(/\x18/g, "&#119136;").replace(/\x19/g, "&#119135;").replace(/\x1A/g, "&#119134;");
           let valueString = screen.parameters[parameterNumber].valueString;
           // valueString = ZoomPatch.noteByteCodeToHtml(valueString);
           
+          // let boldStart = valueChanged ? "<b>" : "";
+          // let boldEnd = valueChanged ? "</b>" : "";
           // td.innerHTML = boldStart + valueString + boldEnd;
+
           // textXontent is much faster than using innerHtml
           if (ZoomPatch.isNoteHtml(valueString)) {
-            td.innerHTML = boldStart + valueString + boldEnd;
+            this.updateTextContentIfChanged(td, ZoomPatch.noteHtmlToUTF16(valueString));
           } 
           else {
-            td.textContent = valueString; 
-            td.style.fontWeight = valueChanged ? "bold" : "normal"; 
+            this.updateTextContentIfChanged(td, valueString); 
           }
+          this.updateFontWeightIfChanged(td, valueChanged ? "bold" : "normal"); 
 
           td.id = this.encodeEffectAndParameterNumber(effectSlot, parameterNumber);
 
@@ -652,11 +683,11 @@ export class ZoomPatchEditor
               percentage = 0;
             else
               percentage = (rawValue / maxValue) * 100;
-            td.style.backgroundSize = percentage.toFixed(0).toString() + "%";
+            this.updateBackgroundSizeIfChanged(td, percentage.toFixed(0).toString() + "%");
           }
         }
         else
-          td.textContent = " ";
+          this.updateTextContentIfChanged(td, " ");
       }
     }
   }

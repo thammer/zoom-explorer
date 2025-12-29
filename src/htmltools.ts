@@ -172,7 +172,7 @@ export async function loadDataFromFile(fileEndings: string[], fileDescriptions: 
 
     try {
       if (window.showOpenFilePicker !== undefined) {
-          const [fileHandle] = await window.showOpenFilePicker({
+        const [fileHandle] = await window.showOpenFilePicker({
           types: types 
         });
         filename = fileHandle.name;
