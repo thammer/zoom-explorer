@@ -2346,6 +2346,9 @@ export class ZoomDevice implements IManagedMIDIDevice
 
       // Restore currentPatch, since that was messed up when we sent the program change above.
       // See comment above, after the program change message.
+      // The sleep is necessary (I think) to let the pedal catch up after the probing.
+      // If the sleep is ommited, the pedal will sometims show a "Missing Effect Not Found" error message.
+      await sleepForAWhile(300);
       if (this.currentPatch !== undefined)
         this.uploadPatchToCurrentPatch(this.currentPatch);
       else
