@@ -2233,7 +2233,7 @@ export class ZoomPatch
     if (valueString.length < 9 || !valueString.startsWith("&#11913"))
       return "ERROR-INVALID-NOTE-STRING";
     
-    let rest = valueString.slice(8);
+    let rest = valueString.slice(9); // &#NNNNNN; -> rest = everything after (but not including) the ;
 
     let char = valueString[7];
     if (char === "8")
