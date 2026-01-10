@@ -230,7 +230,7 @@ async function start()
   effectLists.set("MS-60B", buildEffectIDList("MS-60B"));
   effectLists.set("MS-70CDR", buildEffectIDList("MS-70CDR"));
 
-  const stored = localStorage.getItem("installedMap");
+  const stored = localStorage.getItem("installedMap " + bytesToHexString(zoomDevice.deviceInfo.identityResponse, " "));
   let installedMap: Map<number, string>;
   if (stored) {
     installedMap = new Map(JSON.parse(stored));
@@ -740,7 +740,7 @@ scanInstalledButton.addEventListener("click", async (event) => {
 
   zoomEffectSelector.setHeading("Select effect");
 
-  localStorage.setItem("installedMap", JSON.stringify([...installedMap]));
+  localStorage.setItem("installedMap " + bytesToHexString(zoomDevice.deviceInfo.identityResponse, " "), JSON.stringify([...installedMap]));
 
 
 
