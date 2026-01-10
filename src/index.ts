@@ -300,27 +300,31 @@ async function start()
     //   };
     // });
 
-    console.log("Checking effect param commands");
 
-    let device = zoomDevices[0];
-    let value = 0x3F;
-    let valueMax = 0x09;
-    for (let commandNum = 0x03; commandNum < 0x14; commandNum++) {
-      for (value = 0; value <= valueMax; value++) {
-      let commandString = `64 20 00 64 ${commandNum.toString(16).padStart(2, "0")} ${value.toString(16).padStart(2, "0")} 00 00 00 00`;
-      // if ([0, 1, 2, 3, 4, 7, 8, 9, 0x0C, 0x0D, 0x0E, 0x0F, 0x14, 0x1E, 0x1F].includes(commandNum)) {
-      if ([0, 1, 2, 4, 7, 8, 0x0F, 0x14, 0x1E, 0x1F].includes(commandNum)) {
-        console.warn(`  ${commandString} skipped`);
-        continue;
-      }
-      console.warn(`  ${commandString} value: 0x${value.toString(16).padStart(2, "0")}               ${value.toString(2).padStart(8, "0")}`);
-      let command = hexStringToUint8Array(commandString);
-      sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
-      await sleepForAWhile(30);
-      await zoomDevice.downloadCurrentPatch();
-      await sleepForAWhile(30);
-      }
-    }
+    // console.log("Checking effect param commands");
+
+    // let device = zoomDevices[0];
+    // let value = 0x3F;
+    // let valueMax = 0x09;
+    // for (let commandNum = 0x03; commandNum < 0x14; commandNum++) {
+    //   for (value = 0; value <= valueMax; value++) {
+    //   let commandString = `64 20 00 64 ${commandNum.toString(16).padStart(2, "0")} ${value.toString(16).padStart(2, "0")} 00 00 00 00`;
+    //   // if ([0, 1, 2, 3, 4, 7, 8, 9, 0x0C, 0x0D, 0x0E, 0x0F, 0x14, 0x1E, 0x1F].includes(commandNum)) {
+    //   if ([0, 1, 2, 4, 7, 8, 0x0F, 0x14, 0x1E, 0x1F].includes(commandNum)) {
+    //     console.warn(`  ${commandString} skipped`);
+    //     continue;
+    //   }
+    //   console.warn(`  ${commandString} value: 0x${value.toString(16).padStart(2, "0")}               ${value.toString(2).padStart(8, "0")}`);
+    //   let command = hexStringToUint8Array(commandString);
+    //   sendZoomCommandLong(device.deviceInfo.outputID, device.deviceInfo.familyCode[0], command);
+    //   await sleepForAWhile(30);
+    //   await zoomDevice.downloadCurrentPatch();
+    //   await sleepForAWhile(30);
+    //   }
+    // }
+
+    console.log("Testing routing");
+
   });  
 
 };
@@ -1288,6 +1292,9 @@ function updatePatchInfoTable(patch: ZoomPatch) {
           savePatch = convertedPatch;
         }
       }
+
+      // savePatch.tempo = 100; // Experiment
+      // savePatch.prm2Routing = 1; // Experiment
 
       if (convertedPatch !== undefined) 
         updatePatchInfoTable(savePatch);
