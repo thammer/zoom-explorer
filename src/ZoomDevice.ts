@@ -2623,6 +2623,23 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x07: return "BPM";
       }
     }
+    else if (pedalName === "Installed - Gen 1") //making assumptions about what can be installed in what
+    {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x01: return "Dynamics/Bass Drive";
+        case 0x02: return "Filter";
+        case 0x03: return "Guitar Drive";
+        case 0x04: return "Guitar Amp";
+        case 0x05: return "Bass Amp";
+        case 0x06: return "Modulation";
+        case 0x07: return "SFX";
+        case 0x08: return "Delay";
+        case 0x09: return "Reverb";
+      }
+    }
+
+
     return category.toString(16);
   }
 
@@ -2671,6 +2688,20 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x05: return "#ADF2F4"; // turquoise
         case 0x06: return "#C8B4D7"; // purple
         case 0x07: return "#ABD3A3"; // green
+      }
+    }
+    else if (pedalName === "Installed - Gen 1") //making assumptions about what can be installed in what
+    {
+      switch (effectGroup) {
+        case 0x01: return "#C8B4D7"; // purple
+        case 0x02: return "#FFE2BF"; // orange
+        case 0x03: return "#F7BFB9"; // red
+        case 0x04: return "#F7BFB9"; // red
+        case 0x05: return "#F7BFB9"; // red
+        case 0x06: return "#ADF2F4"; // turquoise
+        case 0x07: return "#E8E69E"; // yellow
+        case 0x08: return "#A5BBE1"; // blue
+        case 0x09: return "#ABD3A3"; // green
       }
     }
     return "#FFFFFF"; // white (for unknown and THRU/Empty/Blank);
@@ -3026,6 +3057,115 @@ export class ZoomDevice implements IManagedMIDIDevice
       paramBuffer[6] = 0;
     }
   }
+
+
+  public async scanInstalled(effectList: Map<number, string>,
+    progressCallback?: (currentEffectName: string, currentEffect: number, totalNumEffects: number) => void): Promise<Map<number, string>>
+  {
+
+    this._disableMidiHandlers = true;
+    this._isMappingParameters = true;
+
+    let valid_ids: Map<number, string> = new Map<number, string>();
+
+    let originalPatch = await this.downloadCurrentPatch();
+    if (originalPatch === undefined || originalPatch.effectSettings === null || originalPatch.effectSettings.length < 1) {
+      shouldLog(LogLevel.Error) && console.error("Got a bad patch");
+      return valid_ids; // or handle error appropriately
+    }
+
+    let patch = originalPatch;
+    if (patch === undefined || patch.effectSettings === null || patch.effectSettings.length < 1) {
+      shouldLog(LogLevel.Error) && console.error("Got a bad patch");
+      return valid_ids; // or handle error appropriately
+    }
+
+    shouldLog(LogLevel.Info) && console.log(`*** Mapping started at ${performance.now().toFixed(1)}, using current patch ${patch.name} ***`);
+    let startTime = performance.now();
+
+    let logLevel = getLogLevel();
+
+
+    let effectSlot: number = 0;
+    let error = false;
+
+    let counter = 0;
+    let numEffects = effectList.size;
+
+    this.setCurrentEffectSlot(0);
+
+
+    for (const [key, value] of effectList) {
+      let id = key;
+      shouldLog(LogLevel.Info) && console.log(`In the loop, ${id}`);
+
+
+      if (this._cancelMapping)
+        break;
+
+      patch.effectSettings[0].id = id;
+
+      //theoretically this should return a bool to indicate whether the patch was uploaded successfully, and so skip the verifyPatch and verifyID parts
+      //but it didn't work when I was testing. Could be a nice future optimization, though
+      await this.uploadPatchToMemorySlot(patch, 0, true);
+
+      let verifyPatch = await this.downloadCurrentPatch()
+      if (verifyPatch === undefined || verifyPatch.effectSettings === null || verifyPatch.effectSettings.length < 1) {
+         shouldLog(LogLevel.Error) && console.error(`Failed to download and verify current patch for effect ${counter.toString().padStart(3, "0")}, ID ${id.toString(16).toUpperCase().padStart(8, "0")}`);
+         shouldLog(LogLevel.Error) && console.error(`verifyPatch: ${verifyPatch}, effectSettings: ${verifyPatch?.effectSettings}, effectSettings.length: ${verifyPatch?.effectSettings?.length}`);
+         return valid_ids;
+      }
+
+      let verifyID = verifyPatch.effectSettings[0].id;
+      if (verifyID !== id) {
+         shouldLog(LogLevel.Warning) && console.warn(`Unable to set current patch to effect ${counter.toString().padStart(3, "0")}, ID ${id.toString(16).toUpperCase().padStart(8, "0")}`);
+         shouldLog(LogLevel.Warning) && console.warn(`patch.effectSettings[0].id: ${verifyID}, expected id: ${id}`);
+         counter++;
+         shouldLog(LogLevel.Info) && console.log(`FAILURE for ID ${id}, ${effectList.get(id)}`);
+      }
+      else
+      {
+          valid_ids.set(key, value);
+      }
+
+      if (progressCallback) {
+        progressCallback(`${effectList.get(id)}`, counter, numEffects);
+      }
+
+
+      if (error) {
+        break;
+      }
+
+      counter++;
+
+      await sleepForAWhile(200); // let the chrome console catch up ???
+    }
+
+    let timeSpent = performance.now() - startTime;
+    let minutes = Math.floor(timeSpent / (1000 * 60));
+    let seconds = Math.floor((timeSpent % (1000 * 60)) / 1000);
+
+    if (error)
+      shouldLog(LogLevel.Error) && console.error(`*** Mapping ended with errors after ${timeSpent/1000} seconds ******`);
+    else {
+      shouldLog(LogLevel.Info) && console.log(`*** Mapping successful at ${performance.now().toFixed(1)} after ${minutes} minutes ${seconds} seconds ***`);
+    }
+
+    //shouldLog(LogLevel.Info) && console.log(JSON.stringify(mappings, null, 2));
+
+    //this.uploadCurrentPatch(originalCurrentPatch);
+
+    this._disableMidiHandlers = false;
+    this._isMappingParameters = false;
+
+    setLogLevel(logLevel); // enable MIDI logging again
+
+    await this.uploadPatchToMemorySlot(originalPatch, 0, true);
+
+    return valid_ids;
+  }
+
 }
 
 enum SupportType
