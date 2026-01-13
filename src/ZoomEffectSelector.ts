@@ -11,6 +11,8 @@ export class ZoomEffectSelector
   private selectedEffect: HTMLDivElement | undefined = undefined;
   private confirmEvent: (result: boolean) => void;
 
+  private currentPedalName: string | undefined = undefined; //let's make the selector open to the same tab it last was on
+
   constructor()
   {
     this.createHTML();
@@ -90,8 +92,15 @@ export class ZoomEffectSelector
       list.appendChild(pedal);
     }
 
-    if (defaultPedalName !== "")
-      this.setSelectedPedal(defaultPedalName);
+    //I don't see why we'd ever pass a blank defaultPedalName, but check for it
+    if (defaultPedalName !== "") {
+        this.currentPedalName = defaultPedalName;
+    }
+
+    if (this.currentPedalName !== undefined) {
+        this.setSelectedPedal(this.currentPedalName); //I don't think this does anything, since getEffect overwrites it when we open the dialog
+    }
+
   }
 
   private selectPedal(pedalName: string)
@@ -107,6 +116,8 @@ export class ZoomEffectSelector
       shouldLog(LogLevel.Error) && console.error(`No effect list found for pedal ${pedalName}`);
       return;
     }
+
+    this.currentPedalName = pedalName;  //will store this tab selection for next time we open the dialog
 
     this.clearEffectList();
     this.selectPedal(pedalName);
@@ -153,11 +164,20 @@ export class ZoomEffectSelector
     }
   }
 
-  public async getEffect(currentEffectID: number, currentPedalName: string): Promise<[effectID: number, effectName: string, pedalName: string]>
+  public async getEffect(currentEffectID: number, currentPedalName?: string): Promise<[effectID: number, effectName: string, pedalName: string]>
   { 
     return new Promise<[effectID: number, effectName: string, pedalName: string]>( (resolve, reject) => {
-      this.setSelectedPedal(currentPedalName);
-      for (let otherEffect of this.categoryList.querySelectorAll(".effectSelectorEffect") as NodeListOf<HTMLDivElement>)
+    // If caller provides a pedal, use it.
+    // Otherwise use the remembered one.
+    if (currentPedalName && currentPedalName !== "") {
+        this.currentPedalName = currentPedalName;
+    }
+
+    // Otherwise do nothing (list will remain empty until caller setsEffectList()).
+    if (this.currentPedalName !== undefined) {
+        this.setSelectedPedal(this.currentPedalName);
+    }
+    for (let otherEffect of this.categoryList.querySelectorAll(".effectSelectorEffect") as NodeListOf<HTMLDivElement>)
         otherEffect.classList.toggle("effectSelectorEffectSelected", otherEffect.dataset.id === currentEffectID.toString(16).padStart(8, "0"));
 
       // Todo: select currentEffectID if its !== -1
