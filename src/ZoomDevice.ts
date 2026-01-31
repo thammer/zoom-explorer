@@ -2595,7 +2595,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x0D: return "Preamp"; // the category name for the corresponding MS-60B effect in the MS-60B+ effect list doc
       }
     }
-    else if (pedalName === "MS-60B+") {
+    else if (pedalName === "MS-60B+" || pedalName === "B2 FOUR") {
       switch (category) {
         case 0x00: return "Thru";
         case 0x01: return "Dynamics";
@@ -2647,7 +2647,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x0D: return "#F7BFB9"; // red
       }
     }
-    else if (pedalName === "MS-60B+") {
+    else if (pedalName === "MS-60B+" || pedalName === "B2 FOUR") {
       switch(effectGroup) {
         case 0x01: return "#C8B4D7"; // purple
         case 0x02: return "#FFE2BF"; // orange
