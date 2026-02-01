@@ -2612,6 +2612,20 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x0C: return "Pedal"; // only B" FOUR
       }
     }
+    else if (pedalName === "G2/G2X FOUR") {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x01: return "Dynamics";
+        case 0x02: return "Filter";
+        case 0x03: return "Drive";
+        case 0x04: return "Amp";
+        case 0x06: return "Modulation";
+        case 0x07: return "SFX";
+        case 0x08: return "Delay";
+        case 0x09: return "Reverb";
+        case 0x0B: return "Pedal"; 
+      }
+    }
     else if (pedalName === "MS-200D+") {
       switch (category) {
         case 0x00: return "Thru";
@@ -2631,7 +2645,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     let effectGroup = (effectID >> 24) & 0xFF;
 
-    if (pedalName === "MS-50G+" || pedalName === "MS-70CDR+" || pedalName === "MS-50G" || pedalName === "MS-60B" || pedalName === "MS-70CDR" || pedalName === "G2/G2X FOUR") { 
+    if (pedalName === "MS-50G+" || pedalName === "MS-70CDR+" || pedalName === "MS-50G" || pedalName === "MS-60B" || pedalName === "MS-70CDR") { 
       switch(effectGroup) {
         case 0x01: return "#C8B4D7"; // purple
         case 0x02: return "#FFE2BF"; // orange
@@ -2662,6 +2676,19 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x0A: return "#A5BBE1"; // blue
         case 0x0B: return "#ABD3A3"; // green
         case 0x0C: return "#ADF2F4"; // turqoise - only B2 FOUR, Pedal
+      }
+    }
+    else if (pedalName === "G2/G2X FOUR") {
+      switch(effectGroup) {
+        case 0x01: return "#C8B4D7"; // purple
+        case 0x02: return "#FFE2BF"; // orange
+        case 0x03: return "#F7BFB9"; // red
+        case 0x04: return "#F7BFB9"; // red
+        case 0x06: return "#ADF2F4"; // turquoise
+        case 0x07: return "#E8E69E"; // yellow
+        case 0x08: return "#A5BBE1"; // blue
+        case 0x09: return "#ABD3A3"; // green
+        case 0x0B: return "#ADF2F4"; // turqoise
       }
     }
     else if (pedalName === "MS-200D+") {
