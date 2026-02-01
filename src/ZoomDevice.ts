@@ -2609,6 +2609,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x09: return "SFX";
         case 0x0A: return "Delay";
         case 0x0B: return "Reverb";
+        case 0x0C: return "Pedal"; // only B" FOUR
       }
     }
     else if (pedalName === "MS-200D+") {
@@ -2660,6 +2661,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x09: return "#E8E69E"; // yellow
         case 0x0A: return "#A5BBE1"; // blue
         case 0x0B: return "#ABD3A3"; // green
+        case 0x0C: return "#ADF2F4"; // turqoise - only B2 FOUR, Pedal
       }
     }
     else if (pedalName === "MS-200D+") {
