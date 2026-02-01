@@ -18,6 +18,7 @@ import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 import zoomEffectIDsMS60BPlus from "./zoom-effect-ids-ms60bp.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 import zoomEffectIDsG2FOUR from "./zoom-effect-ids-g2four.js";
+import zoomEffectIDsB2FOUR from "./zoom-effect-ids-b2four.js";
 import { ZoomEffectSelector } from "./ZoomEffectSelector.js";
 
 function getZoomCommandName(data: Uint8Array) : string
@@ -220,6 +221,7 @@ async function start()
   effectLists.set("MS-60B+", zoomEffectIDsMS60BPlus);
   effectLists.set("MS-70CDR+", zoomEffectIDsMS70CDRPlus);
   effectLists.set("G2/G2X FOUR", zoomEffectIDsG2FOUR);
+  effectLists.set("B2 FOUR", zoomEffectIDsB2FOUR);
 
   let zoomEffectIDsFullNamesMS200DPlusWithout1D: Map<number, string> = new Map<number, string>();
   for (let [key, value] of zoomEffectIDsFullNamesMS200DPlus.entries())
@@ -390,6 +392,13 @@ async function downloadEffectMaps() {
   shouldLog(LogLevel.Info) && console.log(`mapForG2FOUR.size = ${mapForG2FOUR.size}`);
 
   startTime = performance.now();
+  obj = await downloadJSONResource("zoom-effect-mappings-b2four.json");
+  shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
+  let mapForB2FOUR: Map<number, EffectParameterMap> = new Map<number, EffectParameterMap>(Object.entries(obj).map(([key, value]) => [parseInt(key, 16), value as EffectParameterMap]));
+  
+  shouldLog(LogLevel.Info) && console.log(`mapForB2FOUR.size = ${mapForB2FOUR.size}`);
+
+  startTime = performance.now();
   obj = await downloadJSONResource("zoom-effect-mappings-msog.json");
 
   shouldLog(LogLevel.Info) && console.log(`Downloading took  ${((performance.now() - startTime) / 1000).toFixed(3)} seconds ***`);
@@ -422,12 +431,14 @@ async function downloadEffectMaps() {
   addThruEffectToMap(mapForMS60BPlus);
   addThruEffectToMap(mapForMS200DPlus);
   addThruEffectToMap(mapForG2FOUR);
+  addThruEffectToMap(mapForB2FOUR);
   
   extendMapWithMaxNumericalValueIndex(mapForMSOG);
   extendMapWithMaxNumericalValueIndex(mapForMS50GPlusAndMS70CDRPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS60BPlus);
   extendMapWithMaxNumericalValueIndex(mapForMS200DPlus);
   extendMapWithMaxNumericalValueIndex(mapForG2FOUR);
+  extendMapWithMaxNumericalValueIndex(mapForB2FOUR);
 
   // print some stats
   // console.log("MS-50G+ and MS-70CDR+ VOL defaults");
@@ -459,6 +470,7 @@ async function downloadEffectMaps() {
   ZoomDevice.setEffectIDMap(["MS-60B+"], mapForMS60BPlus);
   ZoomDevice.setEffectIDMap(["MS-200D+"], mapForMS200DPlus);
   ZoomDevice.setEffectIDMap(["G2/G2X FOUR"], mapForG2FOUR);
+  ZoomDevice.setEffectIDMap(["B2 FOUR"], mapForB2FOUR);
 
   shouldLog(LogLevel.Info) && console.log(`parameterMap.size = ${mapForMS50GPlusAndMS70CDRPlus.size}`);
 }
@@ -550,6 +562,7 @@ mapEffectsButton.addEventListener("click", async (event) => {
       zoomDevice.deviceName === "MS-70CDR+" ? zoomEffectIDsMS70CDRPlus :
       zoomDevice.deviceName === "MS-200D+" ? zoomEffectIDsMS200DPlus : 
       zoomDevice.deviceName === "G2/G2X FOUR" ? zoomEffectIDsG2FOUR :
+      zoomDevice.deviceName === "B2 FOUR" ? zoomEffectIDsB2FOUR :
       zoomEffectIDsAllZDL7;
 
 
@@ -558,6 +571,7 @@ mapEffectsButton.addEventListener("click", async (event) => {
       zoomDevice.deviceName === "MS-70CDR+" ? "zoomEffectIDsMS70CDRPlus" :
       zoomDevice.deviceName === "MS-200D+" ? "zoomEffectIDsMS200DPlus" :
       zoomDevice.deviceName === "G2/G2X FOUR" ? "zoomEffectIDsG2FOUR" : 
+      zoomDevice.deviceName === "B2 FOUR" ? "zoomEffectIDsB2FOUR" : 
       "zoomEffectIDsAllZDL7";
 
     mappings = await zoomDevice.mapParameters(effectList, effectListName, (effectName: string, effectID: number, totalNumEffects: number) => {
