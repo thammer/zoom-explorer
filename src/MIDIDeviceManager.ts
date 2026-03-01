@@ -305,6 +305,19 @@ export class MIDIDeviceManager
     // return deviceDescriptor === undefined ? "" : deviceDescriptor.deviceName;
   }
 
+  public getDeviceDescriptor(deviceHandle: string, portType: PortType): MIDIDeviceDescription | undefined
+  {
+    for (let [factoryKey, deviceList] of this._deviceList) {
+      let device = deviceList.find( (device) => portType === "input" && device.deviceInfo.inputID === deviceHandle || 
+        device.deviceInfo.outputID === deviceHandle);
+      if (device !== undefined)
+        return device.deviceInfo;
+    }
+
+    return undefined;
+  }
+
+
   public getDeviceHandleFromDeviceName(deviceName: string, portType: PortType): string
   {
     // FIXME: Consider havind a uniqueDeviceName in the descriptor list

@@ -2610,6 +2610,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x0A: return "Delay";
         case 0x0B: return "Reverb";
         case 0x0C: return "Pedal"; // only B" FOUR
+        case 0x1C: return "BPM"; // only B2 FOUR, BPM
       }
     }
     else if (pedalName === "G2/G2X FOUR") {
@@ -2676,6 +2677,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x0A: return "#A5BBE1"; // blue
         case 0x0B: return "#ABD3A3"; // green
         case 0x0C: return "#ADF2F4"; // turqoise - only B2 FOUR, Pedal
+        case 0x1C: return "#E8E69E"; // yellow - only B2 FOUR, BPM
       }
     }
     else if (pedalName === "G2/G2X FOUR") {
