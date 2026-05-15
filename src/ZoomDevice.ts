@@ -2734,8 +2734,8 @@ export class ZoomDevice implements IManagedMIDIDevice
   }
 
   public async mapParameters(effectList: Map<number, string>, effectListName: string, 
-    progressCallback?: (currrentEffectName: string, currentEffect: number, totalNumEffects: number) => void): Promise<{ [key: string]: EffectParameterMap; } | undefined>
-  {
+    progressCallback?: (currrentEffectName: string, currentEffect: number, totalNumEffects: number, currentParameter?: number, totalParameters?: number) => void): Promise<{ [key: string]: EffectParameterMap; } | undefined>
+    {
     this._disableMidiHandlers = true;
     this._isMappingParameters = true;
     
@@ -2894,6 +2894,8 @@ export class ZoomDevice implements IManagedMIDIDevice
       }; 
     
       for (let paramNumber = 2; paramNumber - 2 < effectSettings.parameters.length; paramNumber++) {
+        if (progressCallback)
+          progressCallback(`${effectList.get(id)}`, counter, numEffects, paramNumber - 1, effectSettings.parameters.length);
 
         shouldLog(LogLevel.Info) && console.log(`Mapping parameters for effect ${effectList.get(id)} (0x${id.toString(16).toUpperCase().padStart(8, "0")}), paramNumber ${(paramNumber).toString().padStart(2, " ")} of ${effectSettings.parameters.length + 2 - 1}`);
         // paramNumber = paramIndex + 2;
