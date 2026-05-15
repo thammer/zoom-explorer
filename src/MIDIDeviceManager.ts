@@ -1,4 +1,4 @@
-import { IManagedMIDIDevice} from "./IManagedMIDIDevice.js";
+import type { IManagedMIDIDevice} from "./IManagedMIDIDevice.js";
 import { shouldLog, LogLevel } from "./Logger.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { DeviceID, DeviceInfo, DeviceState, IMIDIProxy, PortType } from "./midiproxy.js";
@@ -395,6 +395,4 @@ export class MIDIDeviceManager
   }
 }
  
-
-export { IManagedMIDIDevice };
-
+export type { IManagedMIDIDevice };

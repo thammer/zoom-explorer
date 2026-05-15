@@ -6,7 +6,7 @@ import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
 import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
 import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
-import { IManagedMIDIDevice, MIDIDeviceOpenCloseListenerType } from "./IManagedMIDIDevice.js";
+import type { IManagedMIDIDevice, MIDIDeviceOpenCloseListenerType } from "./IManagedMIDIDevice.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel, getLogLevel, setLogLevel } from "./Logger.js";
 
