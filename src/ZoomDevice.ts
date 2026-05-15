@@ -567,6 +567,13 @@ export class ZoomDevice implements IManagedMIDIDevice
     return this._autoRequestProgramChangeMuteLog && messageIsPCOrBankChange;
   }
 
+  public get disableMidiHandlers(): boolean {
+    return this._disableMidiHandlers;
+  }
+  public set disableMidiHandlers(value: boolean) {
+    this._disableMidiHandlers = value;
+  }
+
   public get autoUpdateScreens(): boolean
   {
     return this._autoUpdateScreens;
