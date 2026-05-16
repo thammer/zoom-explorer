@@ -719,7 +719,6 @@ export class ZoomPatch
   {
     let patch = new ZoomPatch();
 
-    Object.getOwnPropertyDescriptors
     let properties: string[] = Object.getOwnPropertyNames(this);
     for (let i=0; i<properties.length; i++) {
       let propertyName: string = properties[i];
@@ -731,15 +730,19 @@ export class ZoomPatch
         let clonedMap = (patch as any)[propertyName];
         property.forEach( (chunkBytes: Uint8Array, chunkName: string) => clonedMap.set(chunkName, new Uint8Array(chunkBytes)));        
       } 
-      else if (property.constructor.name === "Array") {
-        if (property[0].constructor.name === "Uint8Array")
+      else if (Array.isArray(property)) {
+        if (property.length === 0)
+          (patch as any)[propertyName] = [];
+        else if (property[0] instanceof Uint8Array)
           (patch as any)[propertyName] = Array.from(property, (e, i) => new Uint8Array(e as Uint8Array));  
-        else if (property[0].constructor.name === "EffectSettings")
+        else if (property[0] instanceof EffectSettings)
           (patch as any)[propertyName] = Array.from(property, (e, i) => (e as EffectSettings).clone());  
+        else
+          (patch as any)[propertyName] = Array.from(property);
       }
-      else if (property.constructor.name === "Uint32Array")
+      else if (property instanceof Uint32Array)
         (patch as any)[propertyName] = new Uint32Array(property); 
-      else if (property.constructor.name === "Uint8Array")
+      else if (property instanceof Uint8Array)
         (patch as any)[propertyName] = new Uint8Array(property);
       else
         (patch as any)[propertyName] = property; 
