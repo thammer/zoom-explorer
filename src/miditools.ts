@@ -410,6 +410,7 @@ let MIDIDeviceHexStringToName: { [key: string]: string; } =
   "52 6E 00 25 00" : "MS-200D+",
   "52 6E 00 26 00" : "MS-70CDR+",
   "52 6E 00 27 00" : "MS-60B+",
+  "52 6E 00 28 00" : "MS-80IR+",
   "52 6E 00 2B 00" : "MS-90LP+",
   "52 6E 00 1C 00" : "G2/G2X FOUR",
   "52 6E 00 21 00" : "B2 FOUR",

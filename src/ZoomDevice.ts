@@ -4,8 +4,6 @@ import { DeviceID, IMIDIProxy, ListenerType, MessageType } from "./midiproxy.js"
 import { getChannelMessage } from "./miditools.js";
 import { Throttler } from "./throttler.js";
 import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, partialArrayMatch, partialArrayStringMatch, seven2eight, bytesToHexString, hexStringToUint8Array, sleepForAWhile } from "./tools.js";
-import zoomEffectIDsMS70CDRPlus from "./zoom-effect-ids-ms70cdrp.js";
-import zoomEffectIDsMS50GPlus from "./zoom-effect-ids-ms50gp.js";
 import type { IManagedMIDIDevice, MIDIDeviceOpenCloseListenerType } from "./IManagedMIDIDevice.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel, getLogLevel, setLogLevel } from "./Logger.js";
@@ -2620,6 +2618,17 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x1C: return "BPM"; // only B2 FOUR, BPM
       }
     }
+    else if (pedalName === "MS-80IR+") {
+      switch (category) {
+        case 0x00: return "Thru";
+        case 0x04: return "Amp";
+        case 0x06: return "Tool";
+        case 0x07: return "Tool";
+        case 0x08: return "Delay";
+        case 0x0F: return "Studio Ambience";
+        case 0x1C: return "Tool";
+      }
+    }
     else if (pedalName === "G2/G2X FOUR") {
       switch (category) {
         case 0x00: return "Thru";
@@ -2664,10 +2673,19 @@ export class ZoomDevice implements IManagedMIDIDevice
         case 0x07: return "#E8E69E"; // yellow
         case 0x08: return "#A5BBE1"; // blue
         case 0x09: return "#ABD3A3"; // green
-        case 0x08: return "#E8E69E"; // yellow
-        case 0x09: return "#E8E69E"; // yellow
+        case 0x0A: return "#E8E69E"; // yellow
+        case 0x0B: return "#E8E69E"; // yellow
         case 0x0C: return "#F7BFB9"; // red
         case 0x0D: return "#F7BFB9"; // red
+      }
+    }
+    else if (pedalName === "MS-80IR+") {
+      switch(effectGroup) {
+        case 0x04: return "#F7BFB9"; // red, amp
+        case 0x06: return "#C8B4D7"; // purple, tool
+        case 0x07: return "#C8B4D7"; // purple, tool
+        case 0x08: return "#A5BBE1"; // blue, delay
+        case 0x0F: return "#ABD3A3"; // green, MS-80IR+ studio ambience
       }
     }
     else if (pedalName === "MS-60B+" || pedalName === "B2 FOUR") {
@@ -2720,6 +2738,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       case "MS-50G+":   return "#EAEAEC"; 
       case "MS-60B+":   return "#C91F3E";
       case "MS-70CDR+": return "#00ABE8";
+      case "MS-80IR+":  return "#808080";
       case "MS-200D+":  return "#E7CA00";
       case "MS-50G":    return "#BCC0C9";
       case "MS-60B":    return "#752832";
