@@ -299,6 +299,67 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
       // add input devices with no outputs
       // 
 
+      // Retry identity request for devices that were paired by name but failed identity.
+      // Uses a longer timeout (500ms vs 100ms) since some devices are slow to respond,
+      // especially shortly after USB enumeration. The elapsed wall-clock time since the
+      // first pass also helps devices that need settling time.
+      let devicesWithoutIdentity = midiDevices.filter(d => d.manufacturerID[0] === 0 && d.isInput && d.isOutput);
+      for (let device of devicesWithoutIdentity) {
+        let retryInputHandle: DeviceID | undefined;
+        let retryOutputHandle: DeviceID | undefined;
+        try {
+          retryInputHandle = await midi.openInput(device.inputID);
+          retryOutputHandle = await midi.openOutput(device.outputID);
+
+          let identityReply = await midi.sendAndGetReply(
+            device.outputID,
+            new Uint8Array([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]),
+            device.inputID,
+            (data: Uint8Array) => isMIDIIdentityResponse(data),
+            500 // longer than first pass — device may need settling time after port open
+          );
+
+          if (identityReply !== undefined) {
+            let dataOffset = identityReply[5] !== 0 ? 0 : 2;
+            let manufacturerID: [number] | [number, number, number] = identityReply[5] !== 0 ? [identityReply[5]] : [identityReply[5], identityReply[6], identityReply[7]];
+            let manufacturerName = MIDIManufacturerIDToName[bytesToHexString(manufacturerID, " ")] ??
+              (identityReply[5] !== 0 ? identityReply[5].toString().padStart(2, "0") : `${identityReply[5].toString().padStart(2, "0")} ${identityReply[6].toString().padStart(2, "0")} ${identityReply[7].toString().padStart(2, "0")}`);
+            let familyCode: [number, number] = [identityReply[6 + dataOffset], identityReply[7 + dataOffset]];
+            let modelNumber: [number, number] = [identityReply[8 + dataOffset], identityReply[9 + dataOffset]];
+            let versionNumber: [number, number, number, number] = [identityReply[10 + dataOffset], identityReply[11 + dataOffset], identityReply[12 + dataOffset], identityReply[13 + dataOffset]];
+            let deviceName = getDeviceName(manufacturerID, familyCode, modelNumber);
+
+            let index = midiDevices.indexOf(device);
+            if (index !== -1) {
+              midiDevices[index] = new MIDIDeviceDescription({
+                inputID: device.inputID,
+                inputName: device.inputName,
+                outputID: device.outputID,
+                outputName: device.outputName,
+                isInput: true,
+                isOutput: true,
+                manufacturerID: manufacturerID,
+                manufacturerName: manufacturerName,
+                familyCode: familyCode,
+                modelNumber: modelNumber,
+                deviceName: deviceName,
+                deviceNameUnique: deviceName,
+                versionNumber: versionNumber,
+                identityResponse: identityReply,
+              });
+              logging && shouldLog(LogLevel.Info) && console.log(`Identity retry succeeded for "${device.inputName}" -> ${deviceName} (manufacturer: ${manufacturerName})`);
+            }
+          } else {
+            logging && shouldLog(LogLevel.Info) && console.log(`Identity retry timed out for "${device.inputName}"`);
+          }
+        } catch (err) {
+          logging && shouldLog(LogLevel.Info) && console.log(`Identity retry failed for "${device.inputName}": ${getExceptionErrorString(err)}`);
+        } finally {
+          if (retryInputHandle !== undefined) await midi.closeInput(retryInputHandle);
+          if (retryOutputHandle !== undefined) await midi.closeOutput(retryOutputHandle);
+        }
+      }
+
       getMIDIDeviceListIsRunning = false;
       resolve(midiDevices);
     }
