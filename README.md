@@ -69,21 +69,21 @@ F0 52 00 <device ID> <message type byte 1> <message type byte 2> <rest of messag
 | 64 20 00 64 00 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 00 \<volume\> 00 00 00 00 F7 | Patch volume |
 | 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 01 \<selected effect slot number\> 00 00 00 00 F7 | Select effect slot number on pedal |
 | 64 20 00 64 02 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 02 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get tempo (BPM) |
-| 64 20 00 64 01 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 03 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get routing (0 = series, 1 = parallel, 2 = alternate) |
-| 64 20 00 64 04 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 04 \<Right position\> 00 00 00 00 F7 | Split effect chain after this position (00-0F), 00=end, 01=before first, 02=after first, 03=after second, etc. |
+| 64 20 00 64 03 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 03 \<LSB\> \<MSB\> 00 00 00 F7 | Set/get routing (0 = series, 1 = parallel, 2 = alternate) |
+| 64 20 00 64 04 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 04 \<right position\> 00 00 00 00 F7 | Split effect chain after this position (00-0F), 00=end, 01=before first, 02=after first, 03=after second, etc. |
 | 64 20 00 64 07 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 07 \<effect slot\> 00 00 00 00 F7 | Insert new effect in effect slot |
 | 64 20 00 64 08 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 08 \<effect slot\> 00 00 00 00 F7 | Replace effect in effect slot with empty/trhu effect |
 | 64 20 00 64 09 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 09 \<effect slot\> 00 00 00 00 F7 | Move/swap slots. Sending values > 0x0a freezes the pedal. |
-| 64 20 00 64 0C |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0C \<???\> 00 00 00 00 F7 | Unknown. Sending large values freezes the pedal. |
-| 64 20 00 64 0D |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0D \<???\> 00 00 00 00 F7 | Unknown |
-| 64 20 00 64 0E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0E \<???\> 00 00 00 00 F7 | Unknown |
-| 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<Auto-save\> 00 00 00 00 F7 | Auto-save off/on (00 - 01)|
-| 64 20 00 64 10 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 10 \<???\> 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. Also accepts 0x7F. |
+| 64 20 00 64 0C |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0C \<tuning\> 00 00 00 00 F7 | Tuning (0A = 440) |
+| 64 20 00 64 0D |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0D \<tuner type\> 00 00 00 00 F7 | Tuner type (0 = Chromatic, 1 = Guitar, 2 = Open A, 3 = Open D, 4 = Open E, 5 = Open G, 6 = DADGAD) |
+| 64 20 00 64 0E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0E \<semitones\> 00 00 00 00 F7 | Flat tuning (0 = 0 semitones, ..., 3 = 3 semitones) |
+| 64 20 00 64 0F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 0F \<auto-save\> 00 00 00 00 F7 | Auto-save off/on (00 - 01)|
+| 64 20 00 64 10 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 10 \<tuner bypass mode\> 00 00 00 00 F7 | Tuner bypass mode. (0 = bypass, 1 = mute, try 7F and downwards and watch the tuner menu) |
 | 64 20 00 64 11 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 11 \<???\> 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. Also accepts 0x7F.|
 | 64 20 00 64 12 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 12 \<???\> 00 00 00 00 F7 | Unknown. Answers with 0x0F when sending value 0x0F. Also accepts 0x7F.|
-| 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<Contrast\> 00 00 00 00 F7 | Screen contrast (00 - 0C) |
-| 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<ECO mode\> 00 00 00 00 F7 | ECO mode off/on (00 - 01) |
-| 64 20 00 64 1F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1F \<Pre-select\> 00 00 00 00 F7 | Pre-select off/on (00 - 01) |
+| 64 20 00 64 14 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 14 \<contrast\> 00 00 00 00 F7 | Screen contrast (00 - 0C) |
+| 64 20 00 64 1E |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1E \<eco mode\> 00 00 00 00 F7 | ECO mode off/on (00 - 01) |
+| 64 20 00 64 1F |     15 | *    | *       | F0 52 00 6E 64 20 00 64 1F \<pre-select\> 00 00 00 00 F7 | Pre-select off/on (00 - 01) |
 | 64 20 00 64 28 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 28 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
 | 64 20 00 64 29 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 29 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
 | 64 20 00 64 32 |     15 | *    | *       | F0 52 00 6E 64 20 00 64 32 0F 00 00 00 00 F7 | Unknown. Answers with 0x00 when sending value 0x0F. |
