@@ -54,9 +54,43 @@ export class ZoomScreen
   }
 }
 
+/**
+ * Collect info about a mapping mismatch so the app can handle that gracefully.
+ * The mismatch can be a parameter index that is beyond the map, or a value that
+ * is beyond the map's value list.
+ * The app can register a ZoomScreenCollection.mappingMismatchListener
+ * to surface them.
+ */
+export interface MappingMismatchInfo
+{
+  site: "setEffectParameterValue" | "updateScreenWithParametersFromMap";
+  effectId: number;
+  effectName: string;
+  effectSlot: number;                 // -1 when the slot is not known at the site
+  parameterIndex: number;             // 0-based index into effectMap.parameters
+  parameterName: string | undefined;  // undefined when the index is beyond the map
+  value: number | undefined;          // the raw value that did not fit, when the mismatch is a value
+  mapValueCount: number | undefined;  // values.length for the parameter, when the mismatch is a value
+  mapParameterCount: number;          // effectMap.parameters.length
+}
+
 export class ZoomScreenCollection
 {
   screens: Array<ZoomScreen> = new Array<ZoomScreen>();
+
+  // Called on every map-vs-data mismatch, if the app registered one.
+  // Failures in the listener are swallowed: reporting must never become a
+  // second fault inside a screen update.
+  public static mappingMismatchListener: ((info: MappingMismatchInfo) => void) | undefined = undefined;
+
+  private static notifyMappingMismatch(info: MappingMismatchInfo): void
+  {
+    try {
+      ZoomScreenCollection.mappingMismatchListener?.(info);
+    } catch {
+      // reporting must never break the screen update it is reporting on
+    }
+  }
 
   equals(other: ZoomScreenCollection | undefined, ignoreBlankScreens: boolean = false): boolean
   {
@@ -219,7 +253,7 @@ export class ZoomScreenCollection
           // This is not an error. MSOG patches always contain 9 parameters. We will ignore the unused ones.
       }
 
-      this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen);
+      this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen, effectSlot);
 
       this.screens.push(screen);
     }
@@ -248,6 +282,14 @@ export class ZoomScreenCollection
     let screen = this.screens[effectSlot];
     let parameter = screen.parameters[parameterNumber];
 
+    if (parameter === undefined) {
+      // parseScreenData() assigns parameters at the indexes the pedal names,
+      // so a skipped parameter number leaves a hole; writing through it would
+      // throw. Fall back to a full screen update instead.
+      shouldLog(LogLevel.Error) && console.error(`setEffectParameterValue() no parameter object at parameterNumber ${parameterNumber} for effectSlot ${effectSlot}`);
+      return false;
+    }
+
     let valueString: string;
 
     if (parameterNumber === 0) {
@@ -257,11 +299,35 @@ export class ZoomScreenCollection
     else if (parameterNumber === 1) {
       parameter.name = effectMap.name;
       valueString = effectMap.name;
-      this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen);
+      this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen, effectSlot);
     }
     else {
       let parameterIndex = parameterNumber - 2;
-      valueString = effectMap.parameters[parameterIndex].values[value];
+      let parameterMap = effectMap.parameters[parameterIndex];
+      if (parameterMap === undefined) {
+        // The pedal named a parameter the map does not have - the map is
+        // wrong (or the firmware is newer than the mapping run). Report and
+        // fall back to a full screen update.
+        shouldLog(LogLevel.Error) && console.error(`setEffectParameterValue() parameterIndex ${parameterIndex} >= number of parameters ${effectMap.parameters.length} in map for effect ${effectMap.name} (${numberToHexString(effectSettings.id)})`);
+        ZoomScreenCollection.notifyMappingMismatch({ site: "setEffectParameterValue", effectId: effectSettings.id, effectName: effectMap.name,
+          effectSlot: effectSlot, parameterIndex: parameterIndex, parameterName: undefined, value: value,
+          mapValueCount: undefined, mapParameterCount: effectMap.parameters.length });
+        return false;
+      }
+      if (value >= parameterMap.values.length) {
+        // The pedal sent a raw value beyond the map's value list. Writing
+        // values[value] here put `undefined` into valueString, which crashes
+        // the patch editor on the next full repaint.
+        // Show the raw number instead - honest, visibly unmapped - and report.
+        shouldLog(LogLevel.Error) && console.error(`setEffectParameterValue() value ${value} >= number of values ${parameterMap.values.length} in map for effect ${effectMap.name} (${numberToHexString(effectSettings.id)}) parameter ${parameterMap.name}`);
+        ZoomScreenCollection.notifyMappingMismatch({ site: "setEffectParameterValue", effectId: effectSettings.id, effectName: effectMap.name,
+          effectSlot: effectSlot, parameterIndex: parameterIndex, parameterName: parameterMap.name, value: value,
+          mapValueCount: parameterMap.values.length, mapParameterCount: effectMap.parameters.length });
+        valueString = value.toString();
+      }
+      else {
+        valueString = parameterMap.values[value];
+      }
     }
 
     shouldLog(LogLevel.Info) && console.log(`Changing effect parameter value from "${parameter.valueString}" to "${valueString}" for effect ${effectMap.name}, parameter ${parameter.name}`);
@@ -270,7 +336,7 @@ export class ZoomScreenCollection
     return true;
   }
 
-  private updateScreenWithParametersFromMap(effectMap: EffectParameterMap, effectSettings: EffectSettings, screen: ZoomScreen)
+  private updateScreenWithParametersFromMap(effectMap: EffectParameterMap, effectSettings: EffectSettings, screen: ZoomScreen, effectSlot: number = -1)
   {
     if (effectMap.parameters.length > effectSettings.parameters.length) {
       shouldLog(LogLevel.Warning) && console.warn(`effectMap.parameters.length ${effectMap.parameters.length} > effectSettings.parameters.length ${effectSettings.parameters.length} for effect ${effectMap.name}`);
@@ -279,17 +345,20 @@ export class ZoomScreenCollection
     if (screen.parameters.length < 2) {
       shouldLog(LogLevel.Error) && console.error(`screen.parameters.length ${screen.parameters.length} < 2 for effect ${effectMap.name}`);
       return;
-    }  
+    }
 
     if (screen.parameters.length > 2)
       screen.parameters.splice(2);
 
     for (let paramIndex = 0; paramIndex < effectMap.parameters.length; paramIndex++) {
-      let value = effectSettings.parameters[paramIndex];
+      let value: number | undefined = effectSettings.parameters[paramIndex];
       let parameter = new ZoomScreenParameter();
 
-      if (value >= effectMap.parameters[paramIndex].values.length) {
+      if (value === undefined || value >= effectMap.parameters[paramIndex].values.length) {
         shouldLog(LogLevel.Error) && console.error(`value ${value} >= effectMap.parameters[paramIndex].values.length ${effectMap.parameters[paramIndex].values.length} for effect ${effectMap.name}, parameterIndex ${paramIndex}`);
+        ZoomScreenCollection.notifyMappingMismatch({ site: "updateScreenWithParametersFromMap", effectId: effectSettings.id, effectName: effectMap.name,
+          effectSlot: effectSlot, parameterIndex: paramIndex, parameterName: effectMap.parameters[paramIndex].name, value: value,
+          mapValueCount: effectMap.parameters[paramIndex].values.length, mapParameterCount: effectMap.parameters.length });
         break;
       }
       parameter.name = effectMap.parameters[paramIndex].name;
@@ -354,7 +423,7 @@ export class ZoomScreenCollection
     parameter.valueString = effectMap.name;
     screen.parameters.push(parameter);
 
-    this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen);
+    this.updateScreenWithParametersFromMap(effectMap, effectSettings, screen, screenNumber);
 
     this.screens[screenNumber] = screen;
   }
