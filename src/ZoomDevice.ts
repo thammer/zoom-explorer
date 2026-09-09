@@ -1087,7 +1087,34 @@ export class ZoomDevice implements IManagedMIDIDevice
       return undefined;
   }
 
-  public uploadPatchToCurrentPatch(patch: ZoomPatch, cacheCurrentPatch: boolean = true) 
+  /**
+   * Pads, 7-bit-encodes and sends raw current-patch bytes (the wire half of
+   * uploadPatchToCurrentPatch, so the probe's restore can
+   * send the pedal's own probed bytes verbatim). No cache/screen
+   * side effects.
+   * @returns false if a length check refused the send.
+   */
+  private sendCurrentPatchData(data: Uint8Array, isMSOG: boolean): boolean
+  {
+    let paddedData = data;
+    if (this._patchLength != -1) {
+      if (data.length > this._patchLength) {
+        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
+        return false;
+      }
+      if (isMSOG && this._patchLength !== data.length) {
+        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
+        return false;
+      }
+      paddedData = new Uint8Array(this._patchLength);
+      paddedData.set(data);
+    }
+    let sevenBitData = eight2seven(paddedData);
+    this.sendCommand(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes);
+    return true;
+  }
+
+  public uploadPatchToCurrentPatch(patch: ZoomPatch, cacheCurrentPatch: boolean = true)
   {
     let data: Uint8Array | undefined;
     if (patch.PTCF !== null)
@@ -1100,21 +1127,8 @@ export class ZoomDevice implements IManagedMIDIDevice
       return;
     }
 
-    let paddedData = data;
-    if (this._patchLength != -1) {
-      if (data.length > paddedData.length) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
-        return;
-      }
-      if (patch.MSOG !== null && this._patchLength !== data.length) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
-        return;
-      }
-      paddedData = new Uint8Array(this._patchLength);
-      paddedData.set(data);
-    }
-    let sevenBitData = eight2seven(paddedData);
-    this.sendCommand(sevenBitData, ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.bytes);
+    if (!this.sendCurrentPatchData(data, patch.MSOG !== null))
+      return;
 
     if (cacheCurrentPatch) {
       this._currentPatchData = undefined;
@@ -2232,10 +2246,14 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     command =ZoomDevice.messageTypes.requestCurrentPatchV2.str;
     expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.str;
+    // The pedal's own current-patch bytes, kept for the restore after the
+    // program-change probe below
+    let probedCurrentPatchData: Uint8Array | undefined = undefined;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
     if (reply !== undefined) {
       this._currentPatch = undefined;
       this._currentPatchData = reply;
+      probedCurrentPatchData = seven2eight(reply, 9, reply.length - 2); // same conversion the currentPatch getter uses for V2 dumps (8-bit data at offset 9)
     }
 
     command =ZoomDevice.messageTypes.requestBankAndPatchInfoV1.str;
@@ -2283,7 +2301,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     expectedReply = ZoomDevice.messageTypes.patchDumpForMemoryLocationV2.str + " 00 00 00 00"; // bank 0, program 0
     reply = await this.probeCommand(command, "00 00 00 00", expectedReply, probeTimeoutMilliseconds);
     if (reply !== undefined) {
-      let offset = 13 + 1; 
+      let offset = 13 + 1;
       // the 8-bit data starts at offset 13, but reply is 7-bit data and we haven't bothered to convert to 8 bit
       // so the byte at data[13] is the high-bit-byte in the 7-bit data, and the ascii identifier starts at data[13+1] = data[14]
       if (partialArrayStringMatch(reply, "PTCF", offset)) {
@@ -2293,7 +2311,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         let eightBitData = seven2eight(reply, offset, reply.length-2);
 
         if (eightBitData != undefined) {
-          let patch = ZoomPatch.fromPatchData(eightBitData);  
+          let patch = ZoomPatch.fromPatchData(eightBitData);
           if (patch.nameLength !== null)
             this._ptcfNameLength = patch.nameLength;
         }
@@ -2354,7 +2372,15 @@ export class ZoomDevice implements IManagedMIDIDevice
       // The sleep is necessary (I think) to let the pedal catch up after the probing.
       // If the sleep is ommited, the pedal will sometims show a "Missing Effect Not Found" error message.
       await sleepForAWhile(300);
-      if (this.currentPatch !== undefined)
+      // Restore from the exact (roundtrip-verified) bytes probed off the pedal
+      // above, not from a rebuild of this.currentPatch. At probe time that
+      // object can carry parameter-zeroed state (unpopulated model synced
+      // back before the restore), and uploading it left MS-200D+ pedals
+      // with a zeroed temp patch and a recurring "Missing Effect Not Found"
+      // display on connect.
+      if (probedCurrentPatchData !== undefined)
+        this.sendCurrentPatchData(probedCurrentPatchData, false);
+      else if (this.currentPatch !== undefined)
         this.uploadPatchToCurrentPatch(this.currentPatch);
       else
         shouldLog(LogLevel.Warning) && console.warn(`Current patch is undefined after probing for bank and program`);
