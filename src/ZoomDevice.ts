@@ -2253,7 +2253,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     if (reply !== undefined) {
       this._currentPatch = undefined;
       this._currentPatchData = reply;
-      probedCurrentPatchData = seven2eight(reply, 9, reply.length - 2); // same conversion the currentPatch getter uses for V2 dumps (8-bit data at offset 9)
+      probedCurrentPatchData = ZoomDevice.sysexToPatchData(reply)[0]; // CRC-aware decode (2026-09-10): the plain offset-9 conversion kept the V2 dump's 5-byte CRC, making the oversize guard refuse every MS+ restore
     }
 
     command =ZoomDevice.messageTypes.requestBankAndPatchInfoV1.str;
