@@ -1556,6 +1556,19 @@ export class ZoomPatch
 
       let effectSettings = this.effectSettings[i];
 
+      // A real effect (non-zero ID) with no parameter values is always a bug in
+      // whoever built this patch object, never a real pedal patch: readPTCF()
+      // always fills 12 parameters per effect. The loops below would silently
+      // write every missing value as 0 (setBitsFromNumber() shifts undefined,
+      // which is 0 in JS), producing a patch with real IDs and real enabled
+      // flags but all knob values zeroed - the MS-200D+ symptom hunted from
+      // 2026-09-06 to 09-10. Zero-fill is kept (empty/THRU effects rely on it),
+      // but no longer silent.
+      if (effectSettings.id !== 0 && effectSettings.parameters.length === 0) {
+        shouldLog(LogLevel.Warning) && console.warn(`${this.name}: effect slot ${i} has ID ${effectSettings.id} but no parameter values. ` +
+          `Building the patch with all parameter values set to 0 for this effect. The patch object was built incorrectly - investigate.`);
+      }
+
       let bitpos = reversedBytes.length * 8 - 1;
       setBitsFromNumber(reversedBytes, bitpos, bitpos, effectSettings.enabled ? 1 : 0); bitpos -= 1;
       setBitsFromNumber(reversedBytes, bitpos - 28, bitpos, effectSettings.id); bitpos -= 29;
