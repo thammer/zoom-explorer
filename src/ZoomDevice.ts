@@ -7,6 +7,7 @@ import { crc32, eight2seven, getExceptionErrorString, getNumberOfEightBitBytes, 
 import type { IManagedMIDIDevice, MIDIDeviceOpenCloseListenerType } from "./IManagedMIDIDevice.js";
 import { MIDIDeviceDescription } from "./MIDIDeviceDescription.js";
 import { shouldLog, LogLevel, getLogLevel, setLogLevel } from "./Logger.js";
+import { CurrentPatchSendSite, ZoomDriverDiagnostics } from "./ZoomDriverDiagnostics.js";
 
 export type ZoomDeviceListenerType = (zoomDevice: ZoomDevice, data: Uint8Array, timeStamp: number) => void;
 export type MemorySlotChangedListenerType = (zoomDevice: ZoomDevice, memorySlot: number) => void;
@@ -1092,18 +1093,23 @@ export class ZoomDevice implements IManagedMIDIDevice
    * uploadPatchToCurrentPatch, so the probe's restore can
    * send the pedal's own probed bytes verbatim). No cache/screen
    * side effects.
+   * @param site which send path this is, for diagnostics reporting.
    * @returns false if a length check refused the send.
    */
-  private sendCurrentPatchData(data: Uint8Array, isMSOG: boolean): boolean
+  private sendCurrentPatchData(data: Uint8Array, isMSOG: boolean, site: CurrentPatchSendSite): boolean
   {
     let paddedData = data;
     if (this._patchLength != -1) {
       if (data.length > this._patchLength) {
         shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
+        ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "oversize",
+          suppliedLength: data.length, reportedLength: this._patchLength, deviceName: this.deviceName });
         return false;
       }
       if (isMSOG && this._patchLength !== data.length) {
         shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
+        ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "length_mismatch",
+          suppliedLength: data.length, reportedLength: this._patchLength, deviceName: this.deviceName });
         return false;
       }
       paddedData = new Uint8Array(this._patchLength);
@@ -1124,10 +1130,12 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     if (data === undefined || data.length < 11) {
       shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk() or ZoomPatch.buildMSDataBuffer()`);
+      ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: "upload_current_patch", reason: "invalid_patch",
+        suppliedLength: data === undefined ? -1 : data.length, reportedLength: this._patchLength, deviceName: this.deviceName });
       return;
     }
 
-    if (!this.sendCurrentPatchData(data, patch.MSOG !== null))
+    if (!this.sendCurrentPatchData(data, patch.MSOG !== null, "upload_current_patch"))
       return;
 
     if (cacheCurrentPatch) {
@@ -2379,7 +2387,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       // with a zeroed temp patch and a recurring "Missing Effect Not Found"
       // display on connect.
       if (probedCurrentPatchData !== undefined)
-        this.sendCurrentPatchData(probedCurrentPatchData, false);
+        this.sendCurrentPatchData(probedCurrentPatchData, false, "probe_restore");
       else if (this.currentPatch !== undefined)
         this.uploadPatchToCurrentPatch(this.currentPatch);
       else

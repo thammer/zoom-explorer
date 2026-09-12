@@ -1,5 +1,6 @@
 import { shouldLog, LogLevel } from "./Logger.js";
 import { compareBuffers, getNumberFromBits, partialArrayStringMatch, setBitsFromNumber } from "./tools.js";
+import { ZoomDriverDiagnostics } from "./ZoomDriverDiagnostics.js";
 
 /**
  * Settings for one effect slot in a Zoom patch.
@@ -1033,6 +1034,20 @@ export class ZoomPatch
           let effectSettings = new EffectSettings();
           effectSettings.enabled = (getNumberFromBits(this.edtbReversedBytes[i], bitpos, bitpos) === 1); bitpos -= 1;
           effectSettings.id = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 28, bitpos); bitpos -= 29;
+          // A short EDTB entry (a truncated chunk, or a narrower entry layout on some
+          // pedal or firmware) still yields an enabled flag and an ID from its first
+          // four bytes, but the parameter loops below stop as soon as the bits run
+          // out, so the effect ends up with fewer parameter values than it has knobs,
+          // or with none at all. Building a patch from that writes every missing
+          // value as 0 (see buildPTCFChunk()), so report it here, at the source,
+          // where a short entry can still be told from a patch object built wrong.
+          if (this.edtbReversedBytes[i].length < PTCF_EDTB_REVERSED_BYTES_SIZE && effectSettings.id !== 0) {
+            shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() EDTB entry for effect slot ${i} is ${this.edtbReversedBytes[i].length} bytes, expected ${PTCF_EDTB_REVERSED_BYTES_SIZE}. ` +
+              `Effect ID ${effectSettings.id} will be missing parameter values. numEffects: ${this.numEffects}, EDTB chunk length: ${chunkData.length}.`);
+            ZoomDriverDiagnostics.notify({ kind: "effect_parameters_missing", route: "parse",
+              patchName: this.ptcfShortName ?? "", slot: i, effectId: effectSettings.id,
+              edtbSliceLength: this.edtbReversedBytes[i].length, numEffects: this.numEffects, edtbChunkLength: chunkData.length });
+          }
           effectSettings.parameters = new Array<number>();
           for (let p=0; p<5 && bitpos - 12 >= 0; p++) {
             let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
@@ -1567,6 +1582,8 @@ export class ZoomPatch
       if (effectSettings.id !== 0 && effectSettings.parameters.length === 0) {
         shouldLog(LogLevel.Warning) && console.warn(`${this.name}: effect slot ${i} has ID ${effectSettings.id} but no parameter values. ` +
           `Building the patch with all parameter values set to 0 for this effect. The patch object was built incorrectly - investigate.`);
+        ZoomDriverDiagnostics.notify({ kind: "effect_parameters_missing", route: "build",
+          patchName: this.name, slot: i, effectId: effectSettings.id });
       }
 
       let bitpos = reversedBytes.length * 8 - 1;
