@@ -248,7 +248,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     this.removeAllEffectSlotChangedListeners();
     this.removeAllMemorySlotChangedListeners();
     this.removeAllPatchChangedListeners();
-    this.removeAllScreenChangedListeners
+    this.removeAllScreenChangedListeners();
     this.removeAllTempoChangedListeners();
 
     this.disconnectMessageHandler();
@@ -497,7 +497,7 @@ export class ZoomDevice implements IManagedMIDIDevice
 
   public pcModeDisable() 
   {
-    this.sendCommand(ZoomDevice.messageTypes.pcModeEnable.bytes);
+    this.sendCommand(ZoomDevice.messageTypes.pcModeDisable.bytes);
   }
 
   // public async getCurrentBankAndProgram() : Promise<[number, number]> 
@@ -1153,6 +1153,43 @@ export class ZoomDevice implements IManagedMIDIDevice
   }
 
   /**
+   * The bytes the probe should put back on the pedal after its program-change
+   * test: the pedal's own current patch, decoded from a dump it sent during this
+   * probe, preferring the V2 dump. Returns undefined when there is no such dump.
+   *
+   * Never builds anything from a ZoomPatch object. After probing disturbs the
+   * pedal, the only acceptable repair is exactly what was there before, or
+   * nothing; a rebuilt patch is neither, and once zeroed every knob on a pedal.
+   * Static and free of device state so a test can pin which bytes come out.
+   *
+   * Decodes through sysexToPatchData(), which strips the V2 dump's 5-byte CRC. A
+   * plain 7-to-8-bit decode keeps it, and the length check then refuses every
+   * MS+ restore.
+   * @param v1Reply the raw patchDumpForCurrentPatchV1 reply from this probe, if any
+   * @param v2Reply the raw patchDumpForCurrentPatchV2 reply from this probe, if any
+   */
+  public static probeRestorePayload(v1Reply: Uint8Array | undefined, v2Reply: Uint8Array | undefined): Uint8Array | undefined
+  {
+    if (v2Reply !== undefined) {
+      let data = ZoomDevice.sysexToPatchData(v2Reply)[0];
+      if (data !== undefined)
+        return data;
+    }
+    if (v1Reply !== undefined)
+      return ZoomDevice.sysexToPatchData(v1Reply)[0];
+    return undefined;
+  }
+
+  /**
+   * True if the patch bytes are in the original MS series format rather than PTCF.
+   * Decided from the bytes alone, the same way ZoomPatch.fromPatchData() does.
+   */
+  public static isMSOGPatchData(data: Uint8Array): boolean
+  {
+    return !partialArrayStringMatch(data, "PTCF");
+  }
+
+  /**
    * Pads, 7-bit-encodes and sends raw current-patch bytes (the wire half of
    * uploadPatchToCurrentPatch, so the probe's restore can
    * send the pedal's own probed bytes verbatim). No cache/screen
@@ -1223,7 +1260,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     if (patch.PTCF !== null) {
       let data = patch.buildPTCFChunk(this._ptcfNameLength);
       //let data = patch.ptcfChunk;
-      if (data === undefined || data.length < 11) {
+      if (data === undefined || data.length < ZoomDevice.MINIMUM_PATCH_DATA_LENGTH) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
         return false;
       }
@@ -1249,7 +1286,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     else if (patch.msogDataBuffer !== null) {
       let data = patch.buildMSDataBuffer();
       // let data = patch.msogDataBuffer;
-      if (data === undefined || data.length < 11) {
+      if (data === undefined || data.length < ZoomDevice.MINIMUM_PATCH_DATA_LENGTH) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildMSDataBuffer()`);
         return false;
       }
@@ -1412,7 +1449,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     }
     else if (this.isCommandSupported(ZoomDevice.messageTypes.requestCurrentPatchV2)) {
 
-      if (data === undefined || data.length < 11) {
+      if (data === undefined || data.length < ZoomDevice.MINIMUM_PATCH_DATA_LENGTH) {
         shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadPatchToMemorySlot() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk()`);
         return undefined;
       }
@@ -2279,6 +2316,11 @@ export class ZoomDevice implements IManagedMIDIDevice
   {
     this._disableMidiHandlers = true;
 
+    // A reopened device object still holds the previous session's patch. Nothing
+    // in this probe may treat that as the pedal's current state.
+    this._currentPatch = undefined;
+    this._currentPatchData = undefined;
+
     let probeTimeoutMilliseconds = 300;
 
     let command: string;
@@ -2294,6 +2336,11 @@ export class ZoomDevice implements IManagedMIDIDevice
     expectedReply = ZoomDevice.messageTypes.success.str;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
 
+    // The pedal's own current-patch dumps from this probe, kept so the
+    // program-change test below can put back exactly what was there.
+    let probedV1Reply: Uint8Array | undefined = undefined;
+    let probedV2Reply: Uint8Array | undefined = undefined;
+
     // This one fails sometimes on MS-50G, so we will try again further down
     command =ZoomDevice.messageTypes.requestCurrentPatchV1.str;
     expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV1.str;
@@ -2301,18 +2348,16 @@ export class ZoomDevice implements IManagedMIDIDevice
     if (reply !== undefined) {
       this._currentPatch = undefined;
       this._currentPatchData = reply;
+      probedV1Reply = reply;
     }
 
     command =ZoomDevice.messageTypes.requestCurrentPatchV2.str;
     expectedReply = ZoomDevice.messageTypes.patchDumpForCurrentPatchV2.str;
-    // The pedal's own current-patch bytes, kept for the restore after the
-    // program-change probe below
-    let probedCurrentPatchData: Uint8Array | undefined = undefined;
     reply = await this.probeCommand(command, "", expectedReply, probeTimeoutMilliseconds);
     if (reply !== undefined) {
       this._currentPatch = undefined;
       this._currentPatchData = reply;
-      probedCurrentPatchData = ZoomDevice.sysexToPatchData(reply)[0]; // CRC-aware decode (2026-09-10): the plain offset-9 conversion kept the V2 dump's 5-byte CRC, making the oversize guard refuse every MS+ restore
+      probedV2Reply = reply;
     }
 
     command =ZoomDevice.messageTypes.requestBankAndPatchInfoV1.str;
@@ -2382,9 +2427,20 @@ export class ZoomDevice implements IManagedMIDIDevice
     this._supportedCommands.set(command, program !== undefined ? SupportType.Supported : SupportType.Unknown);
     this._usesBankBeforeProgramChange = bank !== undefined;
 
-    // Send program change and see if we get a reply
+    // Send program change and see if we get a reply.
+    // The program change disturbs the pedal's current patch (see below), and can
+    // discard unsaved edits, so it is only sent when the exact bytes to put back
+    // are in hand and would pass the send checks. Otherwise the test is skipped:
+    // _bankAndProgramSentOnUpdate stays false, which means polling for program
+    // changes instead.
     bank = bank ?? 0;
-    if (program !== undefined) {
+    let restorePayload = ZoomDevice.probeRestorePayload(probedV1Reply, probedV2Reply);
+    let restoreIsMSOG = restorePayload !== undefined && ZoomDevice.isMSOGPatchData(restorePayload);
+    let canRestore = restorePayload !== undefined &&
+      ZoomDevice.checkCurrentPatchDataLength(restorePayload.length, this._patchLength, restoreIsMSOG, "probe_restore", this.deviceName);
+    if (program !== undefined && !canRestore)
+      shouldLog(LogLevel.Warning) && console.warn(`Skipping the program change test for ${this.deviceName}: no current-patch bytes that could be put back exactly afterwards`);
+    if (program !== undefined && canRestore && restorePayload !== undefined) {
       let newBank: number = 0;
       let newProgram: number = 0;
       this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
@@ -2431,18 +2487,10 @@ export class ZoomDevice implements IManagedMIDIDevice
       // The sleep is necessary (I think) to let the pedal catch up after the probing.
       // If the sleep is ommited, the pedal will sometims show a "Missing Effect Not Found" error message.
       await sleepForAWhile(300);
-      // Restore from the exact (roundtrip-verified) bytes probed off the pedal
-      // above, not from a rebuild of this.currentPatch. At probe time that
-      // object can carry parameter-zeroed state (unpopulated model synced
-      // back before the restore), and uploading it left MS-200D+ pedals
-      // with a zeroed temp patch and a recurring "Missing Effect Not Found"
-      // display on connect.
-      if (probedCurrentPatchData !== undefined)
-        this.sendCurrentPatchData(probedCurrentPatchData, false, "probe_restore");
-      else if (this.currentPatch !== undefined)
-        this.uploadPatchToCurrentPatch(this.currentPatch);
-      else
-        shouldLog(LogLevel.Warning) && console.warn(`Current patch is undefined after probing for bank and program`);
+      // Put back exactly the bytes the pedal sent during this probe, never a
+      // rebuild of this.currentPatch: that object can hold parameter-zeroed or
+      // stale state, and uploading it left pedals with every knob at zero.
+      this.sendCurrentPatchData(restorePayload, restoreIsMSOG, "probe_restore");
 
     }
 
