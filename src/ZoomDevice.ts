@@ -1089,6 +1089,51 @@ export class ZoomDevice implements IManagedMIDIDevice
   }
 
   /**
+   * Decides whether current-patch data of this length may be sent to the pedal,
+   * logging and reporting the refusal if it may not.
+   *
+   * @param patchLength the patch length the pedal reported, -1 if it never did.
+   * @returns true if the data may be sent.
+   */
+  public static checkCurrentPatchDataLength(dataLength: number, patchLength: number, isMSOG: boolean,
+    site: CurrentPatchSendSite, deviceName: string): boolean
+  {
+    if (patchLength === -1)
+      return true; // the pedal never reported a patch length, so there is nothing to check against
+
+    if (dataLength > patchLength) {
+      shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${dataLength}) is greater than the patch length reported by the pedal (${patchLength}).`);
+      ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "oversize",
+        suppliedLength: dataLength, reportedLength: patchLength, deviceName: deviceName });
+      return false;
+    }
+    if (isMSOG && patchLength !== dataLength) {
+      shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${dataLength}) doesn't match the expected patch length reported by the pedal (${patchLength}).`);
+      ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "length_mismatch",
+        suppliedLength: dataLength, reportedLength: patchLength, deviceName: deviceName });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Decides whether a freshly built patch buffer is usable as current-patch data,
+   * logging and reporting the refusal if it is not.
+   * @returns true if the data may be sent.
+   */
+  public static checkBuiltPatchData(data: Uint8Array | undefined, patchLength: number,
+    site: CurrentPatchSendSite, deviceName: string): data is Uint8Array
+  {
+    if (data === undefined || data.length < 11) {
+      shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk() or ZoomPatch.buildMSDataBuffer()`);
+      ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "invalid_patch",
+        suppliedLength: data === undefined ? -1 : data.length, reportedLength: patchLength, deviceName: deviceName });
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Pads, 7-bit-encodes and sends raw current-patch bytes (the wire half of
    * uploadPatchToCurrentPatch, so the probe's restore can
    * send the pedal's own probed bytes verbatim). No cache/screen
@@ -1098,20 +1143,11 @@ export class ZoomDevice implements IManagedMIDIDevice
    */
   private sendCurrentPatchData(data: Uint8Array, isMSOG: boolean, site: CurrentPatchSendSite): boolean
   {
+    if (!ZoomDevice.checkCurrentPatchDataLength(data.length, this._patchLength, isMSOG, site, this.deviceName))
+      return false;
+
     let paddedData = data;
     if (this._patchLength != -1) {
-      if (data.length > this._patchLength) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) is greater than the patch length reported by the pedal (${this._patchLength}).`);
-        ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "oversize",
-          suppliedLength: data.length, reportedLength: this._patchLength, deviceName: this.deviceName });
-        return false;
-      }
-      if (isMSOG && this._patchLength !== data.length) {
-        shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${data.length}) doesn't match the expected patch length reported by the pedal (${this._patchLength}).`);
-        ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "length_mismatch",
-          suppliedLength: data.length, reportedLength: this._patchLength, deviceName: this.deviceName });
-        return false;
-      }
       paddedData = new Uint8Array(this._patchLength);
       paddedData.set(data);
     }
@@ -1128,12 +1164,8 @@ export class ZoomDevice implements IManagedMIDIDevice
     else
       data = patch.buildMSDataBuffer();
 
-    if (data === undefined || data.length < 11) {
-      shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk() or ZoomPatch.buildMSDataBuffer()`);
-      ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: "upload_current_patch", reason: "invalid_patch",
-        suppliedLength: data === undefined ? -1 : data.length, reportedLength: this._patchLength, deviceName: this.deviceName });
+    if (!ZoomDevice.checkBuiltPatchData(data, this._patchLength, "upload_current_patch", this.deviceName))
       return;
-    }
 
     if (!this.sendCurrentPatchData(data, patch.MSOG !== null, "upload_current_patch"))
       return;
