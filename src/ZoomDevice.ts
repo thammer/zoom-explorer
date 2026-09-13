@@ -1089,6 +1089,12 @@ export class ZoomDevice implements IManagedMIDIDevice
   }
 
   /**
+   * Shortest buffer that could be a patch. Anything shorter is a broken capture
+   * or a failed build, never something worth sending to a pedal.
+   */
+  public static readonly MINIMUM_PATCH_DATA_LENGTH = 11;
+
+  /**
    * Decides whether current-patch data of this length may be sent to the pedal,
    * logging and reporting the refusal if it may not.
    *
@@ -1098,8 +1104,21 @@ export class ZoomDevice implements IManagedMIDIDevice
   public static checkCurrentPatchDataLength(dataLength: number, patchLength: number, isMSOG: boolean,
     site: CurrentPatchSendSite, deviceName: string): boolean
   {
+    // Checked before the patch length, because a buffer this short cannot be a
+    // patch whether or not the pedal ever reported a length. The probe restore is
+    // the only caller that can reach this: it sends bytes captured off the pedal,
+    // and a capture this short is broken, so sending it would push malformed data
+    // into the pedal's edit buffer. The upload path rejects the same case earlier,
+    // in checkBuiltPatchData().
+    if (dataLength < ZoomDevice.MINIMUM_PATCH_DATA_LENGTH) {
+      shouldLog(LogLevel.Error) && console.error(`The supplied patch data (${dataLength} bytes) is too short to be a patch (minimum ${ZoomDevice.MINIMUM_PATCH_DATA_LENGTH} bytes). Not sending it to the pedal.`);
+      ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "invalid_patch",
+        suppliedLength: dataLength, reportedLength: patchLength, deviceName: deviceName });
+      return false;
+    }
+
     if (patchLength === -1)
-      return true; // the pedal never reported a patch length, so there is nothing to check against
+      return true; // the pedal never reported a patch length, so there is nothing more to check against
 
     if (dataLength > patchLength) {
       shouldLog(LogLevel.Error) && console.error(`The length of the supplied patch data (${dataLength}) is greater than the patch length reported by the pedal (${patchLength}).`);
@@ -1124,7 +1143,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   public static checkBuiltPatchData(data: Uint8Array | undefined, patchLength: number,
     site: CurrentPatchSendSite, deviceName: string): data is Uint8Array
   {
-    if (data === undefined || data.length < 11) {
+    if (data === undefined || data.length < ZoomDevice.MINIMUM_PATCH_DATA_LENGTH) {
       shouldLog(LogLevel.Error) && console.error(`ZoomDevice.uploadCurrentPatch() received invalid patch parameter - possibly because of a failed ZoomPatch.buildPTCFChunk() or ZoomPatch.buildMSDataBuffer()`);
       ZoomDriverDiagnostics.notify({ kind: "current_patch_send_refused", site: site, reason: "invalid_patch",
         suppliedLength: data === undefined ? -1 : data.length, reportedLength: patchLength, deviceName: deviceName });
