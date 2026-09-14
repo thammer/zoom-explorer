@@ -51,6 +51,22 @@ export type DriverDiagnostic =
     edtbSliceLength?: number;    // parse only: bytes available for this effect
     numEffects?: number;         // parse only
     edtbChunkLength?: number;    // parse only: length of the whole EDTB chunk
+  } |
+  {
+    /**
+     * The connect probe did not run its program-change test, because it could
+     * not have put the pedal's current patch back exactly afterwards. Nothing was
+     * written to the pedal. Only reported for pedals that answered the current
+     * bank and program request, since for the others there is no test to skip.
+     * The pedal then falls back to being polled for program changes.
+     */
+    kind: "probe_program_change_skipped";
+    cause: "no_capture" |        // neither current-patch request gave usable bytes
+           "capture_refused";    // bytes were in hand, but checkCurrentPatchDataLength() refused them
+    v1Answered: boolean;         // the V1 current-patch request replied during this probe
+    v2Answered: boolean;         // the V2 current-patch request replied during this probe
+    reportedLength: number;      // the pedal's patch length, -1 if it never reported one
+    deviceName: string;
   };
 
 export class ZoomDriverDiagnostics

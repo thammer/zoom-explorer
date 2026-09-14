@@ -484,6 +484,14 @@ export class ZoomDevice implements IManagedMIDIDevice
     this.sendCommand(ZoomDevice.messageTypes.parameterEditEnable.bytes);
   }
 
+  /**
+   * Turns parameter edit mode off.
+   *
+   * On the original MS series (MS-50G, MS-60B, MS-70CDR) this also reverts the
+   * pedal's edit buffer, discarding any unsaved edits the user has made on the
+   * pedal (measured on an MS-70CDR fw 2.10). Do not call it on those pedals unless
+   * discarding unsaved edits is intended.
+   */
   public parameterEditDisable() 
   {
     this.sendCommand(ZoomDevice.messageTypes.parameterEditDisable.bytes);
@@ -506,6 +514,20 @@ export class ZoomDevice implements IManagedMIDIDevice
   //   return [this._currentBank, this._currentProgram];
   // }
 
+  /**
+   * Selects a patch on the pedal by sending bank select and a program change.
+   * The program change is sent even if this is already the current patch.
+   *
+   * On the original MS series (MS-50G, MS-60B, MS-70CDR) a program change sent
+   * over MIDI while the pedal's edit buffer holds unsaved edits stores those edits
+   * into the current patch's memory slot, even with auto-save off, and they survive
+   * a power cycle. It does not matter whether the edits were made on the pedal or
+   * over MIDI, or whether the program change selects another patch or re-selects
+   * the current one. Changing patches with the pedal's own switches stores nothing.
+   * Measured on an MS-70CDR fw 2.10 with parameter edit mode enabled, consistent
+   * with an MS-50G fw 3.10. MS Plus pedals reload the stored patch instead and
+   * store nothing.
+   */
   public setCurrentBankAndProgram(bank: number, program: number, forceUpdate: boolean = false)
   {
     this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
@@ -518,6 +540,20 @@ export class ZoomDevice implements IManagedMIDIDevice
       this.emitMemorySlotChangedEvent();
   }
 
+  /**
+   * Selects a patch on the pedal by memory slot. Sends a program change only when
+   * the slot differs from the current one, or when forceUpdate is true.
+   *
+   * On the original MS series (MS-50G, MS-60B, MS-70CDR) a program change sent
+   * over MIDI while the pedal's edit buffer holds unsaved edits stores those edits
+   * into the current patch's memory slot, even with auto-save off, and they survive
+   * a power cycle. It does not matter whether the edits were made on the pedal or
+   * over MIDI, or whether the program change selects another patch or re-selects
+   * the current one. Changing patches with the pedal's own switches stores nothing.
+   * Measured on an MS-70CDR fw 2.10 with parameter edit mode enabled, consistent
+   * with an MS-50G fw 3.10. MS Plus pedals reload the stored patch instead and
+   * store nothing.
+   */
   public setCurrentMemorySlot(memorySlot: number, forceUpdate: boolean = false)
   {
     if (this._patchesPerBank !== -1) {
@@ -1093,6 +1129,54 @@ export class ZoomDevice implements IManagedMIDIDevice
    * or a failed build, never something worth sending to a pedal.
    */
   public static readonly MINIMUM_PATCH_DATA_LENGTH = 11;
+
+  /**
+   * How long the probe waits after its program-change test before putting the
+   * current patch back. The program change makes the pedal load the stored patch,
+   * and a current-patch write that arrives while it is still loading can be taken
+   * with every effect slot marked unknown and all parameters dropped. Measured on
+   * an MS-200D+ (fw 1.2): the load window depends on the patch, with the slowest
+   * patch still corrupting at 600 ms and safe from 650 ms. One fixed value for all
+   * pedals, with margin.
+   */
+  public static readonly PROBE_RESTORE_WAIT_MILLISECONDS = 1000;
+
+  /** Family codes of the original MS series pedals: MS-50G, MS-60B and MS-70CDR. */
+  public static readonly MSOG_DEVICE_IDS: ReadonlyArray<number> = [0x58, 0x5F, 0x61];
+
+  /**
+   * Whether the connect probe may run its program-change test on this pedal.
+   *
+   * Not on the original MS series. On those pedals the test's program change,
+   * which re-selects the current patch, stores any unsaved edits into the patch's
+   * memory slot, even with auto-save off, whether the edits were made on the pedal
+   * or over MIDI (measured on an MS-70CDR fw 2.10, consistent with an MS-50G
+   * fw 3.10; the stored value survived a power cycle). The test would therefore
+   * save a user's unsaved edits permanently; see setCurrentBankAndProgram().
+   * Neither pedal echoed the program change either, so the test could only ever
+   * conclude that they do not send program changes, which is assumed instead.
+   *
+   * Static and free of device state so a test can pin which pedals are excluded.
+   */
+  public static programChangeTestAllowed(zoomDeviceID: number): boolean
+  {
+    return !ZoomDevice.MSOG_DEVICE_IDS.includes(zoomDeviceID);
+  }
+
+  /**
+   * Whether the probe may turn parameter edit mode off again when it is done.
+   *
+   * Not on the original MS series: on those pedals parameterEditDisable() reverts
+   * the edit buffer, which discards the user's unsaved edits (measured on an
+   * MS-70CDR fw 2.10). Edit mode is left enabled instead, which is also what a
+   * host turns on right after opening the device.
+   *
+   * Static and free of device state so a test can pin which pedals are excluded.
+   */
+  public static probeMayDisableEditMode(zoomDeviceID: number): boolean
+  {
+    return !ZoomDevice.MSOG_DEVICE_IDS.includes(zoomDeviceID);
+  }
 
   /**
    * Decides whether current-patch data of this length may be sent to the pedal,
@@ -2329,7 +2413,9 @@ export class ZoomDevice implements IManagedMIDIDevice
 
     shouldLog(LogLevel.Info) && console.log(`Probing started for device ${this.deviceName}`);
 
-    // Some of the probes will fail if parameter edit is not enabled
+    // Some of the probes will fail if parameter edit is not enabled.
+    // On the original MS series it is deliberately left enabled when probing ends,
+    // see probeMayDisableEditMode().
     this.parameterEditEnable();
 
     command =ZoomDevice.messageTypes.sayHi.str;
@@ -2433,14 +2519,25 @@ export class ZoomDevice implements IManagedMIDIDevice
     // are in hand and would pass the send checks. Otherwise the test is skipped:
     // _bankAndProgramSentOnUpdate stays false, which means polling for program
     // changes instead.
+    // Some models must never get the test at all; see programChangeTestAllowed().
     bank = bank ?? 0;
-    let restorePayload = ZoomDevice.probeRestorePayload(probedV1Reply, probedV2Reply);
+    let programChangeTestAllowed = ZoomDevice.programChangeTestAllowed(this._zoomDeviceID);
+    if (program !== undefined && !programChangeTestAllowed) {
+      shouldLog(LogLevel.Info) && console.log(`Skipping the program change test for ${this.deviceName}: this model stores its edit buffer when the current patch is re-selected, and is assumed not to send program changes`);
+      this._bankAndProgramSentOnUpdate = false;
+    }
+    let restorePayload = programChangeTestAllowed ? ZoomDevice.probeRestorePayload(probedV1Reply, probedV2Reply) : undefined;
     let restoreIsMSOG = restorePayload !== undefined && ZoomDevice.isMSOGPatchData(restorePayload);
     let canRestore = restorePayload !== undefined &&
       ZoomDevice.checkCurrentPatchDataLength(restorePayload.length, this._patchLength, restoreIsMSOG, "probe_restore", this.deviceName);
-    if (program !== undefined && !canRestore)
+    if (program !== undefined && programChangeTestAllowed && !canRestore) {
       shouldLog(LogLevel.Warning) && console.warn(`Skipping the program change test for ${this.deviceName}: no current-patch bytes that could be put back exactly afterwards`);
-    if (program !== undefined && canRestore && restorePayload !== undefined) {
+      ZoomDriverDiagnostics.notify({ kind: "probe_program_change_skipped",
+        cause: restorePayload === undefined ? "no_capture" : "capture_refused",
+        v1Answered: probedV1Reply !== undefined, v2Answered: probedV2Reply !== undefined,
+        reportedLength: this._patchLength, deviceName: this.deviceName });
+    }
+    if (program !== undefined && programChangeTestAllowed && canRestore && restorePayload !== undefined) {
       let newBank: number = 0;
       let newProgram: number = 0;
       this._midi.sendCC(this._midiDevice.outputID, 0, 0x00, 0x00); // bank MSB = 0
@@ -2484,9 +2581,9 @@ export class ZoomDevice implements IManagedMIDIDevice
 
       // Restore currentPatch, since that was messed up when we sent the program change above.
       // See comment above, after the program change message.
-      // The sleep is necessary (I think) to let the pedal catch up after the probing.
-      // If the sleep is ommited, the pedal will sometims show a "Missing Effect Not Found" error message.
-      await sleepForAWhile(300);
+      // Wait for the pedal to finish loading the stored patch first; see
+      // PROBE_RESTORE_WAIT_MILLISECONDS for why this cannot be shorter.
+      await sleepForAWhile(ZoomDevice.PROBE_RESTORE_WAIT_MILLISECONDS);
       // Put back exactly the bytes the pedal sent during this probe, never a
       // rebuild of this.currentPatch: that object can hold parameter-zeroed or
       // stale state, and uploading it left pedals with every knob at zero.
@@ -2522,7 +2619,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     let parameterValueV2Supported = this._supportedCommands.get(ZoomDevice.messageTypes.requestCurrentPatchV2.str) == SupportType.Supported ? SupportType.Supported : SupportType.Unknown;
     this._supportedCommands.set(ZoomDevice.messageTypes.parameterValueV2.str, parameterValueV2Supported);
 
-    this._isMSOG = [0x58, 0x5F, 0x61].includes(this._zoomDeviceID);
+    this._isMSOG = ZoomDevice.MSOG_DEVICE_IDS.includes(this._zoomDeviceID);
     this._numParametersPerPage = this._isMSOG ? 3 : 4;
     this._maxNumEffects = 6; // FIXME: Support MS-60B and other pedals with different number of max effects
 
@@ -2544,7 +2641,13 @@ export class ZoomDevice implements IManagedMIDIDevice
       
     }
 
-    this.parameterEditDisable();
+    // Edit mode was enabled at the start of probing. On the original MS series it
+    // stays enabled: turning it off would revert the edit buffer and discard the
+    // user's unsaved edits (see probeMayDisableEditMode()).
+    if (ZoomDevice.probeMayDisableEditMode(this._zoomDeviceID))
+      this.parameterEditDisable();
+    else
+      shouldLog(LogLevel.Info) && console.log(`Leaving parameter edit mode enabled for ${this.deviceName}: disabling it reverts this model's edit buffer`);
 
     shouldLog(LogLevel.Info) && console.log(`Probing ended for device ${this.deviceName}`);
 
