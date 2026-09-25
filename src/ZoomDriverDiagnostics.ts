@@ -54,6 +54,22 @@ export type DriverDiagnostic =
   } |
   {
     /**
+     * A parameter value was wider than the field the pedal stores it in, so the
+     * value written to the patch is not the value that was asked for. The pedal
+     * truncates the same way, so the bytes match what the pedal would hold, but
+     * whoever supplied the value asked for something the format cannot carry.
+     * See ZoomPatch.buildPTCFChunk() and PTCF_EDTB_PARAM_WIDTHS.
+     */
+    kind: "effect_parameter_too_wide";
+    patchName: string;
+    slot: number;
+    position: number;            // one-based parameter position within the EDTB entry, 1 to 19
+    value: number;               // the value that was supplied
+    truncatedValue: number;      // what was written instead
+    width: number;               // stored width of that position, in bits
+  } |
+  {
+    /**
      * The connect probe did not run its program-change test, because it could
      * not have put the pedal's current patch back exactly afterwards. Nothing was
      * written to the pedal. Only reported for pedals that answered the current

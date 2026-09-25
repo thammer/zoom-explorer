@@ -82,6 +82,13 @@ const PTCF_EFFECT_GROUP_SHIFT = 24;
 
 export const PTCF_EDTB_REVERSED_BYTES_SIZE = 24; // FIXME: don't export this, see ZoomPatchConverter.
 
+// Widths in bits for each of the 19 parameter positions in an EDTB effect entry.
+// After the last position, there are 3 bits left of the 24 bits in the entry.
+// These three bits are always zero. 
+// Parameters past position 19 are not stored in the patch.
+export const PTCF_EDTB_PARAM_WIDTHS: readonly number[] =
+  [12, 12, 12, 12, 12, 8, 8, 8, 12, 8, 8, 8, 12, 8, 8, 8, 1, 1, 1];
+
 const MSOG_REVERSED_BYTES_SIZE = 18;
 
 const MSOG_NUM_PARAMS_PER_EFFECT = 9;
@@ -1048,27 +1055,25 @@ export class ZoomPatch
               patchName: this.ptcfShortName ?? "", slot: i, effectId: effectSettings.id,
               edtbSliceLength: this.edtbReversedBytes[i].length, numEffects: this.numEffects, edtbChunkLength: chunkData.length });
           }
+          // Every position the pedal stores, at the width it stores it at (see
+          // PTCF_EDTB_PARAM_WIDTHS). A short entry runs out of bits partway and
+          // stops here, which is what the warning above reports.
           effectSettings.parameters = new Array<number>();
-          for (let p=0; p<5 && bitpos - 12 >= 0; p++) {
-            let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
-            effectSettings.parameters.push(parameter);
+          let positionsRead = 0;
+          for (const width of PTCF_EDTB_PARAM_WIDTHS) {
+            if (bitpos - width < 0)
+              break;
+            effectSettings.parameters.push(getNumberFromBits(this.edtbReversedBytes[i], bitpos - width + 1, bitpos)); bitpos -= width;
+            positionsRead++;
           }
-          for (let p=5; p<8 && bitpos - 8 >= 0; p++) {
-            let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 7, bitpos); bitpos -= 8;
-            effectSettings.parameters.push(parameter);
-          }
-          for (let p=8; p<12 && bitpos - 12 >= 0; p++) {
-            let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 11, bitpos); bitpos -= 12;
-            effectSettings.parameters.push(parameter);
-          }
-          
+
           this.edtbEffectSettings.push(effectSettings);
 
-          for (let p=12; p<15 && bitpos -8 >= 0; p++) {
-            let parameter = getNumberFromBits(this.edtbReversedBytes[i], bitpos - 7, bitpos); bitpos -= 7;
-            if (parameter !== 0) {
-              shouldLog(LogLevel.Warning) && console.warn(`Byte at edtbReversedBytes[${i}] bitpos ${bitpos} !== 0`);
-            }
+          // The bits left after the last position are zero in every
+          // pedal-produced patch seen, and buildPTCFChunk() writes them as zero.
+          if (positionsRead === PTCF_EDTB_PARAM_WIDTHS.length && bitpos >= 0 && getNumberFromBits(this.edtbReversedBytes[i], 0, bitpos) !== 0) {
+            shouldLog(LogLevel.Warning) && console.warn(`${this.ptcfShortName}: ZoomPatch.readPTCF() EDTB entry for effect slot ${i} has a non-zero tail in its last ${bitpos + 1} bits. ` +
+              `Effect ID ${effectSettings.id}. Those bits are not part of any known parameter and will be rebuilt as zero.`);
           }
         }
       }
@@ -1573,9 +1578,9 @@ export class ZoomPatch
 
       // A real effect (non-zero ID) with no parameter values is always a bug in
       // whoever built this patch object, never a real pedal patch: readPTCF()
-      // always fills 12 parameters per effect. The loops below would silently
-      // write every missing value as 0 (setBitsFromNumber() shifts undefined,
-      // which is 0 in JS), producing a patch with real IDs and real enabled
+      // always fills every stored parameter position per effect. The loop below
+      // would silently write every missing value as 0 (setBitsFromNumber() shifts
+      // undefined, which is 0 in JS), producing a patch with real IDs and enabled
       // flags but all knob values zeroed - the MS-200D+ symptom hunted from
       // 2026-09-06 to 09-10. Zero-fill is kept (empty/THRU effects rely on it),
       // but no longer silent.
@@ -1589,18 +1594,22 @@ export class ZoomPatch
       let bitpos = reversedBytes.length * 8 - 1;
       setBitsFromNumber(reversedBytes, bitpos, bitpos, effectSettings.enabled ? 1 : 0); bitpos -= 1;
       setBitsFromNumber(reversedBytes, bitpos - 28, bitpos, effectSettings.id); bitpos -= 29;
-      let parameterIndex = 0;
-      for (let p=0; p<5 && bitpos - 12 >= 0; p++) {
-        let parameter = effectSettings.parameters[parameterIndex++];
-        setBitsFromNumber(reversedBytes, bitpos - 11, bitpos, parameter); bitpos -= 12;
-      }
-      for (let p=5; p<8 && bitpos - 8 >= 0; p++) {
-        let parameter = effectSettings.parameters[parameterIndex++];
-        setBitsFromNumber(reversedBytes, bitpos - 7, bitpos, parameter); bitpos -= 8;
-      }
-      for (let p=8; p<12 && bitpos - 12 >= 0; p++) {
-        let parameter = effectSettings.parameters[parameterIndex++];
-        setBitsFromNumber(reversedBytes, bitpos - 11, bitpos, parameter); bitpos -= 12;
+      // Every position the pedal stores, at the width it stores it at (see
+      // PTCF_EDTB_PARAM_WIDTHS). Missing values are written as 0, reported above.
+      for (let p = 0; p < PTCF_EDTB_PARAM_WIDTHS.length && bitpos - PTCF_EDTB_PARAM_WIDTHS[p] >= 0; p++) {
+        let width = PTCF_EDTB_PARAM_WIDTHS[p];
+        let parameter = effectSettings.parameters[p] ?? 0;
+        // A value too wide for its position cannot be stored as it is. The pedal
+        // truncates to the low bits, so we write what the pedal would hold, and
+        // log a warning,
+        let truncatedValue = parameter & ((1 << width) - 1);
+        if (truncatedValue !== parameter) {
+          shouldLog(LogLevel.Warning) && console.warn(`${this.name}: effect slot ${i} parameter ${p + 1} is ${parameter}, which does not fit the ${width} bits the pedal stores it in. ` +
+            `Writing ${truncatedValue} instead, as the pedal would.`);
+          ZoomDriverDiagnostics.notify({ kind: "effect_parameter_too_wide",
+            patchName: this.name, slot: i, position: p + 1, value: parameter, truncatedValue: truncatedValue, width: width });
+        }
+        setBitsFromNumber(reversedBytes, bitpos - width + 1, bitpos, truncatedValue); bitpos -= width;
       }
 
       let rightOrderBytes = reversedBytes.reverse();
