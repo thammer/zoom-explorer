@@ -1096,8 +1096,27 @@ export class ZoomDevice implements IManagedMIDIDevice
       command.set(ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV2.bytes);
       command.set(bankProgram, ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV2.bytes.length);
        
-      reply = await this.sendCommandAndGetReply(command, 
-        received => this.zoomCommandMatch(received, ZoomDevice.messageTypes.patchDumpForMemoryLocationV2.bytes));
+      // A patch dump is only an answer to this request if it is for the slot that
+      // was asked for. The pedal echoes bank and program in bytes 7-10, and the
+      // same message type arrives unsolicited when the pedal saves a patch, and
+      // once per reader when a second reader shares the port. Taking any dump
+      // would file another slot's patch under this one. A dump for a different
+      // slot is reported and skipped, and the wait continues.
+      reply = await this.sendCommandAndGetReply(command,
+        received => {
+          if (!this.zoomCommandMatch(received, ZoomDevice.messageTypes.patchDumpForMemoryLocationV2.bytes))
+            return false;
+          // Compare the four echoed header bytes with the ones that were sent, rather
+          // than a slot number derived from them: that holds even for a pedal that
+          // never reported how many patches a bank holds.
+          if (received.length > 10 && bankProgram.every((byte, i) => received[7 + i] === byte))
+            return true;
+          let receivedSlot = this.getMemorySlotFromPatchDumpV2(received);
+          shouldLog(LogLevel.Warning) && console.warn(`Requested patch dump for memory slot ${memorySlot} but received a patch dump for memory slot ${receivedSlot}. Ignoring it and waiting for the requested slot.`);
+          ZoomDriverDiagnostics.notify({ kind: "patch_dump_slot_mismatch", messageVersion: "v2",
+            requestedSlot: memorySlot, receivedSlot: receivedSlot, deviceName: this.deviceName });
+          return false;
+        });
       if (reply !== undefined) {
         let offset = 13;
         eightBitData = seven2eight(reply, offset, reply.length-2);
@@ -1109,8 +1128,22 @@ export class ZoomDevice implements IManagedMIDIDevice
       command.set(ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV1.bytes);
       command[ZoomDevice.messageTypes.requestPatchDumpForMemoryLocationV1.bytes.length] = memorySlot;
        
-      reply = await this.sendCommandAndGetReply(command, 
-        received => this.zoomCommandMatch(received, ZoomDevice.messageTypes.patchDumpForMemoryLocationV1.bytes));
+      // As in the V2 branch above: the original MS series echoes the patch number
+      // in byte 7 of its dump (measured on an MS-50G and an MS-70CDR: slot 48
+      // replies with "08 00 00 30"), so a dump for another slot is not an answer
+      // to this request.
+      reply = await this.sendCommandAndGetReply(command,
+        received => {
+          if (!this.zoomCommandMatch(received, ZoomDevice.messageTypes.patchDumpForMemoryLocationV1.bytes))
+            return false;
+          let receivedSlot = received.length < 8 ? -1 : received[7];
+          if (receivedSlot === memorySlot)
+            return true;
+          shouldLog(LogLevel.Warning) && console.warn(`Requested patch dump for memory slot ${memorySlot} but received a patch dump for memory slot ${receivedSlot}. Ignoring it and waiting for the requested slot.`);
+          ZoomDriverDiagnostics.notify({ kind: "patch_dump_slot_mismatch", messageVersion: "v1",
+            requestedSlot: memorySlot, receivedSlot: receivedSlot, deviceName: this.deviceName });
+          return false;
+        });
       if (reply !== undefined) {
         let offset = 10;
         eightBitData = seven2eight(reply, offset, reply.length - 2 - this._patchDumpForMemoryLocationV1CRCBytes);
@@ -1756,6 +1789,24 @@ export class ZoomDevice implements IManagedMIDIDevice
     return programLength;
   }
 
+  /**
+   * Get the memory slot a V2 patch dump (45 00 00) is for. The pedal echoes the bank
+   * and program of the request in bytes 7-10, two 7-bit bytes each, and sends the
+   * same header with its own "patch saved" dump. Measured on an MS-70CDR+
+   * (fw 1.20): bank 5, program 9 replies with "45 00 00 05 00 09 00".
+   * @returns the slot, or -1 if the message is too short to carry a header
+   */
+  private getMemorySlotFromPatchDumpV2(data: Uint8Array): number
+  {
+    if (data.length < 11)
+      return -1;
+    let bank = data[7] + (data[8] << 7);
+    let program = data[9] + (data[10] << 7);
+    if (this._patchesPerBank !== -1)
+      program += bank * this._patchesPerBank;
+    return program;
+  }
+
   private parsePatchFromMemorySlot(data: Uint8Array): [patch: ZoomPatch | undefined, memorySlot: number | undefined]
   {
     let offset: number = 0;
@@ -1770,11 +1821,7 @@ export class ZoomDevice implements IManagedMIDIDevice
     else {
       offset = 13;
       crcBytes = 0;
-      let bank = data[7] + ((data[8] & 0b0111111) >> 7); 
-      let program = data[9] + ((data[10] & 0b0111111) >> 7); 
-      if (this._patchesPerBank !== -1)
-        program += bank * this._patchesPerBank;
-      memorySlot = program;
+      memorySlot = this.getMemorySlotFromPatchDumpV2(data);
     }
 
     let eightBitData = seven2eight(data, offset, data.length - 2 - crcBytes); // skip the last byte (0x7F)in the sysex message, and crc bytes if v1 message
@@ -2292,11 +2339,11 @@ export class ZoomDevice implements IManagedMIDIDevice
     else if (this.isMessageType(data, ZoomDevice.messageTypes.patchDumpForMemoryLocationV2)) {
       if (log) shouldLog(LogLevel.Info) && console.log(`${performance.now().toFixed(1)} Received patch dump for bank number ${data[7] + (data[8]<<7)} ` +
         `program number ${data[9] + (data[10]<<7)}, raw: ${bytesToHexString(data, " ")}`);
-      let bank = data[7] + ((data[8] & 0b0111111) >> 7); 
-      let program = data[9] + ((data[10] & 0b0111111) >> 7); 
-      if (this._patchesPerBank !== -1)
-        program += bank * this._patchesPerBank;
-      let memorySlot = program;
+      let memorySlot = this.getMemorySlotFromPatchDumpV2(data);
+      if (memorySlot < 0) {
+        shouldLog(LogLevel.Warning) && console.warn(`Received a patch dump too short to say which memory slot it is for (${data.length} bytes). Ignoring it.`);
+        return;
+      }
 
       this._rawPatchList[memorySlot] = data;
       this.emitPatchChangedEvent(memorySlot);

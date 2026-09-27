@@ -70,6 +70,21 @@ export type DriverDiagnostic =
   } |
   {
     /**
+     * While a patch was being downloaded from one memory slot, the pedal sent a
+     * patch dump for a different slot, and it was ignored. Both a second reader
+     * on the same MIDI port (every reader sees every reply) and the pedal's own
+     * "patch saved" dump, which uses the same message type, can cause this.
+     * The download keeps waiting for the slot it asked for.
+     * See ZoomDevice.downloadPatchFromMemorySlot().
+     */
+    kind: "patch_dump_slot_mismatch";
+    messageVersion: "v1" | "v2";
+    requestedSlot: number;
+    receivedSlot: number;         // -1 when the reply is too short to tell
+    deviceName: string;
+  } |
+  {
+    /**
      * The connect probe did not run its program-change test, because it could
      * not have put the pedal's current patch back exactly afterwards. Nothing was
      * written to the pedal. Only reported for pedals that answered the current
