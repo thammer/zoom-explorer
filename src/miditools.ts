@@ -19,7 +19,8 @@ let getMIDIDeviceListIsRunning: boolean = false;
  * @returns 
  */
 export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, DeviceInfo>, outputs: Map<DeviceID, DeviceInfo>, 
-                                  timeoutMilliseconds: number = 100, logging: boolean = false) : Promise<MIDIDeviceDescription[]>
+                                  timeoutMilliseconds: number = 100, logging: boolean = false,
+                                  deadlineMillisecondsOverride: number = 0) : Promise<MIDIDeviceDescription[]>
 {
   if (getMIDIDeviceListIsRunning) {
     shouldLog(LogLevel.Error) && console.error(`getMIDIDeviceList() is already running. Last call was with inputs: ${inputs.size}, outputs: ${outputs.size}`);
@@ -30,102 +31,180 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
   {
     let currentOutput: DeviceInfo | undefined;
 
-    let timeoutId : ReturnType<typeof setTimeout>;
+    let timeoutId : ReturnType<typeof setTimeout> | undefined;
   
     let listeners = new Map<DeviceID, ListenerType>(); // used for removing listeners after we're done
     let openedInputs = new Array<DeviceID>();
     let openedOutputs = new Array<DeviceID>();
     let midiDevices: MIDIDeviceDescription[] = [];
+    let currentOutputIterator: IterableIterator<DeviceInfo>;
+    let settled: boolean = false;
     // TODO: Consider if byte 2 (SysEx channel) should be considered, see http://midi.teragonaudio.com/tech/midispec/identity.htm
-    
-    for (let [id, input] of inputs)
+
+    // This promise must settle exactly once, whatever happens below. A port that
+    // disappears while identification runs is ordinary (a USB unplug, or a quick
+    // unplug and replug), and the MIDI proxy throws for a port that is no longer
+    // there. An unsettled promise here is far worse than an incomplete device list:
+    // MIDIDeviceManager runs this through a sequential runner that only releases its
+    // lock when this settles, so every later attempt to identify a device, for the
+    // rest of the page's life, would queue behind it and never run.
+    function settle(): void
     {
-      if (input.connection !== "open")
+      if (settled)
+        return;
+      settled = true;
+      clearTimeout(deadlineId);
+      if (timeoutId !== undefined)
+        clearTimeout(timeoutId);
+      // Our own listeners go, even when settling early: removeListener() takes only the
+      // one listener, unlike closeInput(), so this cannot disturb another consumer of
+      // the port. Left attached they would sit there for the life of the page, one per
+      // input per timed-out call, each holding this call's state alive.
+      removeOwnListeners();
+      getMIDIDeviceListIsRunning = false;
+      resolve(midiDevices);
+    }
+
+    function removeOwnListeners(): void
+    {
+      for (const [id, listener] of listeners)
       {
-        let inputHandle : DeviceID;
         try
         {
-          inputHandle = await midi.openInput(id);
-          openedInputs.push(inputHandle);
+          midi.removeListener(id, listener);
         }
         catch(err)
         {
-          shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Trying to open device "${id}"`));
+          shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `removing the listener for device "${id}"`));
         }
-
       }
-      let handleSysex = (deviceHandle: DeviceID, data: Uint8Array) =>
-      {
-        if (currentOutput !== undefined && data.length >= 15 && data[0] == 0xF0 && data[1] == 0x7E && data[3] == 0x06 && data[4] == 0x02 && 
-           ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) )
-        {
-          // We got a valid ID response message
-          let identityResponse = data;
-          let dataOffset: number = data[5] != 0 ? 0 : 2; // if manufacturer ID is 3 bytes instead of just 1, data after that is offset with 2 bytes.
-
-          let inputID: string = input.id;
-          let inputName: string = input.name; 
-          let outputID: string = currentOutput.id;
-          let outputName: string = currentOutput.name;
-          let isInput: boolean = true;
-          let isOutput: boolean = true;
-          let manufacturerID: [number] | [number, number, number] = data[5] != 0 ? [ data[5] ] : [ data[5], data[6], data[7] ];
-          let manufacturerName: string = MIDIManufacturerIDToName[bytesToHexString(manufacturerID, " ")] ?? 
-            (data[5] != 0 ? data[5].toString().padStart(2, "0") : `${data[5].toString().padStart(2, "0")} ${data[6].toString().padStart(2, "0")} ${data[7].toString().padStart(2, "0")}`);
-          let familyCode: [number, number] = [ data[6+dataOffset], data[7+dataOffset]];
-          let modelNumber: [number, number] = [data[8+dataOffset], data[9+dataOffset]];
-          let deviceName: string = getDeviceName(manufacturerID, familyCode, modelNumber);
-          let versionNumber: [number, number, number, number] = [data[10+dataOffset], data[11+dataOffset], data[12+dataOffset], data[13+dataOffset]];
-
-          let description = new MIDIDeviceDescription({ 
-            inputID: inputID,
-            inputName: inputName,
-            outputID: outputID,
-            outputName: outputName,
-            isInput: isInput,
-            isOutput: isOutput,
-            manufacturerID: manufacturerID,
-            manufacturerName: manufacturerName,
-            familyCode: familyCode,
-            modelNumber: modelNumber,
-            deviceName: deviceName,
-            deviceNameUnique: deviceName,
-            versionNumber: versionNumber,
-            identityResponse: identityResponse,
-          });
-
-          if (logging) shouldLog(LogLevel.Info) && console.log(`      Received sysex ID reply ${bytesToHexString(data, " ")} -> ${JSON.stringify(description)}`);
-  
-          midiDevices.push(description);
-          if (logging) shouldLog(LogLevel.Info) && console.log(`  Clearing timeout (${timeoutId})`);
-          clearTimeout(timeoutId);
-          sendAndSetTimeout();
-  
-        }
-        else
-        {
-          if (logging) {
-            if (currentOutput === undefined)
-              shouldLog(LogLevel.Info) && console.log(`      Received sysex from input "${input.name}" but currentOutput is undefined: ` +
-                `${bytesToHexString(data, " ")}`)
-            else
-              shouldLog(LogLevel.Info) && console.log(`      Received sysex unknown from input "${input.name}" for output ${currentOutput}` +
-                ` "${currentOutput?.name}": ${bytesToHexString(data, " ")}`)
-          }
-        }
-      };
-
-      midi.addListener(input.id, handleSysex);
-      listeners.set(input.id, handleSysex);
+      listeners.clear();
     }
-    
-    
-    let currentOutputIterator = outputs.values();
 
-    sendAndSetTimeout(); // send the first message and start the chain of events
+    // Last resort, in case some path still manages not to settle: the identity
+    // requests are a bounded sequence of waits, so anything much longer than that is
+    // a fault. Ports are deliberately not closed here, since a hung close is one way
+    // to get here; leaving them open is better than never settling.
+    // The override exists so the timed-out path can be exercised without waiting the
+    // full deadline; nothing in the app passes it.
+    let deadlineMilliseconds = deadlineMillisecondsOverride > 0 ? deadlineMillisecondsOverride :
+      Math.max(10000, (inputs.size + outputs.size + 2) * timeoutMilliseconds * 4);
+    let deadlineId: ReturnType<typeof setTimeout> = setTimeout( () =>
+    {
+      shouldLog(LogLevel.Error) && console.error(`getMIDIDeviceList() did not finish within ${deadlineMilliseconds} ms. ` +
+        `Returning the ${midiDevices.length} device(s) identified so far. Ports may have disappeared while identifying them.`);
+      settle();
+    }, deadlineMilliseconds);
+
+    try
+    {
+      for (let [id, input] of inputs)
+      {
+        if (input.connection !== "open")
+        {
+          let inputHandle : DeviceID;
+          try
+          {
+            inputHandle = await midi.openInput(id);
+            openedInputs.push(inputHandle);
+          }
+          catch(err)
+          {
+            shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Trying to open device "${id}"`));
+          }
+
+        }
+        let handleSysex = (deviceHandle: DeviceID, data: Uint8Array) =>
+        {
+          if (settled)
+            return; // see settle(): this identification is over, and its result is already out
+          if (currentOutput !== undefined && data.length >= 15 && data[0] == 0xF0 && data[1] == 0x7E && data[3] == 0x06 && data[4] == 0x02 && 
+             ( (data[5] !== 0 && data.length == 15 && data[14] == 0xF7) || (data[5] == 0 && data.length == 17 && data[16] == 0xF7) ) )
+          {
+            // We got a valid ID response message
+            let identityResponse = data;
+            let dataOffset: number = data[5] != 0 ? 0 : 2; // if manufacturer ID is 3 bytes instead of just 1, data after that is offset with 2 bytes.
+
+            let inputID: string = input.id;
+            let inputName: string = input.name; 
+            let outputID: string = currentOutput.id;
+            let outputName: string = currentOutput.name;
+            let isInput: boolean = true;
+            let isOutput: boolean = true;
+            let manufacturerID: [number] | [number, number, number] = data[5] != 0 ? [ data[5] ] : [ data[5], data[6], data[7] ];
+            let manufacturerName: string = MIDIManufacturerIDToName[bytesToHexString(manufacturerID, " ")] ?? 
+              (data[5] != 0 ? data[5].toString().padStart(2, "0") : `${data[5].toString().padStart(2, "0")} ${data[6].toString().padStart(2, "0")} ${data[7].toString().padStart(2, "0")}`);
+            let familyCode: [number, number] = [ data[6+dataOffset], data[7+dataOffset]];
+            let modelNumber: [number, number] = [data[8+dataOffset], data[9+dataOffset]];
+            let deviceName: string = getDeviceName(manufacturerID, familyCode, modelNumber);
+            let versionNumber: [number, number, number, number] = [data[10+dataOffset], data[11+dataOffset], data[12+dataOffset], data[13+dataOffset]];
+
+            let description = new MIDIDeviceDescription({ 
+              inputID: inputID,
+              inputName: inputName,
+              outputID: outputID,
+              outputName: outputName,
+              isInput: isInput,
+              isOutput: isOutput,
+              manufacturerID: manufacturerID,
+              manufacturerName: manufacturerName,
+              familyCode: familyCode,
+              modelNumber: modelNumber,
+              deviceName: deviceName,
+              deviceNameUnique: deviceName,
+              versionNumber: versionNumber,
+              identityResponse: identityResponse,
+            });
+
+            if (logging) shouldLog(LogLevel.Info) && console.log(`      Received sysex ID reply ${bytesToHexString(data, " ")} -> ${JSON.stringify(description)}`);
+  
+            midiDevices.push(description);
+            if (logging) shouldLog(LogLevel.Info) && console.log(`  Clearing timeout (${timeoutId})`);
+            clearTimeout(timeoutId);
+            sendAndSetTimeout();
+  
+          }
+          else
+          {
+            if (logging) {
+              if (currentOutput === undefined)
+                shouldLog(LogLevel.Info) && console.log(`      Received sysex from input "${input.name}" but currentOutput is undefined: ` +
+                  `${bytesToHexString(data, " ")}`)
+              else
+                shouldLog(LogLevel.Info) && console.log(`      Received sysex unknown from input "${input.name}" for output ${currentOutput}` +
+                  ` "${currentOutput?.name}": ${bytesToHexString(data, " ")}`)
+            }
+          }
+        };
+
+        // The input was in the snapshot taken before this call, but it can be gone by
+        // now, and then addListener() throws. Skip it and identify the rest.
+        try
+        {
+          midi.addListener(input.id, handleSysex);
+          listeners.set(input.id, handleSysex);
+        }
+        catch(err)
+        {
+          shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Trying to listen to device "${input.id}", which is skipped`));
+        }
+      }
+
+
+      currentOutputIterator = outputs.values();
+
+      sendAndSetTimeout(); // send the first message and start the chain of events
+    }
+    catch(err)
+    {
+      shouldLog(LogLevel.Error) && console.error("ERROR: " + getExceptionErrorString(err, `while identifying MIDI devices. Returning the ${midiDevices.length} device(s) identified so far`));
+      settle();
+    }
 
     async function sendAndSetTimeout()
     {
+      if (settled)
+        return; // see settle(): send nothing more for an identification that has finished
       currentOutput = currentOutputIterator.next().value;
       // while (currentOutput !== undefined && currentOutput.connection == "open")
       // {
@@ -133,18 +212,46 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
       // } 
 
       if (currentOutput === undefined)
-        await done();
+      {
+        // Nothing left to ask: finish. done() settles the promise itself, and is
+        // written not to throw, but this call is not awaited by anyone, so a throw
+        // here would be an unhandled rejection with nothing settled.
+        try
+        {
+          await done();
+        }
+        catch(err)
+        {
+          shouldLog(LogLevel.Error) && console.error("ERROR: " + getExceptionErrorString(err, `while finishing MIDI device identification`));
+          settle();
+        }
+      }
       else
       {
         logging && shouldLog(LogLevel.Info) && console.log(`Requesting identity for output device ${currentOutput.id} "${currentOutput.name}"`)
 
         let currentOutputID = currentOutput.id;
         let currentOutputName = currentOutput.name;
-        let outputHandle = await midi.openOutput(currentOutput.id);
-        openedOutputs.push(outputHandle);
-        midi.send(currentOutput.id, new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]));
+        try
+        {
+          let outputHandle = await midi.openOutput(currentOutput.id);
+          openedOutputs.push(outputHandle);
+          midi.send(currentOutput.id, new Uint8Array([0xf0,0x7e,0x7f,0x06,0x01,0xf7]));
+        }
+        catch(err)
+        {
+          // The output is in the snapshot but gone now, so it cannot be identified.
+          // Move on to the next one: this function is called from a timeout callback
+          // and from the reply handler, neither of which awaits it, so a throw would
+          // stop the chain here and leave the promise unsettled.
+          shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Requesting identity for device "${currentOutputID}", which is skipped`));
+          sendAndSetTimeout();
+          return;
+        }
         let localTimeoutId = setTimeout( () =>
         {
+          if (settled)
+            return;
           if (logging) shouldLog(LogLevel.Info) && console.log(`      Timed out (${localTimeoutId}) for device ${currentOutputID} "${currentOutputName}"`);
           sendAndSetTimeout();
         }, timeoutMilliseconds);
@@ -155,21 +262,30 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
   
     async function done()
     { 
-      for (const [id, device] of inputs)
-      {
-        let listener = listeners.get(device.id);
-        if (listener !== undefined)
-          midi.removeListener(device.id, listener);
-      }
+      // Everything below must be skipped once the promise has settled, which the
+      // deadline can do while this function is still running. By then the caller has
+      // moved on and another consumer may be using these very ports: closing a port
+      // here would close it for them, and closeInput() also drops every listener
+      // registered on that input, including a device driver's own handler and a file
+      // transfer's reply handler. Ports this call opened are left open instead, which
+      // is the lesser evil, and an already-open port is shared rather than reopened.
+      if (settled)
+        return;
+
+      removeOwnListeners();
 
       for (const device of openedInputs)
       {
-        await midi.closeInput(device);
+        if (settled)
+          return;
+        await quietly(async () => { await midi.closeInput(device); }, `closing input device "${device}"`);
       }
 
       for (const device of openedOutputs)
       {
-        await midi.closeOutput(device);
+        if (settled)
+          return;
+        await quietly(async () => { await midi.closeOutput(device); }, `closing output device "${device}"`);
       }
 
       // If one input device replies to multiple output devices (like LaunchControl XL):
@@ -305,6 +421,8 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
       // first pass also helps devices that need settling time.
       let devicesWithoutIdentity = midiDevices.filter(d => d.manufacturerID[0] === 0 && d.isInput && d.isOutput);
       for (let device of devicesWithoutIdentity) {
+        if (settled)
+          return; // the retry would write into a device list the caller already has
         let retryInputHandle: DeviceID | undefined;
         let retryOutputHandle: DeviceID | undefined;
         try {
@@ -316,7 +434,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
             new Uint8Array([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]),
             device.inputID,
             (data: Uint8Array) => isMIDIIdentityResponse(data),
-            500 // longer than first pass — device may need settling time after port open
+            500 // longer than first pass - device may need settling time after port open
           );
 
           if (identityReply !== undefined) {
@@ -355,15 +473,30 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         } catch (err) {
           logging && shouldLog(LogLevel.Info) && console.log(`Identity retry failed for "${device.inputName}": ${getExceptionErrorString(err)}`);
         } finally {
-          if (retryInputHandle !== undefined) await midi.closeInput(retryInputHandle);
-          if (retryOutputHandle !== undefined) await midi.closeOutput(retryOutputHandle);
+          // Not when settled: the retry's wait can straddle the deadline, and by then
+          // these ports may be shared with another consumer (see done()).
+          if (!settled && retryInputHandle !== undefined) await quietly(async () => { await midi.closeInput(retryInputHandle!); }, `closing input device "${retryInputHandle}" after an identity retry`);
+          if (!settled && retryOutputHandle !== undefined) await quietly(async () => { await midi.closeOutput(retryOutputHandle!); }, `closing output device "${retryOutputHandle}" after an identity retry`);
         }
       }
 
-      getMIDIDeviceListIsRunning = false;
-      resolve(midiDevices);
+      settle();
     }
-  
+
+    // Cleanup that must never be the reason this call does not finish: a port that
+    // has disappeared throws when it is closed, or when a listener is removed.
+    async function quietly(action: () => Promise<void>, what: string): Promise<void>
+    {
+      try
+      {
+        await action();
+      }
+      catch(err)
+      {
+        shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `while ${what}`));
+      }
+    }
+
   });
 }   
 
