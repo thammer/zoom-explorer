@@ -425,6 +425,11 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
           return; // the retry would write into a device list the caller already has
         let retryInputHandle: DeviceID | undefined;
         let retryOutputHandle: DeviceID | undefined;
+        // A port that was already open when this call started belongs to whoever opened
+        // it. The retry may use it, but must not close it afterwards: closing a port closes
+        // it for everyone, and closing an input also drops every listener on it.
+        let inputWasOpen = inputs.get(device.inputID)?.connection === "open";
+        let outputWasOpen = outputs.get(device.outputID)?.connection === "open";
         try {
           retryInputHandle = await midi.openInput(device.inputID);
           retryOutputHandle = await midi.openOutput(device.outputID);
@@ -475,8 +480,8 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         } finally {
           // Not when settled: the retry's wait can straddle the deadline, and by then
           // these ports may be shared with another consumer (see done()).
-          if (!settled && retryInputHandle !== undefined) await quietly(async () => { await midi.closeInput(retryInputHandle!); }, `closing input device "${retryInputHandle}" after an identity retry`);
-          if (!settled && retryOutputHandle !== undefined) await quietly(async () => { await midi.closeOutput(retryOutputHandle!); }, `closing output device "${retryOutputHandle}" after an identity retry`);
+          if (!settled && !inputWasOpen && retryInputHandle !== undefined) await quietly(async () => { await midi.closeInput(retryInputHandle!); }, `closing input device "${retryInputHandle}" after an identity retry`);
+          if (!settled && !outputWasOpen && retryOutputHandle !== undefined) await quietly(async () => { await midi.closeOutput(retryOutputHandle!); }, `closing output device "${retryOutputHandle}" after an identity retry`);
         }
       }
 
