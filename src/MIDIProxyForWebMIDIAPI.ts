@@ -4,6 +4,7 @@ import { DeviceID, DeviceInfo, MIDIProxy, ListenerType, ConnectionListenerType, 
 import { getChannelMessage } from "./miditools.js";
 import { MIDI_RECEIVE, MIDI_RECEIVE_TO_SEND, MIDI_SEND, MIDI_TIMESTAMP_TO_RECEIVE, perfmon } from "./PerformanceMonitor.js";
 import { bytesToHexString, getFunctionName } from "./tools.js";
+import { ZoomDriverDiagnostics } from "./ZoomDriverDiagnostics.js";
 //import jzz from "jzz";
 
 // Copied from https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/webmidi/index.d.ts
@@ -23,6 +24,15 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
   private connectionStateChangeListeners = new Array<ConnectionListenerType>();
   private inputPortsConnectionState = new Map<DeviceID, MIDIPortConnectionState>;
   private outputPortsConnectionState = new Map<DeviceID, MIDIPortConnectionState>;
+  // How many times each port has been opened through this proxy and not yet closed.
+  // Several parts of an application share one port: a device driver, a file transfer,
+  // and the device identification pass all open the same pedal. Closing the underlying
+  // port stops delivery for every one of them, and closing an input also drops every
+  // listener registered on it, so a port is only really closed when its last holder
+  // closes it. A close with no matching open is refused and reported, since acting on it
+  // would give back a hold that belongs to another part of the application.
+  private inputOpenCount = new Map<DeviceID, number>();
+  private outputOpenCount = new Map<DeviceID, number>();
 
   constructor() 
   {
@@ -129,6 +139,37 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     if (!this.midiMessageListenerMap.has(id))
       this.midiMessageListenerMap.set(id, new Array<ListenerType>());
 
+    // Counting the hold and installing the handler must stay in one synchronous block:
+    // closeInput() relies on a holder that has been counted having its handler installed
+    // already, so it can hand the port back without losing messages. Do not put an await
+    // between these two lines.
+    this.inputOpenCount.set(id, (this.inputOpenCount.get(id) ?? 0) + 1);
+
+    this.attachMessageHandler(id, input);
+
+    return input.id;
+  }
+
+  /**
+   * Whether a port is probably a Zoom device's, from its name or manufacturer. Used for the
+   * port_close_unbalanced diagnostic in place of the port's name or id: a name can be
+   * renamed by the user, and an id is a stable identifier, and neither belongs in a report
+   * that may leave the machine. Chrome names an MS Plus pedal's ports "ZOOM MS Plus Series".
+   */
+  private static looksLikeZoomPort(port: MIDIPort | undefined): boolean
+  {
+    if (port === undefined)
+      return false;
+    return /zoom/i.test(port.name ?? "") || /zoom/i.test(port.manufacturer ?? "");
+  }
+
+  /**
+   * Routes a port's incoming messages into this proxy. Chrome keeps onmidimessage across
+   * a close and reopen (measured on an MS-70CDR+), but the specification lets a port lose
+   * it, so anything that reopens a port sets it again rather than relying on that.
+   */
+  private attachMessageHandler(id: DeviceID, input: MIDIInput): void
+  {
     input.onmidimessage = (message) => {
       if (input !== undefined) {
         perfmon.exitWithExplicitLastTimeInside(MIDI_TIMESTAMP_TO_RECEIVE, message.timeStamp);
@@ -138,8 +179,6 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
         this.onMIDIMessage(id, input, message);
       }
     };
-
-    return input.id;
   }
   
   async closeInput(deviceHandle: DeviceID) : Promise<DeviceID>
@@ -147,12 +186,62 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     if (this.midi === undefined)
       throw `Attempting to close MIDI input without first enabling Web MIDI`;
 
+    const openCount = this.inputOpenCount.get(deviceHandle) ?? 0;
+    if (openCount > 1) {
+      this.inputOpenCount.set(deviceHandle, openCount - 1);
+      shouldLog(LogLevel.Info) && console.log(`Not closing input device "${deviceHandle}": ${openCount - 1} more holder(s) have it open. Listeners are left in place.`);
+      return deviceHandle;
+    }
+    if (openCount === 0) {
+      // Refused rather than obeyed: the count is per port, so this close would give back a
+      // hold taken by another part of the application, closing the port under it and
+      // dropping its listeners. No legitimate caller closes a port it did not open.
+      shouldLog(LogLevel.Warning) && console.warn(`Refusing to close input device "${deviceHandle}", which was never opened through this proxy. Opens and closes are unbalanced somewhere.`);
+      ZoomDriverDiagnostics.notify({ kind: "port_close_unbalanced", portType: "input",
+        looksLikeZoomPort: MIDIProxyForWebMIDIAPI.looksLikeZoomPort(this.midi.inputs.get(deviceHandle)) });
+      return deviceHandle;
+    }
+    // Deleted, not decremented: a holder that opens the port while it is closing below
+    // adds its own count back, which is how the close notices and hands the port over.
+    this.inputOpenCount.delete(deviceHandle);
+
     let input = this.midi.inputs.get(deviceHandle);
     if (input === undefined) {
       shouldLog(LogLevel.Info) && console.log(`No input found with ID "${deviceHandle}", so there's nothing to close. Removing listeners anyway.`);
     }
     else {
-      await input.close();
+      // A close that fails keeps its hold, so a later close can still release the port.
+      // Giving the hold up here would leave the port open with nothing able to close it,
+      // now that a close at count zero is refused.
+      try
+      {
+        await input.close();
+      }
+      catch(err)
+      {
+        this.inputOpenCount.set(deviceHandle, (this.inputOpenCount.get(deviceHandle) ?? 0) + 1);
+        throw err;
+      }
+
+      // Closing a port takes a moment, and a new holder can open it in that moment.
+      // It would then be left with a closed port and, below, with its listeners gone.
+      // Put the port back instead, and leave the listeners alone.
+      if ((this.inputOpenCount.get(deviceHandle) ?? 0) > 0) {
+        shouldLog(LogLevel.Info) && console.log(`Input device "${deviceHandle}" was opened again while it was being closed. Reopening it and keeping its listeners.`);
+        // The failure here belongs to the new holder, not to whoever called close, so it
+        // is reported rather than thrown: throwing would tell the wrong caller, and the
+        // new holder would be left with a closed port and no hint why.
+        try
+        {
+          await input.open();
+          this.attachMessageHandler(deviceHandle, input);
+        }
+        catch(err)
+        {
+          shouldLog(LogLevel.Error) && console.error(`Failed to reopen input device "${deviceHandle}" for the holder that opened it while it was closing: ${err}`);
+        }
+        return deviceHandle;
+      }
     }
     
     let listeners = this.midiMessageListenerMap.get(deviceHandle);
@@ -174,6 +263,8 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     {
       input.close();
     }
+
+    this.inputOpenCount.clear(); // these ports are closed whatever the counts said
   }
 
   getInputInfo(id: DeviceID) : DeviceInfo
@@ -208,7 +299,9 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     }
 
     await output.open();
-    
+
+    this.outputOpenCount.set(id, (this.outputOpenCount.get(id) ?? 0) + 1);
+
     return output.id;
   }
 
@@ -217,12 +310,47 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     if (this.midi === undefined)
       throw `Attempting to close MIDI output without first enabling Web MIDI`;
 
+    const openCount = this.outputOpenCount.get(deviceHandle) ?? 0;
+    if (openCount > 1) {
+      this.outputOpenCount.set(deviceHandle, openCount - 1);
+      shouldLog(LogLevel.Info) && console.log(`Not closing output device "${deviceHandle}": ${openCount - 1} more holder(s) have it open.`);
+      return deviceHandle;
+    }
+    if (openCount === 0) {
+      shouldLog(LogLevel.Warning) && console.warn(`Refusing to close output device "${deviceHandle}", which was never opened through this proxy. Opens and closes are unbalanced somewhere.`);
+      ZoomDriverDiagnostics.notify({ kind: "port_close_unbalanced", portType: "output",
+        looksLikeZoomPort: MIDIProxyForWebMIDIAPI.looksLikeZoomPort(this.midi.outputs.get(deviceHandle)) });
+      return deviceHandle;
+    }
+    this.outputOpenCount.delete(deviceHandle);
+
     let output = this.midi.outputs.get(deviceHandle);
     if (output === undefined) {
       shouldLog(LogLevel.Info) && console.log(`No output found with ID "${deviceHandle}", so there's nothing to close`);
     }
     else {
-      await output.close();
+      try
+      {
+        await output.close();
+      }
+      catch(err)
+      {
+        this.outputOpenCount.set(deviceHandle, (this.outputOpenCount.get(deviceHandle) ?? 0) + 1);
+        throw err;
+      }
+
+      // As in closeInput(): a new holder may have opened it while it was closing.
+      if ((this.outputOpenCount.get(deviceHandle) ?? 0) > 0) {
+        shouldLog(LogLevel.Info) && console.log(`Output device "${deviceHandle}" was opened again while it was being closed. Reopening it.`);
+        try
+        {
+          await output.open();
+        }
+        catch(err)
+        {
+          shouldLog(LogLevel.Error) && console.error(`Failed to reopen output device "${deviceHandle}" for the holder that opened it while it was closing: ${err}`);
+        }
+      }
     }
     
     return deviceHandle;
@@ -237,6 +365,8 @@ export class MIDIProxyForWebMIDIAPI extends MIDIProxy
     {
       output.close();
     }
+
+    this.outputOpenCount.clear(); // these ports are closed whatever the counts said
   }
 
   getOutputInfo(id: DeviceID) : DeviceInfo

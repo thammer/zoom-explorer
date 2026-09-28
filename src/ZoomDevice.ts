@@ -156,6 +156,7 @@ export class ZoomDevice implements IManagedMIDIDevice
   private _patchLength: number = -1;
   private _patchesPerBank: number = -1;
   private _patchDumpForMemoryLocationV1CRCBytes: number = 0;
+  private _openInProgress: Promise<void> | undefined = undefined;
   private _ptcfPatchFormatSupported: boolean = false;
   private _ptcfNameLength: number = 0;
   private _usesBankBeforeProgramChange: boolean = false;  
@@ -218,24 +219,95 @@ export class ZoomDevice implements IManagedMIDIDevice
 
   public async open()
   {
+    // An open in progress must finish before anything else opens or closes this device:
+    // close() gives back the MIDI port holds that open() takes, and the two running at
+    // once would either release a hold twice or leave one behind. A disconnect arriving
+    // while the pedal is still being probed is the everyday version of that.
+    if (this._openInProgress !== undefined) {
+      shouldLog(LogLevel.Warning) && console.warn(`Attempting to open ZoomDevice ${this._zoomDeviceIdString} while it is already being opened`);
+      return this._openInProgress;
+    }
     if (this._isOpen) {
       shouldLog(LogLevel.Warning) && console.warn(`Attempting to open ZoomDevice ${this._zoomDeviceIdString} which is already open`);
       return;
     }
+    this._openInProgress = this.openPorts();
+    try {
+      await this._openInProgress;
+    }
+    finally {
+      this._openInProgress = undefined;
+    }
+  }
+
+  private async openPorts()
+  {
     shouldLog(LogLevel.Info) && console.log(`Opening ZoomDevice ${this.deviceName}`);
     this._isOpen = true;
-    await this._midi.openInput(this._midiDevice.inputID);
-    await this._midi.openOutput(this._midiDevice.outputID);
-    this.connectMessageHandler();
-    await this.probeDevice();
-    this.startAutoRequestProgramChangeIfNeeded();
-    if (this.autoRequestCurrentPatch)
-      await this.downloadCurrentPatch();
+    // Opening takes a hold on each MIDI port, and every hold has to be given back or the
+    // port is never released. A pedal that is unplugged while it is being probed makes any
+    // of the steps below throw, so a failed open gives back whatever it took and leaves
+    // the device closed, rather than leaving the caller to guess what it owns.
+    let inputOpened = false;
+    let outputOpened = false;
+    let handlerConnected = false;
+    try {
+      await this._midi.openInput(this._midiDevice.inputID);
+      inputOpened = true;
+      await this._midi.openOutput(this._midiDevice.outputID);
+      outputOpened = true;
+      this.connectMessageHandler();
+      handlerConnected = true;
+      await this.probeDevice();
+      this.startAutoRequestProgramChangeIfNeeded();
+      if (this.autoRequestCurrentPatch)
+        await this.downloadCurrentPatch();
+    }
+    catch (err) {
+      shouldLog(LogLevel.Error) && console.error(`Failed to open ZoomDevice ${this.deviceName}: ${getExceptionErrorString(err)}. Releasing the MIDI ports it had opened.`);
+      if (this._autoRequestProgramChangeTimerStarted) {
+        clearInterval(this._autoRequestProgramChangeTimerID);
+        this._autoRequestProgramChangeTimerStarted = false;
+        this._autoRequestProgramChangeMuteLog = false;
+      }
+      if (handlerConnected) this.disconnectMessageHandler();
+      if (outputOpened) await this.closePortQuietly("output");
+      if (inputOpened) await this.closePortQuietly("input");
+      this._isOpen = false;
+      throw err;
+    }
     this.emitOpenCloseEvent(true);
+  }
+
+  /** Giving a port back must not mask the failure that led to it. */
+  private async closePortQuietly(port: "input" | "output"): Promise<void>
+  {
+    try {
+      if (port === "input")
+        await this._midi.closeInput(this._midiDevice.inputID);
+      else
+        await this._midi.closeOutput(this._midiDevice.outputID);
+    }
+    catch (err) {
+      shouldLog(LogLevel.Warning) && console.warn(`Failed to close the ${port} port of ZoomDevice ${this.deviceName}: ${getExceptionErrorString(err)}`);
+    }
   }
 
   public async close()
   {
+    // Wait for an open that is still taking its port holds, so this never releases them
+    // underneath it. A failed open has already released its own and left the device
+    // closed, which the check below then reports as nothing to do.
+    if (this._openInProgress !== undefined) {
+      shouldLog(LogLevel.Info) && console.log(`Waiting for the open of ZoomDevice ${this.deviceName} to finish before closing it`);
+      try {
+        await this._openInProgress;
+      }
+      catch (err) {
+        shouldLog(LogLevel.Info) && console.log(`The open of ZoomDevice ${this.deviceName} failed, so there is nothing left to close: ${getExceptionErrorString(err)}`);
+        return;
+      }
+    }
     if (!this._isOpen) {
       shouldLog(LogLevel.Warning) && console.warn(`Attempting to close ZoomDevice ${this._zoomDeviceIdString} which is not open`);
       return;
@@ -261,8 +333,10 @@ export class ZoomDevice implements IManagedMIDIDevice
     
     this._isOpen = false;
     
-    await this._midi.closeInput(this._midiDevice.inputID);
-    await this._midi.closeOutput(this._midiDevice.outputID);
+    // Both holds are given back even if one close fails; otherwise a failing input close
+    // would leave the output held for the rest of the page's life.
+    await this.closePortQuietly("input");
+    await this.closePortQuietly("output");
     
     shouldLog(LogLevel.Info) && console.log(`Closed ZoomDevice ${this._zoomDeviceID}`);
     this.emitOpenCloseEvent(false);

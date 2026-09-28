@@ -61,8 +61,27 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
       // the port. Left attached they would sit there for the life of the page, one per
       // input per timed-out call, each holding this call's state alive.
       removeOwnListeners();
+      releaseOwnPorts();
       getMIDIDeviceListIsRunning = false;
       resolve(midiDevices);
+    }
+
+    /**
+     * Gives back every port hold this call took, on whichever path it ends. A port is
+     * only really closed once its last holder lets go, so this cannot disturb a driver or
+     * a file transfer using the same pedal: it gives back this call's hold and nothing
+     * else. Not awaited, and errors are swallowed: the result is already on its way to the
+     * caller, and a port that hangs while closing must not hold that up. The hold itself
+     * is given back the moment closeInput() is entered, so even a hung close releases it.
+     */
+    function releaseOwnPorts(): void
+    {
+      let inputsToRelease = openedInputs.splice(0);
+      let outputsToRelease = openedOutputs.splice(0);
+      for (const device of inputsToRelease)
+        void quietly(async () => { await midi.closeInput(device); }, `closing input device "${device}"`);
+      for (const device of outputsToRelease)
+        void quietly(async () => { await midi.closeOutput(device); }, `closing output device "${device}"`);
     }
 
     function removeOwnListeners(): void
@@ -83,8 +102,8 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
 
     // Last resort, in case some path still manages not to settle: the identity
     // requests are a bounded sequence of waits, so anything much longer than that is
-    // a fault. Ports are deliberately not closed here, since a hung close is one way
-    // to get here; leaving them open is better than never settling.
+    // a fault. settle() gives this call's port holds back, so a timed-out call does not
+    // pin a port open for the rest of the page's life.
     // The override exists so the timed-out path can be exercised without waiting the
     // full deadline; nothing in the app passes it.
     let deadlineMilliseconds = deadlineMillisecondsOverride > 0 ? deadlineMillisecondsOverride :
@@ -100,19 +119,20 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
     {
       for (let [id, input] of inputs)
       {
-        if (input.connection !== "open")
+        // Every input is opened, even one that is already open. Opening takes a hold on the
+        // port rather than reopening it, so this cannot disturb whoever else is using it,
+        // and holding the port is what stops their close from dropping the listener added
+        // below. Listening on a port this call does not hold is also how an input that has
+        // closed since the snapshot was taken ends up silently deaf.
+        let inputHandle : DeviceID;
+        try
         {
-          let inputHandle : DeviceID;
-          try
-          {
-            inputHandle = await midi.openInput(id);
-            openedInputs.push(inputHandle);
-          }
-          catch(err)
-          {
-            shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Trying to open device "${id}"`));
-          }
-
+          inputHandle = await midi.openInput(id);
+          openedInputs.push(inputHandle);
+        }
+        catch(err)
+        {
+          shouldLog(LogLevel.Info) && console.log("ERROR: " + getExceptionErrorString(err, `Trying to open device "${id}"`));
         }
         let handleSysex = (deviceHandle: DeviceID, data: Uint8Array) =>
         {
@@ -273,20 +293,7 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         return;
 
       removeOwnListeners();
-
-      for (const device of openedInputs)
-      {
-        if (settled)
-          return;
-        await quietly(async () => { await midi.closeInput(device); }, `closing input device "${device}"`);
-      }
-
-      for (const device of openedOutputs)
-      {
-        if (settled)
-          return;
-        await quietly(async () => { await midi.closeOutput(device); }, `closing output device "${device}"`);
-      }
+      releaseOwnPorts();
 
       // If one input device replies to multiple output devices (like LaunchControl XL):
       //   keep the pair where input name equals output name and remove the rest
@@ -473,10 +480,12 @@ export async function getMIDIDeviceList(midi: IMIDIProxy, inputs: Map<DeviceID, 
         } catch (err) {
           logging && shouldLog(LogLevel.Info) && console.log(`Identity retry failed for "${device.inputName}": ${getExceptionErrorString(err)}`);
         } finally {
-          // Not when settled: the retry's wait can straddle the deadline, and by then
-          // these ports may be shared with another consumer (see done()).
-          if (!settled && retryInputHandle !== undefined) await quietly(async () => { await midi.closeInput(retryInputHandle!); }, `closing input device "${retryInputHandle}" after an identity retry`);
-          if (!settled && retryOutputHandle !== undefined) await quietly(async () => { await midi.closeOutput(retryOutputHandle!); }, `closing output device "${retryOutputHandle}" after an identity retry`);
+          // Given back even when the deadline has settled this call meanwhile: the retry
+          // took these holds itself, and with counting a close gives back only its own
+          // hold, so it cannot disturb anyone else using the port. Skipping it would pin
+          // the port open for the rest of the page's life.
+          if (retryInputHandle !== undefined) await quietly(async () => { await midi.closeInput(retryInputHandle!); }, `closing input device "${retryInputHandle}" after an identity retry`);
+          if (retryOutputHandle !== undefined) await quietly(async () => { await midi.closeOutput(retryOutputHandle!); }, `closing output device "${retryOutputHandle}" after an identity retry`);
         }
       }
 

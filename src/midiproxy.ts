@@ -68,6 +68,18 @@ export interface IMIDIProxy
   isInputConnected(id: DeviceID) : boolean;
   isDeviceConnected(id: DeviceID, type: PortType) : boolean;
 
+  /**
+   * Opening a port takes a hold on it. Several parts of an application can hold the same
+   * port, and closeInput()/closeOutput() only close the underlying port once the last
+   * hold is given up, so opening a port another part of the application already uses is
+   * safe. Two consequences for callers:
+   *  - every open needs its own close, or the port is never released;
+   *  - a close that is not the last one leaves the port's listeners in place, so each
+   *    caller removes its own listener with removeListener() rather than relying on a
+   *    close to do it. A last close still drops every listener on an input.
+   * A close of a port this proxy never opened is refused and reported, since acting on it
+   * would give back a hold belonging to another part of the application.
+   */
   openInput(id: DeviceID) : Promise<DeviceID>;
   closeInput(deviceHandle: DeviceID) : Promise<DeviceID>;
   closeAllInputs() : Promise<void>;

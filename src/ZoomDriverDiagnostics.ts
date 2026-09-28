@@ -85,6 +85,20 @@ export type DriverDiagnostic =
   } |
   {
     /**
+     * A MIDI port was closed more times than it was opened. The close was refused,
+     * because the count is kept per port: acting on it would have given back a hold
+     * belonging to another part of the application, closing the port under it and
+     * dropping its listeners. Some caller's opens and closes do not balance.
+     * See MIDIProxyForWebMIDIAPI.closeInput() and closeOutput().
+     */
+    kind: "port_close_unbalanced";
+    portType: "input" | "output";
+    // Deliberately not the port's name or id: a name can be renamed by the user and an id
+    // is a stable identifier, and this report may be sent off the machine.
+    looksLikeZoomPort: boolean;   // from the port's name or manufacturer; false if the port is gone
+  } |
+  {
+    /**
      * The connect probe did not run its program-change test, because it could
      * not have put the pedal's current patch back exactly afterwards. Nothing was
      * written to the pedal. Only reported for pedals that answered the current
