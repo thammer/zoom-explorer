@@ -92,7 +92,7 @@ export type DriverDiagnostic =
      * The pedal then falls back to being polled for program changes.
      */
     kind: "probe_program_change_skipped";
-    cause: "no_capture" |        // neither current-patch request gave usable bytes
+    cause: "no_capture" |        // no usable bytes: neither request gave any, or a V2 reply failed its check, which rules out V1 too
            "capture_refused";    // bytes were in hand, but checkCurrentPatchDataLength() refused them
     v1Answered: boolean;         // the V1 current-patch request replied during this probe
     v2Answered: boolean;         // the V2 current-patch request replied during this probe

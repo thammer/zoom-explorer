@@ -1272,29 +1272,59 @@ export class ZoomDevice implements IManagedMIDIDevice
   /**
    * The bytes the probe should put back on the pedal after its program-change
    * test: the pedal's own current patch, decoded from a dump it sent during this
-   * probe, preferring the V2 dump. Returns undefined when there is no such dump.
+   * probe. Returns undefined when neither request gave one, or a V2 reply failed.
    *
    * Never builds anything from a ZoomPatch object. After probing disturbs the
    * pedal, the only acceptable repair is exactly what was there before, or
    * nothing; a rebuilt patch is neither, and once zeroed every knob on a pedal.
    * Static and free of device state so a test can pin which bytes come out.
    *
-   * Decodes through sysexToPatchData(), which strips the V2 dump's 5-byte CRC. A
-   * plain 7-to-8-bit decode keeps it, and the length check then refuses every
-   * MS+ restore.
+   * A V2 reply must pass in full, see checkedCurrentPatchV2Data(). If it does not,
+   * the result is undefined even when the V1 reply looks good: a damaged V2 dump
+   * means this capture cannot be trusted, and V1 dumps carry no CRC that could
+   * show otherwise. The V1 bytes are used only when V2 did not answer at all.
    * @param v1Reply the raw patchDumpForCurrentPatchV1 reply from this probe, if any
    * @param v2Reply the raw patchDumpForCurrentPatchV2 reply from this probe, if any
    */
   public static probeRestorePayload(v1Reply: Uint8Array | undefined, v2Reply: Uint8Array | undefined): Uint8Array | undefined
   {
-    if (v2Reply !== undefined) {
-      let data = ZoomDevice.sysexToPatchData(v2Reply)[0];
-      if (data !== undefined)
-        return data;
-    }
+    if (v2Reply !== undefined)
+      return ZoomDevice.checkedCurrentPatchV2Data(v2Reply);
     if (v1Reply !== undefined)
       return ZoomDevice.sysexToPatchData(v1Reply)[0];
     return undefined;
+  }
+
+  /**
+   * The patch bytes of a V2 current-patch dump, if the reply passes in full, it means the
+   * length word is present, the 7-bit data fills the declared length and the CRC
+   * matches. Returns undefined otherwise.
+   *
+   * The check has to happen here, on the read. The restore goes out as a V1 dump,
+   * which has no CRC, so the pedal cannot detect bytes that were damaged on the way
+   * in. sysexToPatchData() is no use for this, because it strips the CRC without comparing
+   * it, and keeps the CRC bytes as patch data if the lengths don't add up.
+   * @param sysexData F0 52 00 <id> 64 12 01 <length LSB> <length MSB> <7-bit data> <5 byte CRC> F7
+   */
+  private static checkedCurrentPatchV2Data(sysexData: Uint8Array): Uint8Array | undefined
+  {
+    let dataOffset = 9;
+    let numberOfCRCBytes = 5;
+    let crcOffset = sysexData.length - 1 - numberOfCRCBytes;
+
+    let declaredLength = sysexData.length < dataOffset ? 0 : sysexData[dataOffset - 2] + (sysexData[dataOffset - 1] << 7);
+    let sevenBitLength = declaredLength + Math.ceil(declaredLength / 7);
+    if (declaredLength === 0 || dataOffset + sevenBitLength > crcOffset || sysexData[sysexData.length - 1] !== 0xF7) {
+      shouldLog(LogLevel.Warning) && console.warn(`V2 current patch dump of ${sysexData.length} bytes is incomplete (declared patch length ${declaredLength})`);
+      return undefined;
+    }
+
+    let patchData = seven2eight(sysexData, dataOffset, dataOffset + sevenBitLength - 1);
+    if (!partialArrayMatch(sysexData, ZoomDevice.getSevenBitCRC(patchData), crcOffset)) {
+      shouldLog(LogLevel.Warning) && console.warn(`V2 current patch dump of ${sysexData.length} bytes failed its CRC check`);
+      return undefined;
+    }
+    return patchData;
   }
 
   /**
@@ -1392,7 +1422,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         paddedData.set(data);
       }
       sevenBitData = eight2seven(paddedData); 
-      crcBytes = this.getSevenBitCRC(paddedData);
+      crcBytes = ZoomDevice.getSevenBitCRC(paddedData);
       let bankProgramLengthArray: Uint8Array = this.getBankProgramLengthArray(memorySlot, paddedData.length);
   
       command = new Uint8Array(ZoomDevice.messageTypes.patchDumpForMemoryLocationV2.bytes.length + bankProgramLengthArray.length);
@@ -1413,7 +1443,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         return false;
       }
       sevenBitData = eight2seven(data); 
-      crcBytes = this.getSevenBitCRC(data);
+      crcBytes = ZoomDevice.getSevenBitCRC(data);
       let programLengthArray: Uint8Array = this.getProgramLengthArray(memorySlot, data.length);
   
       command = new Uint8Array(ZoomDevice.messageTypes.patchDumpForMemoryLocationV1.bytes.length + programLengthArray.length);
@@ -1581,7 +1611,7 @@ export class ZoomDevice implements IManagedMIDIDevice
         paddedData.set(data);
       }
       sevenBitData = eight2seven(paddedData); 
-      crcBytes = this.getSevenBitCRC(paddedData);
+      crcBytes = ZoomDevice.getSevenBitCRC(paddedData);
 
       let patchLengthLSB = this._patchLength & 0x7F;
       let patchLengthMSB = (this._patchLength >> 7) & 0x7F;
@@ -1757,7 +1787,7 @@ export class ZoomDevice implements IManagedMIDIDevice
       setLogLevel(logLevel);
   }
 
-  private getSevenBitCRC(data: Uint8Array): Uint8Array 
+  private static getSevenBitCRC(data: Uint8Array): Uint8Array 
   {
     let crc = crc32(data, 0, data.length - 1);
     crc = crc ^ 0xFFFFFFFF;
